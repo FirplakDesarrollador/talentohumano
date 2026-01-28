@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Navbar } from '@/components/Navbar'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,7 +18,8 @@ import {
     CheckCircle2,
     AlertCircle,
     Loader2,
-    ArrowBigUpDash
+    ArrowBigUpDash,
+    ArrowLeft
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -222,10 +222,20 @@ export default function AumentosSalarialesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <Navbar />
+        <div className="min-h-screen bg-[#f8fafc]">
+            {/* Header / AppBar style */}
+            <div className="bg-[#2d4356] h-14 flex items-center px-4 sticky top-0 z-50 shadow-md">
+                <button
+                    onClick={() => router.push('/menu')}
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                >
+                    <ArrowLeft className="h-6 w-6 text-white" />
+                </button>
+                <h1 className="flex-1 text-center text-white font-medium text-lg">Aumentos Salariales</h1>
+                <div className="w-8" /> {/* Spacer to center title */}
+            </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-[#45433F] mb-2 flex items-center gap-3">
                         <TrendingUp className="text-blue-600" />
