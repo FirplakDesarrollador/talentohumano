@@ -292,6 +292,50 @@ export interface Database {
                     estado?: string
                 }
             }
+            cesantias: {
+                Row: {
+                    id: number
+                    cedula: number | null
+                    nombre: string | null
+                    correo: string | null
+                    tipoDeCesantias: string | null
+                    valor: string | null
+                    motivo: string | null
+                    created: string | null
+                    aprobacionTHT: string | null
+                    EntregoSoporteDePago: boolean | null
+                    soporte: string[] | null
+                    soporteRetiro: string | null
+                }
+                Insert: {
+                    id?: number
+                    cedula?: number | null
+                    nombre?: string | null
+                    correo?: string | null
+                    tipoDeCesantias?: string | null
+                    valor?: string | null
+                    motivo?: string | null
+                    created?: string | null
+                    aprobacionTHT?: string | null
+                    EntregoSoporteDePago?: boolean | null
+                    soporte?: string[] | null
+                    soporteRetiro?: string | null
+                }
+                Update: {
+                    id?: number
+                    cedula?: number | null
+                    nombre?: string | null
+                    correo?: string | null
+                    tipoDeCesantias?: string | null
+                    valor?: string | null
+                    motivo?: string | null
+                    created?: string | null
+                    aprobacionTHT?: string | null
+                    EntregoSoporteDePago?: boolean | null
+                    soporte?: string[] | null
+                    soporteRetiro?: string | null
+                }
+            }
         }
         Views: {}
         Functions: {
