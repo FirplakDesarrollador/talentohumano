@@ -38,7 +38,11 @@ export default function BuscadorHiluPage() {
                 .not('jefe', 'is', null)
 
             if (jefesData) {
-                const uniqueJefes = Array.from(new Set(jefesData.map(j => j.jefe).filter(Boolean))) as string[]
+                const uniqueJefes = Array.from(new Set(
+                    (jefesData as any[])
+                        .map(j => j.jefe)
+                        .filter((j): j is string => typeof j === 'string' && j.length > 0)
+                ))
                 setJefes(uniqueJefes.sort())
             }
 
@@ -49,7 +53,11 @@ export default function BuscadorHiluPage() {
                 .not('planta', 'is', null)
 
             if (plantasData) {
-                const uniquePlantas = Array.from(new Set(plantasData.map(p => p.planta).filter(Boolean))) as string[]
+                const uniquePlantas = Array.from(new Set(
+                    (plantasData as any[])
+                        .map(p => p.planta)
+                        .filter((p): p is string => typeof p === 'string' && p.length > 0)
+                ))
                 setPlantas(uniquePlantas.sort())
             }
         } catch (error) {
@@ -197,7 +205,7 @@ export default function BuscadorHiluPage() {
                             <Switch
                                 id="sort-date"
                                 checked={sortByDate}
-                                onCheckedChange={setSortByDate}
+                                onChange={(e) => setSortByDate(e.target.checked)}
                             />
                             <Label htmlFor="sort-date" className="cursor-pointer flex items-center gap-2">
                                 <ArrowUpDown className="h-4 w-4" />
@@ -251,8 +259,8 @@ export default function BuscadorHiluPage() {
 
                                             <div className="hidden md:flex flex-col justify-center items-end">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${empleado.activo
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-red-100 text-red-800'
                                                     }`}>
                                                     {empleado.activo ? 'Activo' : 'Inactivo'}
                                                 </span>
