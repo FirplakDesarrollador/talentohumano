@@ -213,6 +213,7 @@ export interface Database {
                     fechaCreacion?: string | null
                 }
             }
+
             usuarios: {
                 Row: {
                     id: number
@@ -295,43 +296,43 @@ export interface Database {
             cesantias: {
                 Row: {
                     id: number
-                    cedula: number | null
-                    nombre: string | null
+                    cedula: number
+                    nombre: string
                     correo: string | null
-                    tipoDeCesantias: string | null
-                    valor: string | null
-                    motivo: string | null
-                    created: string | null
-                    aprobacionTHT: string | null
-                    EntregoSoporteDePago: boolean | null
+                    tipoDeCesantias: string
+                    valor: string
+                    motivo: string
+                    created: string
+                    aprobacionTHT: string
+                    EntregoSoporteDePago: boolean
                     soporte: string[] | null
                     soporteRetiro: string | null
                 }
                 Insert: {
                     id?: number
-                    cedula?: number | null
-                    nombre?: string | null
+                    cedula: number
+                    nombre: string
                     correo?: string | null
-                    tipoDeCesantias?: string | null
-                    valor?: string | null
-                    motivo?: string | null
-                    created?: string | null
-                    aprobacionTHT?: string | null
-                    EntregoSoporteDePago?: boolean | null
+                    tipoDeCesantias: string
+                    valor: string
+                    motivo: string
+                    created?: string
+                    aprobacionTHT?: string
+                    EntregoSoporteDePago?: boolean
                     soporte?: string[] | null
                     soporteRetiro?: string | null
                 }
                 Update: {
                     id?: number
-                    cedula?: number | null
-                    nombre?: string | null
+                    cedula?: number
+                    nombre?: string
                     correo?: string | null
-                    tipoDeCesantias?: string | null
-                    valor?: string | null
-                    motivo?: string | null
-                    created?: string | null
-                    aprobacionTHT?: string | null
-                    EntregoSoporteDePago?: boolean | null
+                    tipoDeCesantias?: string
+                    valor?: string
+                    motivo?: string
+                    created?: string
+                    aprobacionTHT?: string
+                    EntregoSoporteDePago?: boolean
                     soporte?: string[] | null
                     soporteRetiro?: string | null
                 }

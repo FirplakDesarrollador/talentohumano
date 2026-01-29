@@ -75,8 +75,8 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
         setError(null)
 
         try {
-            const { error: updateError } = await supabase
-                .from('cesantias' as any)
+            const { error: updateError } = await (supabase as any)
+                .from('cesantias')
                 .update({
                     EntregoSoporteDePago: true,
                     soporteRetiro: supportPaymentUrl,

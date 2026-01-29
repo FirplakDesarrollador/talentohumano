@@ -172,8 +172,8 @@ export default function CesantiasPage() {
             const uploadedUrls = await Promise.all(uploadPromises)
 
             // 2. Insert record
-            const { error: insertError } = await supabase
-                .from('cesantias' as any)
+            const { error: insertError } = await (supabase as any)
+                .from('cesantias')
                 .insert({
                     cedula: empleado.cedula,
                     nombre: empleado.nombreCompleto,
