@@ -1,6 +1,7 @@
 import React from 'react';
 import { Briefcase, MapPin, User, Building2 } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
+import Image from 'next/image';
 
 interface EmpleadoProps {
     empleado: {
@@ -21,12 +22,13 @@ export const EmpleadoCard: React.FC<EmpleadoProps> = ({ empleado }) => {
             <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-6 p-6">
                     {/* Avatar Section */}
-                    <div className="relative">
+                    <div className="relative w-24 h-24">
                         {empleado.foto ? (
-                            <img
+                            <Image
                                 src={empleado.foto}
                                 alt={empleado.nombreCompleto}
-                                className="w-24 h-24 rounded-full object-cover border-4 border-gray-50 shadow-sm"
+                                fill
+                                className="rounded-full object-cover border-4 border-gray-50 shadow-sm"
                             />
                         ) : (
                             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#716E6A] to-[#45433F] flex items-center justify-center text-white shadow-sm">

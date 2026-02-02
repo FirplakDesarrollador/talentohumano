@@ -292,52 +292,704 @@ export interface Database {
                     estado?: string
                 }
             }
-            cesantias: {
+            Cesantias: {
                 Row: {
                     id: number
-                    cedula: number | null
-                    nombre: string | null
-                    correo: string | null
-                    tipoDeCesantias: string | null
-                    valor: string | null
-                    motivo: string | null
-                    created: string | null
-                    aprobacionTHT: string | null
-                    EntregoSoporteDePago: boolean | null
-                    soporte: string[] | null
-                    soporteRetiro: string | null
+                    Cedula: number | null
+                    Nombre: string | null
+                    "Tipo de Cesantias": string | null
+                    Valor: string | null
+                    Motivo: string | null
+                    "Aprobación THT": string | null
+                    Created: string | null
+                    "¿Entregó soporte de pago?": boolean | null
+                    Soporte: string[] | null
+                    Soporte2: string | null
+                    "SOPORTE RETIRO": string | null
+                    Correo: string | null
                 }
                 Insert: {
                     id?: number
-                    cedula?: number | null
-                    nombre?: string | null
-                    correo?: string | null
-                    tipoDeCesantias?: string | null
-                    valor?: string | null
-                    motivo?: string | null
-                    created?: string | null
-                    aprobacionTHT?: string | null
-                    EntregoSoporteDePago?: boolean | null
-                    soporte?: string[] | null
-                    soporteRetiro?: string | null
+                    Cedula?: number | null
+                    Nombre?: string | null
+                    "Tipo de Cesantias"?: string | null
+                    Valor?: string | null
+                    Motivo?: string | null
+                    "Aprobación THT"?: string | null
+                    Created?: string | null
+                    "¿Entregó soporte de pago?"?: boolean | null
+                    Soporte?: string[] | null
+                    Soporte2?: string | null
+                    "SOPORTE RETIRO"?: string | null
+                    Correo?: string | null
                 }
                 Update: {
                     id?: number
-                    cedula?: number | null
-                    nombre?: string | null
+                    Cedula?: number | null
+                    Nombre?: string | null
+                    "Tipo de Cesantias"?: string | null
+                    Valor?: string | null
+                    Motivo?: string | null
+                    "Aprobación THT"?: string | null
+                    Created?: string | null
+                    "¿Entregó soporte de pago?"?: boolean | null
+                    Soporte?: string[] | null
+                    Soporte2?: string | null
+                    "SOPORTE RETIRO"?: string | null
+                    Correo?: string | null
+                }
+            }
+            Vacaciones: {
+                Row: {
+                    id: number
+                    Cedula: number | null
+                    Empleado_Que_Disfruta: string | null
+                    "Creado por": string | null
+                    "Fecha Solicitud": string | null
+                    FechaInicial: string | null
+                    FechaFinal: string | null
+                    FechaIngreso: string | null
+                    Departamento: string | null
+                    "Nombre del Jefe": string | null
+                    Aprobacion_Jefe: string | null
+                    DiasEnTiempo: string | null
+                    DiasEnDinero: string | null
+                    TipoDePAgo: string | null
+                    PersonaEncargada: string | null
+                    ausentismo_registrado: boolean | null
+                    correo: string | null
+                    CorreoJefe: string | null
+                }
+                Insert: {
+                    id?: number
+                    Cedula?: number | null
+                    Empleado_Que_Disfruta?: string | null
+                    "Creado por"?: string | null
+                    "Fecha Solicitud"?: string | null
+                    FechaInicial?: string | null
+                    FechaFinal?: string | null
+                    FechaIngreso?: string | null
+                    Departamento?: string | null
+                    "Nombre del Jefe"?: string | null
+                    Aprobacion_Jefe?: string | null
+                    DiasEnTiempo?: string | null
+                    DiasEnDinero?: string | null
+                    TipoDePAgo?: string | null
+                    PersonaEncargada?: string | null
+                    ausentismo_registrado?: boolean | null
                     correo?: string | null
-                    tipoDeCesantias?: string | null
-                    valor?: string | null
+                    CorreoJefe?: string | null
+                }
+                Update: {
+                    id?: number
+                    Cedula?: number | null
+                    Empleado_Que_Disfruta?: string | null
+                    "Creado por"?: string | null
+                    "Fecha Solicitud"?: string | null
+                    FechaInicial?: string | null
+                    FechaFinal?: string | null
+                    FechaIngreso?: string | null
+                    Departamento?: string | null
+                    "Nombre del Jefe"?: string | null
+                    Aprobacion_Jefe?: string | null
+                    DiasEnTiempo?: string | null
+                    DiasEnDinero?: string | null
+                    TipoDePAgo?: string | null
+                    PersonaEncargada?: string | null
+                    ausentismo_registrado?: boolean | null
+                    correo?: string | null
+                    CorreoJefe?: string | null
+                }
+            }
+            fase_H: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cargo: string
+                    created_at: string | null
+                    created_by_id: number | null
+                    modified_at: string | null
+                    modified_by_id: number | null
+                    induccion_th: boolean | null
+                    induccion_th_fecha: string | null
+                    induccion_th_responsable_id: number | null
+                    induccion_planta: boolean | null
+                    induccion_planta_fecha: string | null
+                    induccion_planta_responsable_id: number | null
+                    aros_seguridad: boolean | null
+                    aros_seguridad_fecha: string | null
+                    aros_seguridad_responsable_id: number | null
+                    puesto_piloto: boolean | null
+                    puesto_piloto_fecha: string | null
+                    puesto_piloto_responsable_id: number | null
+                    explicacion_puesto: boolean | null
+                    explicacion_puesto_fecha: string | null
+                    explicacion_puesto_responsable_id: number | null
+                    observacion_puesto: boolean | null
+                    observacion_puesto_fecha: string | null
+                    observacion_puesto_responsable_id: number | null
+                    comentario: string | null
+                    fecha_finalizacion_fase: string | null
+                    firma_empleado: string | null
+                    firma_supervisor: string | null
+                    completado: boolean | null
+                    evidencias: string[] | null
+                    curso_5s: boolean | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cargo: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    induccion_th?: boolean | null
+                    induccion_th_fecha?: string | null
+                    induccion_th_responsable_id?: number | null
+                    induccion_planta?: boolean | null
+                    induccion_planta_fecha?: string | null
+                    induccion_planta_responsable_id?: number | null
+                    aros_seguridad?: boolean | null
+                    aros_seguridad_fecha?: string | null
+                    aros_seguridad_responsable_id?: number | null
+                    puesto_piloto?: boolean | null
+                    puesto_piloto_fecha?: string | null
+                    puesto_piloto_responsable_id?: number | null
+                    explicacion_puesto?: boolean | null
+                    explicacion_puesto_fecha?: string | null
+                    explicacion_puesto_responsable_id?: number | null
+                    observacion_puesto?: boolean | null
+                    observacion_puesto_fecha?: string | null
+                    observacion_puesto_responsable_id?: number | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                    curso_5s?: boolean | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cargo?: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    induccion_th?: boolean | null
+                    induccion_th_fecha?: string | null
+                    induccion_th_responsable_id?: number | null
+                    induccion_planta?: boolean | null
+                    induccion_planta_fecha?: string | null
+                    induccion_planta_responsable_id?: number | null
+                    aros_seguridad?: boolean | null
+                    aros_seguridad_fecha?: string | null
+                    aros_seguridad_responsable_id?: number | null
+                    puesto_piloto?: boolean | null
+                    puesto_piloto_fecha?: string | null
+                    puesto_piloto_responsable_id?: number | null
+                    explicacion_puesto?: boolean | null
+                    explicacion_puesto_fecha?: string | null
+                    explicacion_puesto_responsable_id?: number | null
+                    observacion_puesto?: boolean | null
+                    observacion_puesto_fecha?: string | null
+                    observacion_puesto_responsable_id?: number | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                    curso_5s?: boolean | null
+                }
+            }
+            fase_I: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cargo: string
+                    created_at: string | null
+                    created_by_id: number | null
+                    modified_at: string | null
+                    modified_by_id: number | null
+                    actitud: number | null
+                    aprendizaje: number | null
+                    destreza: number | null
+                    conocimiento: number | null
+                    calificaciones_fecha: string | null
+                    calificaciones_responsable_id: number | null
+                    titular: boolean | null
+                    estandar_hdt: boolean | null
+                    estandar_hdt_fecha: string | null
+                    estandar_hdt_responsable_id: number | null
+                    entrenamiento_calidad: boolean | null
+                    entrenamiento_calidad_fecha: string | null
+                    entrenamiento_calidad_responsable_id: number | null
+                    hace_acompanado: boolean | null
+                    hace_acompanado_fecha: string | null
+                    hace_acompanado_responsable_id: number | null
+                    hace_solo: boolean | null
+                    hace_solo_fecha: string | null
+                    hace_solo_responsable_id: number | null
+                    entrenado_por: string | null
+                    detalles: Json | null
+                    comentario: string | null
+                    fecha_finalizacion_fase: string | null
+                    firma_empleado: string | null
+                    firma_supervisor: string | null
+                    completado: boolean | null
+                    evidencias: string[] | null
+                    curso_5s: boolean | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cargo: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    actitud?: number | null
+                    aprendizaje?: number | null
+                    destreza?: number | null
+                    conocimiento?: number | null
+                    calificaciones_fecha?: string | null
+                    calificaciones_responsable_id?: number | null
+                    titular?: boolean | null
+                    estandar_hdt?: boolean | null
+                    estandar_hdt_fecha?: string | null
+                    estandar_hdt_responsable_id?: number | null
+                    entrenamiento_calidad?: boolean | null
+                    entrenamiento_calidad_fecha?: string | null
+                    entrenamiento_calidad_responsable_id?: number | null
+                    hace_acompanado?: boolean | null
+                    hace_acompanado_fecha?: string | null
+                    hace_acompanado_responsable_id?: number | null
+                    hace_solo?: boolean | null
+                    hace_solo_fecha?: string | null
+                    hace_solo_responsable_id?: number | null
+                    entrenado_por?: string | null
+                    detalles?: Json | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                    curso_5s?: boolean | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cargo?: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    actitud?: number | null
+                    aprendizaje?: number | null
+                    destreza?: number | null
+                    conocimiento?: number | null
+                    calificaciones_fecha?: string | null
+                    calificaciones_responsable_id?: number | null
+                    titular?: boolean | null
+                    estandar_hdt?: boolean | null
+                    estandar_hdt_fecha?: string | null
+                    estandar_hdt_responsable_id?: number | null
+                    entrenamiento_calidad?: boolean | null
+                    entrenamiento_calidad_fecha?: string | null
+                    entrenamiento_calidad_responsable_id?: number | null
+                    hace_acompanado?: boolean | null
+                    hace_acompanado_fecha?: string | null
+                    hace_acompanado_responsable_id?: number | null
+                    hace_solo?: boolean | null
+                    hace_solo_fecha?: string | null
+                    hace_solo_responsable_id?: number | null
+                    entrenado_por?: string | null
+                    detalles?: Json | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                    curso_5s?: boolean | null
+                }
+            }
+            fase_L: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cargo: string
+                    created_at: string | null
+                    created_by_id: number | null
+                    modified_at: string | null
+                    modified_by_id: number | null
+                    cumple_calidad: boolean | null
+                    cumple_estandar: boolean | null
+                    cumple_tiempo: boolean | null
+                    detalles: Json | null
+                    comentario: string | null
+                    fecha_finalizacion_fase: string | null
+                    firma_empleado: string | null
+                    firma_supervisor: string | null
+                    completado: boolean | null
+                    evidencias: string[] | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cargo: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    cumple_calidad?: boolean | null
+                    cumple_estandar?: boolean | null
+                    cumple_tiempo?: boolean | null
+                    detalles?: Json | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cargo?: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    cumple_calidad?: boolean | null
+                    cumple_estandar?: boolean | null
+                    cumple_tiempo?: boolean | null
+                    detalles?: Json | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                }
+            }
+            fase_U: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cargo: string
+                    created_at: string | null
+                    created_by_id: number | null
+                    modified_at: string | null
+                    modified_by_id: number | null
+                    capacitado_para_entrenar: boolean | null
+                    entrena_solo: boolean | null
+                    acompana_entrenamientos: boolean | null
+                    detalles: Json | null
+                    comentario: string | null
+                    fecha_finalizacion_fase: string | null
+                    firma_empleado: string | null
+                    firma_supervisor: string | null
+                    completado: boolean | null
+                    evidencias: string[] | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cargo: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    capacitado_para_entrenar?: boolean | null
+                    entrena_solo?: boolean | null
+                    acompana_entrenamientos?: boolean | null
+                    detalles?: Json | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cargo?: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    modified_at?: string | null
+                    modified_by_id?: number | null
+                    capacitado_para_entrenar?: boolean | null
+                    entrena_solo?: boolean | null
+                    acompana_entrenamientos?: boolean | null
+                    detalles?: Json | null
+                    comentario?: string | null
+                    fecha_finalizacion_fase?: string | null
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    completado?: boolean | null
+                    evidencias?: string[] | null
+                }
+            }
+            auditorias: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cargo: string
+                    created_at: string | null
+                    created_by_id: number | null
+                    fecha_auditoria: string | null
+                    evaluador: string | null
+                    calificacion: number | null
+                    cumple: boolean | null
+                    comentarios: string | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cargo: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    fecha_auditoria?: string | null
+                    evaluador?: string | null
+                    calificacion?: number | null
+                    cumple?: boolean | null
+                    comentarios?: string | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cargo?: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    fecha_auditoria?: string | null
+                    evaluador?: string | null
+                    calificacion?: number | null
+                    cumple?: boolean | null
+                    comentarios?: string | null
+                }
+            }
+            reentrenamientos: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cargo: string
+                    created_at: string | null
+                    created_by_id: number | null
+                    fecha_inicio: string | null
+                    fecha_fin: string | null
+                    motivo: string | null
+                    completado: boolean | null
+                    comentarios: string | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cargo: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    fecha_inicio?: string | null
+                    fecha_fin?: string | null
                     motivo?: string | null
-                    created?: string | null
-                    aprobacionTHT?: string | null
-                    EntregoSoporteDePago?: boolean | null
-                    soporte?: string[] | null
-                    soporteRetiro?: string | null
+                    completado?: boolean | null
+                    comentarios?: string | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cargo?: string
+                    created_at?: string | null
+                    created_by_id?: number | null
+                    fecha_inicio?: string | null
+                    fecha_fin?: string | null
+                    motivo?: string | null
+                    completado?: boolean | null
+                    comentarios?: string | null
                 }
             }
         }
-        Views: {}
+        Views: {
+            personalconjefe_api: {
+                Row: {
+                    id: number
+                    cedula: number
+                    dias_pendientes: number
+                    nombre_completo: string
+                    cargo: string | null
+                    planta: string | null
+                    jefe: string | null
+                    foto: string | null
+                    empresa: string | null
+                }
+            }
+            query_estado_hilu: {
+                Row: {
+                    id: number
+                    nombreCompleto: string
+                    cargo: string | null
+                    planta: string | null
+                    jefe: string | null
+                    empresa: string | null
+                    activo: boolean | null
+                    area: string | null
+                    nivelCargo: string | null
+                    modified_at: string | null
+                    modified_by: number | null
+                    foto: string | null
+                    cargo_id: number | null
+                    fh_completado: boolean | null
+                    fi_completado: boolean | null
+                    fl_completado: boolean | null
+                    fu_completado: boolean | null
+                    ultima_auditoria: boolean | null
+                }
+            }
+            query_hilu: {
+                Row: {
+                    cedula: number
+                    nombreCompleto: string
+                    cargo: string | null
+                    planta: string | null
+                    jefe: string | null
+                    activo: boolean | null
+                    cargo_titular: string | null
+                    // Fase H fields
+                    fh_id: number | null
+                    fh_created_at: string | null
+                    fh_created_by_id: number | null
+                    fh_created_by_nombre: string | null
+                    fh_modified_at: string | null
+                    fh_modified_by_id: number | null
+                    fh_modified_by_nombre: string | null
+                    fh_induccion_th: boolean | null
+                    fh_induccion_th_fecha: string | null
+                    fh_induccion_th_responsable_id: number | null
+                    fh_induccion_th_responsable_nombre: string | null
+                    fh_induccion_planta: boolean | null
+                    fh_induccion_planta_fecha: string | null
+                    fh_induccion_planta_responsable_id: number | null
+                    fh_induccion_planta_responsable_nombre: string | null
+                    fh_aros_seguridad: boolean | null
+                    fh_aros_seguridad_fecha: string | null
+                    fh_aros_seguridad_responsable_id: number | null
+                    fh_aros_seguridad_responsable_nombre: string | null
+                    fh_puesto_piloto: boolean | null
+                    fh_puesto_piloto_fecha: string | null
+                    fh_puesto_piloto_responsable_id: number | null
+                    fh_explicacion_puesto: boolean | null
+                    fh_explicacion_puesto_fecha: string | null
+                    fh_explicacion_puesto_responsable_id: number | null
+                    fh_explicacion_puesto_responsable_nombre: string | null
+                    fh_explicacion_puesto_responsable_correo: string | null
+                    fh_observacion_puesto: boolean | null
+                    fh_observacion_puesto_fecha: string | null
+                    fh_observacion_puesto_responsable_id: number | null
+                    fh_observacion_puesto_responsable_nombre: string | null
+                    fh_observacion_puesto_responsable_correo: string | null
+                    fh_comentario: string | null
+                    fh_fecha_finalizacion_fase: string | null
+                    fh_cargo: string | null
+                    fh_firma_empleado: string | null
+                    fh_firma_supervisor: string | null
+                    fh_completado: boolean | null
+                    fh_evidencias: string[] | null
+                    fh_avance: number | null
+                    fh_dias_transcurridos: number | null
+                    fh_curso_5s: boolean | null
+                    // Fase I fields
+                    fi_id: number | null
+                    fi_created_at: string | null
+                    fi_created_by_id: number | null
+                    fi_created_by_nombre: string | null
+                    fi_modified_at: string | null
+                    fi_modified_by_id: number | null
+                    fi_modified_by_nombre: string | null
+                    fi_actitud: number | null
+                    fi_aprendizaje: number | null
+                    fi_destreza: number | null
+                    fi_conocimiento: number | null
+                    fi_calificaciones_fecha: string | null
+                    fi_calificaciones_responsable_id: number | null
+                    fi_calificaciones_responsable_nombre: string | null
+                    fi_titular: boolean | null
+                    fi_estandar_hdt: boolean | null
+                    fi_estandar_hdt_fecha: string | null
+                    fi_estandar_hdt_responsable_id: number | null
+                    fi_estandar_hdt_responsable_nombre: string | null
+                    fi_entrenamiento_calidad: boolean | null
+                    fi_entrenamiento_calidad_fecha: string | null
+                    fi_entrenamiento_calidad_responsable_id: number | null
+                    fi_entrenamiento_calidad_responsable_nombre: string | null
+                    fi_hace_acompanado: boolean | null
+                    fi_hace_acompanado_fecha: string | null
+                    fi_hace_acompanado_responsable_id: number | null
+                    fi_hace_acompanado_responsable_nombre: string | null
+                    fi_hace_solo: boolean | null
+                    fi_hace_solo_fecha: string | null
+                    fi_hace_solo_responsable_id: number | null
+                    fi_hace_solo_responsable_nombre: string | null
+                    fi_entrenado_por: string | null
+                    fi_detalles: Json | null
+                    fi_comentario: string | null
+                    fi_fecha_finalizacion_fase: string | null
+                    fi_firma_empleado: string | null
+                    fi_firma_supervisor: string | null
+                    fi_completado: boolean | null
+                    fi_evidencias: string[] | null
+                    fi_avance: number | null
+                    fi_dias_transcurridos: number | null
+                    fi_calificacion: number | null
+                    fi_curso_5s: boolean | null
+                    // Fase L fields
+                    fl_id: number | null
+                    fl_created_at: string | null
+                    fl_created_by_id: number | null
+                    fl_created_by_nombre: string | null
+                    fl_modified_at: string | null
+                    fl_modified_by_id: number | null
+                    fl_modified_by_nombre: string | null
+                    fl_cumple_calidad: boolean | null
+                    fl_cumple_estandar: boolean | null
+                    fl_cumple_tiempo: boolean | null
+                    fl_detalles: Json | null
+                    fl_comentario: string | null
+                    fl_fecha_finalizacion_fase: string | null
+                    fl_firma_empleado: string | null
+                    fl_firma_supervisor: string | null
+                    fl_completado: boolean | null
+                    fl_evidencias: string[] | null
+                    fl_avance: number | null
+                    fl_dias_transcurridos: number | null
+                    // Fase U fields
+                    fu_id: number | null
+                    fu_created_at: string | null
+                    fu_created_by_id: number | null
+                    fu_created_by_nombre: string | null
+                    fu_modified_at: string | null
+                    fu_modified_by_id: number | null
+                    fu_modified_by_nombre: string | null
+                    fu_capacitado_para_entrenar: boolean | null
+                    fu_entrena_solo: boolean | null
+                    fu_acompana_entrenamientos: boolean | null
+                    fu_detalles: Json | null
+                    fu_comentario: string | null
+                    fu_fecha_finalizacion_fase: string | null
+                    fu_firma_empleado: string | null
+                    fu_firma_supervisor: string | null
+                    fu_completado: boolean | null
+                    fu_evidencias: string[] | null
+                    fu_avance: number | null
+                    fu_dias_transcurridos: number | null
+                    // Totals
+                    total_dias_entrenamiento: number | null
+                }
+            }
+        }
         Functions: {
             upsert_competencia_empleado: {
                 Args: {
