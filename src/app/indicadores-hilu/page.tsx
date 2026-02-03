@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ROLES } from '@/lib/constants/roles'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,7 +32,17 @@ export default function IndicadoresHiluPage() {
                 // Filter out management positions
                 const filteredData = (data || []).filter((emp: EmpleadoHILU) => {
                     const cargo = emp.cargo?.toLowerCase() || ''
-                    const excludedRoles = ['jefe', 'director', 'coordinador', 'analista', 'practicante', 'senior', 'aprendiz', 'supervisor', 'gerente']
+                    const excludedRoles = [
+                        ROLES.JEFE,
+                        ROLES.DIRECTOR,
+                        ROLES.COORDINADOR,
+                        ROLES.ANALISTA,
+                        ROLES.SUPERVISOR,
+                        ROLES.GERENTE,
+                        'practicante',
+                        'senior',
+                        'aprendiz'
+                    ]
                     return !excludedRoles.some(role => cargo.includes(role))
                 })
 

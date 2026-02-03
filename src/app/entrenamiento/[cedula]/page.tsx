@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Loader2, User, Briefcase, Building2, MapPin } from 'lucide-react'
+import { ArrowLeft, Loader2, User, Briefcase, Building2, MapPin, Newspaper } from 'lucide-react'
 import Image from 'next/image'
 import type { Database } from '@/lib/supabase/types'
 import { HiluComponent } from '@/components/HILU/HiluComponent'
@@ -255,6 +255,16 @@ export default function EntrenamientoDetailPage() {
                                             <span className="font-medium">Jefe</span>
                                         </div>
                                         <p className="text-gray-900">{empleadoData.jefe || 'N/A'}</p>
+                                    </div>
+
+                                    <div className="col-span-full mt-2">
+                                        <Button
+                                            onClick={() => router.push(`/novedades-nomina/${empleadoData.cedula}`)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                                        >
+                                            <Newspaper className="h-4 w-4" />
+                                            Registrar Novedad
+                                        </Button>
                                     </div>
                                 </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { SolicitudDetalle } from '@/components/Cesantias/SolicitudDetalle'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -75,7 +76,7 @@ export default function CesantiasPage() {
         fetchUser()
     }, [supabase])
 
-    const isAdmin = ['admin', 'desarrollador', 'developer'].includes(currentUser?.rol?.toLowerCase())
+    const isAdmin = currentUser?.rol && ADMIN_ROLES.includes(currentUser.rol.toLowerCase() as any)
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)

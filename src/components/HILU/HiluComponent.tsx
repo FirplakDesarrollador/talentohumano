@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
+import { ROLES } from '@/lib/constants/roles'
 import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
@@ -29,23 +30,24 @@ type ToolDetails = Record<string, Record<string, boolean>>
 const getRoleType = (cargo: string | null) => {
     if (!cargo) return 'OPERARIO'
     const c = cargo.toLowerCase()
-    if (c.includes('jefe') || c.includes('director') || c.includes('gerente') || c.includes('lider')) return 'LIDER'
-    if (c.includes('supervisor')) return 'SUPERVISOR'
+    if (c.includes(ROLES.JEFE) || c.includes(ROLES.DIRECTOR) || c.includes(ROLES.GERENTE) || c.includes('lider')) return 'LIDER'
+    if (c.includes(ROLES.SUPERVISOR)) return 'SUPERVISOR'
     return 'OPERARIO'
 }
 
 // Custom Components
-const PillCheckbox = ({ id, checked, onChange, label }: { id: string, checked: boolean, onChange: (c: boolean) => void, label: string }) => (
+const PillCheckbox = ({ id, checked, onChange, label, disabled }: { id: string, checked: boolean, onChange: (c: boolean) => void, label: string, disabled?: boolean }) => (
     <div
-        onClick={() => onChange(!checked)}
+        onClick={() => !disabled && onChange(!checked)}
         className={`
-            cursor-pointer flex items-center justify-between p-3 rounded-lg border shadow-sm transition-all
-            ${checked ? 'bg-white border-blue-200' : 'bg-white border-gray-200 hover:border-blue-300'}
+            flex items-center justify-between p-3 rounded-lg border shadow-sm transition-all
+            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' : 'cursor-pointer'}
+            ${!disabled && checked ? 'bg-white border-blue-200' : !disabled ? 'bg-white border-gray-200 hover:border-blue-300' : ''}
         `}
     >
         <span className="text-sm font-medium text-gray-700">{label}</span>
         {checked ? (
-            <CheckCircle2 className="h-6 w-6 text-[#1e2f3d]" fill="#1e2f3d" color="white" />
+            <CheckCircle2 className={`h-6 w-6 ${disabled ? 'text-gray-400' : 'text-[#1e2f3d]'}`} fill={disabled ? '#9ca3af' : '#1e2f3d'} color="white" />
         ) : (
             <Circle className="h-6 w-6 text-gray-300" />
         )}
@@ -124,6 +126,13 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         updatePhase(tableMap[phase], empleado[idMap[phase]] as number, { detalles: newDetails })
     }
 
+    const isToolComplete = (phase: 'I' | 'L' | 'U', tool: string) => {
+        const fieldName: keyof QueryHiluRow = phase === 'I' ? 'fi_detalles' : phase === 'L' ? 'fl_detalles' : 'fu_detalles'
+        const details = (empleado[fieldName] as unknown as ToolDetails) || {}
+        const checks = phase === 'I' ? PHASE_I_CHECKS : PHASE_LU_CHECKS
+        return checks.every(chk => details[tool]?.[chk])
+    }
+
     const renderToolGrid = (phase: 'I' | 'L' | 'U') => {
         const role = getRoleType(empleado.cargo)
         const availableTools = role === 'SUPERVISOR' ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t)) : TOOLS_LIST
@@ -133,20 +142,51 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
         return (
             <div className="space-y-4">
-                {availableTools.map(tool => (
-                    <div key={tool} className="grid grid-cols-1 md:grid-cols-4 gap-2 border-b border-gray-100 pb-2 last:border-0">
-                        <span className="font-medium text-sm flex items-center text-gray-700">{tool}</span>
-                        {checks.map(chk => (
-                            <PillCheckbox
-                                key={chk}
-                                id={`${phase}-${tool}-${chk}`}
-                                label={chk}
-                                checked={details[tool]?.[chk] || false}
-                                onChange={() => handleToolCheck(phase, tool, chk, details[tool]?.[chk] || false)}
-                            />
-                        ))}
-                    </div>
-                ))}
+                {availableTools.map(tool => {
+                    // Dependency logic for leadership roles
+                    let toolDisabled = false
+                    if (role !== 'OPERARIO') {
+                        if (phase === 'L') {
+                            toolDisabled = !isToolComplete('I', tool)
+                        } else if (phase === 'U') {
+                            toolDisabled = !isToolComplete('L', tool)
+                        }
+                    }
+
+                    const toolDetails = (details[tool] as Record<string, boolean>) || {}
+                    const completedChecks = checks.filter(chk => toolDetails[chk]).length
+                    const toolProgress = Math.round((completedChecks / checks.length) * 100)
+
+                    return (
+                        <div key={tool} className="grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-gray-100 pb-4 last:border-0 items-center">
+                            <div className="flex flex-col">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className={`font-bold text-sm text-[#2d4356] ${toolDisabled ? 'opacity-50' : ''}`}>{tool}</span>
+                                    <span className={`text-[10px] font-bold ${toolProgress === 100 ? 'text-green-600' : 'text-blue-600'}`}>{toolProgress}%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full transition-all duration-500 ${toolProgress === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                                        style={{ width: `${toolProgress}%` }}
+                                    />
+                                </div>
+                                {toolDisabled && <span className="text-[9px] text-red-500 font-bold uppercase mt-1">Pendiente fase anterior</span>}
+                            </div>
+                            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {checks.map(chk => (
+                                    <PillCheckbox
+                                        key={chk}
+                                        id={`${phase}-${tool}-${chk}`}
+                                        label={chk}
+                                        checked={toolDetails[chk] || false}
+                                        disabled={toolDisabled}
+                                        onChange={() => handleToolCheck(phase, tool, chk, toolDetails[chk] || false)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )
+                })}
             </div>
         )
     }

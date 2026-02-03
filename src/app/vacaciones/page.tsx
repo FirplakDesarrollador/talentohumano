@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -75,7 +76,7 @@ export default function VacacionesPage() {
         fetchUser()
     }, [supabase])
 
-    const isAdmin = currentUser?.rol?.toLowerCase() === 'admin' || currentUser?.rol?.toLowerCase() === 'desarrollador'
+    const isAdmin = currentUser?.rol && ADMIN_ROLES.includes(currentUser.rol.toLowerCase() as any)
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)

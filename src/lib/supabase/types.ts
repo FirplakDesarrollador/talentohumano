@@ -117,6 +117,56 @@ export interface Database {
                     updated_at?: string | null
                 }
             }
+            novedades_nomina: {
+                Row: {
+                    id: string
+                    created_at: string
+                    empleado_id: number
+                    concepto: string
+                    tipo_cambio: string
+                    actual: string | null
+                    nuevo: string | null
+                    capital: number | null
+                    num_cuotas: number | null
+                    periodicidad: string
+                    mes_aplicacion: string
+                    periodo: string
+                    observacion: string | null
+                    modified_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    empleado_id: number
+                    concepto: string
+                    tipo_cambio: string
+                    actual?: string | null
+                    nuevo?: string | null
+                    capital?: number | null
+                    num_cuotas?: number | null
+                    periodicidad: string
+                    mes_aplicacion: string
+                    periodo: string
+                    observacion?: string | null
+                    modified_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    empleado_id?: number
+                    concepto?: string
+                    tipo_cambio?: string
+                    actual?: string | null
+                    nuevo?: string | null
+                    capital?: number | null
+                    num_cuotas?: number | null
+                    periodicidad?: string
+                    mes_aplicacion?: string
+                    periodo?: string
+                    observacion?: string | null
+                    modified_at?: string | null
+                }
+            }
             empleado_indicador: {
                 Row: {
                     id: number

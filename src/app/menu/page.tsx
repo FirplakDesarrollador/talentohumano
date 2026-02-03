@@ -78,7 +78,7 @@ export default function MenuPage() {
         },
         {
             title: 'Procesos disciplinarios',
-            href: '/buscador-procesos-disciplinarios',
+            href: '/procesos-disciplinarios',
             icon: Handshake,
         },
         {
