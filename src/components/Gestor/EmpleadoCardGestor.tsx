@@ -33,12 +33,21 @@ export const EmpleadoCardGestor: React.FC<EmpleadoCardGestorProps> = ({ empleado
                     {/* Photo and Status */}
                     <div className="relative flex-shrink-0">
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden shadow-sm border-2 border-white group-hover:scale-105 transition-transform duration-300">
-                            <Image
-                                src={empleado.foto || defaultPhoto}
-                                alt={empleado.nombreCompleto}
-                                fill
-                                className="object-cover"
-                            />
+                            {empleado.foto && (empleado.foto.startsWith('http') || empleado.foto.startsWith('/')) ? (
+                                <Image
+                                    src={empleado.foto}
+                                    alt={empleado.nombreCompleto}
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : (
+                                <Image
+                                    src={defaultPhoto}
+                                    alt={empleado.nombreCompleto}
+                                    fill
+                                    className="object-cover"
+                                />
+                            )}
                         </div>
                         <Badge
                             className={`absolute -bottom-2 -right-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border-2 border-white shadow-sm ${empleado.activo ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
@@ -70,7 +79,7 @@ export const EmpleadoCardGestor: React.FC<EmpleadoCardGestorProps> = ({ empleado
                                 )}
                             </div>
                             <p className="text-xs font-bold text-gray-400 mt-0.5 tracking-wide">
-                                C.C. {empleado.cedula}
+                                C.C. {empleado.cedula || empleado.id}
                             </p>
                         </div>
 

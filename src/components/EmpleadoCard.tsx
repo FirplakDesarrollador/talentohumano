@@ -23,7 +23,7 @@ export const EmpleadoCard: React.FC<EmpleadoProps> = ({ empleado }) => {
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-6 p-6">
                     {/* Avatar Section */}
                     <div className="relative w-24 h-24">
-                        {empleado.foto ? (
+                        {empleado.foto && (empleado.foto.startsWith('http') || empleado.foto.startsWith('/')) ? (
                             <Image
                                 src={empleado.foto}
                                 alt={empleado.nombreCompleto}

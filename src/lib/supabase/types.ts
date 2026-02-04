@@ -76,6 +76,62 @@ export interface Database {
                     created_at?: string | null
                 }
             }
+            s10_habilidades: {
+                Row: {
+                    id: number
+                    empleado_id: number
+                    cedula: number
+                    gestion_integral: number
+                    tecnica_estadistica: number
+                    analisis_falla: number
+                    cinco_s: number
+                    liderazgo: number
+                    bitacora: number
+                    opt: number
+                    opt_sis: number
+                    rrc: number
+                    qrqc: number
+                    comentario: string | null
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: number
+                    empleado_id: number
+                    cedula: number
+                    gestion_integral?: number
+                    tecnica_estadistica?: number
+                    analisis_falla?: number
+                    cinco_s?: number
+                    liderazgo?: number
+                    bitacora?: number
+                    opt?: number
+                    opt_sis?: number
+                    rrc?: number
+                    qrqc?: number
+                    comentario?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: number
+                    empleado_id?: number
+                    cedula?: number
+                    gestion_integral?: number
+                    tecnica_estadistica?: number
+                    analisis_falla?: number
+                    cinco_s?: number
+                    liderazgo?: number
+                    bitacora?: number
+                    opt?: number
+                    opt_sis?: number
+                    rrc?: number
+                    qrqc?: number
+                    comentario?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+            }
             competencia_empleado: {
                 Row: {
                     id: number

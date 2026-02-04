@@ -18,7 +18,8 @@ import {
     CheckSquare,
     Square,
     UserCircle,
-    FileUp
+    FileUp,
+    Clock
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -184,6 +185,60 @@ export default function RegistroMasivoPage() {
         } catch (err: any) {
             console.error('Error in bulk insert:', err)
             toast.error('Error al guardar: ' + (err.message || 'Error desconocido'))
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleRegistrarPendientes = async () => {
+        if (selectedEmployees.length === 0) {
+            toast.error('Debe seleccionar al menos un empleado')
+            return
+        }
+
+        setLoading(true)
+        try {
+            const now = new Date()
+            const todayDate = format(now, 'yyyy-MM-dd')
+
+            const recordsToInsert = selectedEmployees.map(id => {
+                const emp = employees.find(e => e.id === id)
+                if (!emp) return null
+
+                return {
+                    'Título': emp.cedula,
+                    'Nombre Completo': emp.nombreCompleto,
+                    'Motivo Ausentismo': 'Pendiente',
+                    'FechaInicio': todayDate,
+                    'FechaFinal': todayDate,
+                    'Observaciones': null,
+                    'Planta': emp.planta,
+                    'Jefe': emp.jefe,
+                    'Contrato': null,
+                    'Cargo': emp.cargo,
+                    'Descontar nomina': null,
+                    'Modificado': null,
+                    'Creado por': null,
+                    'Modificado por': null,
+                    'Datos adjuntos': null,
+                    'Creado': todayDate
+                }
+            }).filter(Boolean)
+
+            // Attempt upper case first
+            const { error } = await supabase.from('Ausentismos' as any).insert(recordsToInsert as any)
+
+            if (error) {
+                // Try lower case
+                const { error: errorLow } = await supabase.from('ausentismos' as any).insert(recordsToInsert as any)
+                if (errorLow) throw errorLow
+            }
+
+            toast.success(`${selectedEmployees.length} ausentismos pendientes registrados`)
+            router.push('/ausentismos')
+        } catch (err: any) {
+            console.error('Error in pending insert:', err)
+            toast.error('Error al guardar pendientes: ' + (err.message || 'Error desconocido'))
         } finally {
             setLoading(false)
         }
@@ -378,6 +433,22 @@ export default function RegistroMasivoPage() {
                                     <>
                                         <Save className="h-6 w-6 mr-2" />
                                         Registrar Masivo
+                                    </>
+                                )}
+                            </Button>
+
+                            <Button
+                                disabled={loading || selectedEmployees.length === 0}
+                                onClick={handleRegistrarPendientes}
+                                variant="outline"
+                                className="w-full h-16 rounded-2xl border-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-black uppercase tracking-widest shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                            >
+                                {loading ? (
+                                    <Loader2 className="h-6 w-6 animate-spin" />
+                                ) : (
+                                    <>
+                                        <Clock className="h-6 w-6 mr-2" />
+                                        Registrar Pendientes (Hoy)
                                     </>
                                 )}
                             </Button>

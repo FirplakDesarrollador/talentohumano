@@ -45,26 +45,36 @@ export function ExportarProcesosModal({ isOpen, onClose }: ExportarProcesosModal
                 return
             }
 
-            // Generate CSV
-            const headers = ['ID', 'Fecha', 'Empleado ID', 'Cargo', 'Tipo', 'Motivo', 'Creado Por', 'Comentario', 'Empleado Activo']
+            // Helper to match FF logic
+            const safeValue = (value: any) => {
+                return value !== null && value !== "" && value !== undefined
+                    ? String(value)
+                        .replace(/\n/g, '') // Reemplazar saltos de línea
+                        .replace(/,/g, '-') // Reemplazar comas por guiones
+                    : 'null';
+            };
+
+            // Generate CSV with exact FF headers
+            const headers = ['id', 'fecha', 'cedula', 'empleado', 'planta', 'jefe', 'tipo', 'motivo', 'comentario', 'creado_por']
             const csvRows = [headers.join(',')]
 
             data.forEach((row: any) => {
                 const csvRow = [
-                    row.id,
-                    row.created_at,
-                    row.empleado_id,
-                    `"${row.cargo || ''}"`,
-                    `"${row.tipo || ''}"`,
-                    `"${row.motivo || ''}"`,
-                    `"${row.created_by || ''}"`,
-                    `"${(row.comentario || '').replace(/"/g, '""')}"`,
-                    row.empleado_activo ? 'Sí' : 'No'
+                    safeValue(row.id),
+                    safeValue(row.created_at || row.createdAt),
+                    safeValue(row.empleado_id),
+                    safeValue(row.nombre_completo || row.nombreCompleto),
+                    safeValue(row.planta),
+                    safeValue(row.jefe),
+                    safeValue(row.tipo),
+                    safeValue(row.motivo),
+                    safeValue(row.comentario),
+                    safeValue(row.created_by || row.createdBy)
                 ]
                 csvRows.push(csvRow.join(','))
             })
 
-            const csvContent = "\uFEFF" + csvRows.join('\n') // Added BOM for Excel UTF-8 compatibility
+            const csvContent = csvRows.join('\n')
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
             const url = URL.createObjectURL(blob)
             const link = document.createElement('a')

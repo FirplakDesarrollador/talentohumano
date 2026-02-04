@@ -20,6 +20,7 @@ import {
     SearchX
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { eliminarAcentos } from '@/lib/utils'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -95,9 +96,9 @@ export default function BuscadorProcesosDisciplinariosPage() {
             return
         }
 
-        const term = busqueda.toLowerCase()
+        const term = eliminarAcentos(busqueda.toLowerCase())
         const filtered = empleados.filter(e =>
-            e.nombreCompleto?.toLowerCase().includes(term) ||
+            eliminarAcentos(e.nombreCompleto?.toLowerCase() || '').includes(term) ||
             e.id?.toString().includes(term) ||
             e.cedula?.toString().includes(term)
         )

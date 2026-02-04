@@ -17,6 +17,9 @@ import {
 import { AusentismoCard, type Ausentismo } from '@/components/Ausentismos/AusentismoCard'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { subMonths, isAfter, parse, isValid } from 'date-fns'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 
 export default function AusentismosPage() {
     const router = useRouter()
@@ -29,6 +32,7 @@ export default function AusentismosPage() {
 
     // UI State
     const [busqueda, setBusqueda] = useState('')
+    const [filtroReciente, setFiltroReciente] = useState(false)
 
     // 1. Fetch Ausentismos
     useEffect(() => {
@@ -92,16 +96,40 @@ export default function AusentismosPage() {
     useEffect(() => {
         let filtered = [...ausentismos]
 
+        // FF-Ported Filter: Últimos 5 meses
+        if (filtroReciente) {
+            const haceCincoMeses = subMonths(new Date(), 5)
+            filtered = filtered.filter(a => {
+                const creadoVal = a['Creado' as keyof Ausentismo] || a['created_at' as keyof Ausentismo]
+                if (!creadoVal) return false
+
+                const creadoStr = String(creadoVal)
+                let fecha: Date
+                // Try parsing ISO first, then the specific FF format if needed
+                fecha = new Date(creadoStr)
+                if (!isValid(fecha)) {
+                    // Fallback to FF format: 'M/d/yyyy h:mm a'
+                    try {
+                        fecha = parse(creadoStr, 'M/d/yyyy h:mm a', new Date())
+                    } catch {
+                        return false
+                    }
+                }
+
+                return isAfter(fecha, haceCincoMeses)
+            })
+        }
+
         if (busqueda) {
             const b = busqueda.toLowerCase()
             filtered = filtered.filter(a =>
-                (a['Nombre Completo'] || '').toLowerCase().includes(b) ||
-                (a['Motivo Ausentismo'] || '').toLowerCase().includes(b)
+                (a['Nombre Completo' as keyof Ausentismo] || '').toString().toLowerCase().includes(b) ||
+                (a['Motivo Ausentismo' as keyof Ausentismo] || '').toString().toLowerCase().includes(b)
             )
         }
 
         setFilteredAusentismos(filtered)
-    }, [busqueda, ausentismos])
+    }, [busqueda, ausentismos, filtroReciente])
 
     return (
         <div className="min-h-screen bg-[#F1F4F8]">
@@ -132,25 +160,40 @@ export default function AusentismosPage() {
 
             <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* Actions & Filters */}
-                <div className="flex flex-col md:flex-row gap-4 mb-8">
-                    <div className="flex-1 relative">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
+                <div className="flex flex-col lg:flex-row gap-4 mb-8">
+                    <div className="flex-1 flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <Input
+                                placeholder="Buscar por nombre o motivo..."
+                                value={busqueda}
+                                onChange={(e) => setBusqueda(e.target.value)}
+                                className="pl-12 h-14 bg-white border-gray-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500/20 text-base"
+                            />
+                            {busqueda && (
+                                <button
+                                    onClick={() => setBusqueda('')}
+                                    className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                                >
+                                    <Eraser className="h-5 w-5" />
+                                </button>
+                            )}
                         </div>
-                        <Input
-                            placeholder="Buscar por nombre o motivo..."
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                            className="pl-12 h-14 bg-white border-gray-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500/20 text-base"
-                        />
-                        {busqueda && (
-                            <button
-                                onClick={() => setBusqueda('')}
-                                className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-                            >
-                                <Eraser className="h-5 w-5" />
-                            </button>
-                        )}
+
+                        {/* FF-Ported Toggle */}
+                        <div className="flex items-center gap-3 bg-white px-6 rounded-2xl border border-gray-100 shadow-sm h-14">
+                            <Switch
+                                id="recent-filter"
+                                checked={filtroReciente}
+                                onCheckedChange={setFiltroReciente}
+                                className="data-[state=checked]:bg-blue-600"
+                            />
+                            <Label htmlFor="recent-filter" className="text-sm font-bold text-gray-600 cursor-pointer whitespace-nowrap">
+                                Últimos 5 meses
+                            </Label>
+                        </div>
                     </div>
 
                     <div className="flex gap-3">

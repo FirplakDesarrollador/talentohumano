@@ -9,11 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, ArrowLeft, Download, Search, Filter, Eraser, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import { limpiarTexto } from '@/lib/utils'
 import type { Database } from '@/lib/supabase/types'
 
 type NovedadConEmpleado = Database['public']['Tables']['novedades_nomina']['Row'] & {
     empleados: {
         nombreCompleto: string
+        empresa: string | null
     }
 }
 
@@ -36,7 +38,7 @@ export default function ReporteNovedadesPage() {
         try {
             let query = supabase
                 .from('novedades_nomina')
-                .select('*, empleados(nombreCompleto)')
+                .select('*, empleados(nombreCompleto, empresa)')
                 .order('created_at', { ascending: false })
 
             if (mesFiltro !== 'all') {
@@ -77,39 +79,47 @@ export default function ReporteNovedadesPage() {
             return
         }
 
+        const separador = ';'
         const headers = [
-            'ID', 'Fecha Registro', 'Cédula', 'Nombre Completo', 'Concepto',
-            'Tipo Cambio', 'Actual', 'Nuevo', 'Capital', 'N° Cuotas',
-            'Periodicidad', 'Mes Aplicación', 'Periodo', 'Observación'
+            'FECHA', 'EMPRESA', 'CEDULA', 'NOMBRE', 'CONCEPTO', 'TIPO CAMBIO',
+            'ACTUAL', 'NUEVO', 'CAPITAL', 'NUMERO DE CUOTAS', 'PERIODICIDAD',
+            'MES APLICACION', 'PERIODO', 'OBSERVACIONES'
         ]
 
-        const rows = novedades.map(n => [
-            n.id,
-            new Date(n.created_at).toLocaleString(),
-            n.empleado_id,
-            n.empleados?.nombreCompleto || 'N/A',
-            n.concepto,
-            n.tipo_cambio,
-            n.actual || '',
-            n.nuevo || '',
-            n.capital || 0,
-            n.num_cuotas || 0,
-            n.periodicidad,
-            n.mes_aplicacion,
-            n.periodo,
-            n.observacion || ''
-        ])
+        const csvRows = [headers.join(separador)]
 
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-        ].join('\n')
+        novedades.forEach(n => {
+            const fecha = new Date(n.created_at).toLocaleDateString('es-CO', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).replace(/\//g, '-')
 
+            const row = [
+                fecha,
+                limpiarTexto(n.empleados?.empresa || 'FIRPLAK S.A.S'),
+                n.empleado_id,
+                limpiarTexto(n.empleados?.nombreCompleto || 'N/A'),
+                limpiarTexto(n.concepto),
+                limpiarTexto(n.tipo_cambio),
+                limpiarTexto(n.actual || ''),
+                limpiarTexto(n.nuevo || ''),
+                n.capital || 0,
+                n.num_cuotas || 0,
+                limpiarTexto(n.periodicidad),
+                limpiarTexto(n.mes_aplicacion),
+                limpiarTexto(n.periodo),
+                limpiarTexto(n.observacion || '')
+            ]
+            csvRows.push(row.join(separador))
+        })
+
+        const csvContent = csvRows.join('\n')
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.setAttribute('href', url)
-        link.setAttribute('download', `reporte_novedades_${new Date().toISOString().split('T')[0]}.csv`)
+        link.setAttribute('download', `NovedadesNomina_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`)
         link.style.visibility = 'hidden'
         document.body.appendChild(link)
         link.click()

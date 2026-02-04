@@ -156,7 +156,7 @@ export default function GestorPersonalPage() {
                 const b = busqueda.toLowerCase()
                 filtered = filtered.filter(e =>
                     e.nombreCompleto.toLowerCase().includes(b) ||
-                    (e.cedula?.toString() || '').includes(b) ||
+                    (e.cedula?.toString() || e.id?.toString() || '').includes(b) ||
                     (e.cargo || '').toLowerCase().includes(b)
                 )
             }

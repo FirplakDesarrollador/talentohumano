@@ -39,6 +39,10 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
 
     const isAllHiluComplete = empleado.fh_completado && empleado.fi_completado && empleado.fl_completado && empleado.fu_completado
 
+    // Check for leadership roles to display S10 instead of HILU
+    const cargo = empleado.cargo?.toLowerCase().trim() || ''
+    const isLeader = ['jefe', 'director', 'coordinador', 'gerente', 'supervisor'].some(role => cargo.includes(role))
+
     return (
         <div onClick={onClick} className="cursor-pointer">
             <Card className="hover:shadow-md transition-all border border-gray-100 bg-white">
@@ -57,13 +61,21 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                             <h3 className="text-sm font-bold text-gray-700 truncate max-w-[180px]" title={empleado.nombreCompleto}>
                                 {empleado.nombreCompleto}
                             </h3>
-                            <div className="flex items-center gap-1">
-                                <span className={`text-base font-black ${empleado.fh_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>H</span>
-                                <span className={`text-base font-black ${empleado.fi_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>I</span>
-                                <span className={`text-base font-black ${empleado.fl_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>L</span>
-                                <span className={`text-base font-black ${empleado.fu_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>U</span>
-                                {isAllHiluComplete && <CheckCircle2 className="h-4 w-4 text-[#a1eebc] ml-1" />}
-                            </div>
+                            {isLeader ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                        S10 Habilidades
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1">
+                                    <span className={`text-base font-black ${empleado.fh_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>H</span>
+                                    <span className={`text-base font-black ${empleado.fi_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>I</span>
+                                    <span className={`text-base font-black ${empleado.fl_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>L</span>
+                                    <span className={`text-base font-black ${empleado.fu_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>U</span>
+                                    {isAllHiluComplete && <CheckCircle2 className="h-4 w-4 text-[#a1eebc] ml-1" />}
+                                </div>
+                            )}
                         </div>
                     </div>
 

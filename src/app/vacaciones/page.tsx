@@ -28,6 +28,7 @@ import {
     Download
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { cargarEmpleadoPorCedula, vacacionesValidarCalcular, descargarQueryVacaciones } from '@/lib/vacation-utils'
 
 export default function VacacionesPage() {
     const [view, setView] = useState<'welcome' | 'process' | 'history'>('welcome')
@@ -110,39 +111,7 @@ export default function VacacionesPage() {
 
     const handleDownloadReport = () => {
         if (history.length === 0) return;
-
-        // Create CSV header mapping to the real schema
-        const headers = ['ID', 'Cédula', 'Empleado', 'Días Tiempo', 'Días Dinero', 'Fecha Inicio', 'Fecha Fin', 'Fecha Ingreso', 'Persona Encargada', 'Estado', 'Fecha Solicitud'];
-        const csvRows = [headers.join(',')];
-
-        // Add rows
-        history.forEach(sol => {
-            const row = [
-                sol.id,
-                sol.Cedula,
-                `"${sol.Empleado_Que_Disfruta}"`,
-                sol.DiasEnTiempo,
-                sol.DiasEnDinero,
-                sol.FechaInicial,
-                sol.FechaFinal,
-                sol.FechaIngreso,
-                `"${sol.PersonaEncargada}"`,
-                sol.Aprobacion_Jefe,
-                sol['Fecha Solicitud']
-            ];
-            csvRows.push(row.join(','));
-        });
-
-        // Create blob and download
-        const csvContent = csvRows.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `reporte_vacaciones_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        descargarQueryVacaciones(history);
     }
 
     useEffect(() => {
@@ -153,56 +122,32 @@ export default function VacacionesPage() {
 
     // Logic from Flutter Prototype: vacacionesValidarCalcular
     useEffect(() => {
-        if (!empleado) return;
+        const runValidation = async () => {
+            if (!empleado) return;
 
-        const disponibles = empleado.dias_pendientes || 0;
-        const _safeInt = (s: string) => {
-            if (!s) return 0;
-            const t = parseFloat(s.replace(',', '.').trim());
-            return (isNaN(t) || t < 0) ? 0 : Math.floor(t);
+            const disponibles = empleado.dias_pendientes || 0;
+            const res = await vacacionesValidarCalcular(
+                disponibles,
+                formData.diasTiempo,
+                formData.diasDinero,
+                true // showMessages
+            );
+
+            if (res.ajustado) {
+                setFormData(prev => ({
+                    ...prev,
+                    diasTiempo: res.diasTiempo.toString(),
+                    diasDinero: res.diasDinero.toString()
+                }));
+                if (res.mensaje) {
+                    setValidationMsg(res.mensaje);
+                }
+            } else {
+                setValidationMsg(null);
+            }
         };
 
-        const disponiblesInt = Math.floor(disponibles);
-        let t = _safeInt(formData.diasTiempo);
-        let d = _safeInt(formData.diasDinero);
-
-        let ajustado = false;
-        const msgs: string[] = [];
-
-        // Regla 1: dinero < tiempo
-        if (d >= t && t > 0) {
-            d = t - 1;
-            if (d < 0) d = 0;
-            ajustado = true;
-            msgs.push('Los días en dinero deben ser menor que los días en tiempo.');
-        } else if (d >= t && t === 0 && d > 0) {
-            d = 0;
-            ajustado = true;
-        }
-
-        // Regla 2: no exceder disponibles
-        if (t + d > disponiblesInt) {
-            const maxPermitidoDinero = disponiblesInt - t;
-            const permitido = maxPermitidoDinero < 0 ? 0 : maxPermitidoDinero;
-            if (d !== permitido) {
-                d = permitido;
-                ajustado = true;
-                msgs.push(`Se ajustaron los días en dinero a ${permitido} por límite de días disponibles.`);
-            }
-        }
-
-        if (ajustado) {
-            setFormData(prev => ({
-                ...prev,
-                diasTiempo: t.toString(),
-                diasDinero: d.toString()
-            }));
-            if (msgs.length > 0) {
-                setValidationMsg(msgs.join(' '));
-            }
-        } else {
-            setValidationMsg(null);
-        }
+        runValidation();
     }, [formData.diasTiempo, formData.diasDinero, empleado]);
 
     const handleSearch = async (e?: React.FormEvent) => {
@@ -215,41 +160,25 @@ export default function VacacionesPage() {
         setSuccess(null)
 
         try {
-            console.log('Searching for cedula in empleados table (as id):', cedula);
-            // 1. Get full employee profile - uses 'id' instead of 'cedula' in this table
-            const { data: empleadoData, error: empleadoError } = await supabase
-                .from('empleados')
-                .select('*')
-                .eq('id', parseInt(cedula))
-                .maybeSingle()
+            console.log('Searching for cedula using FF-Ported logic:', cedula);
 
-            if (empleadoError) {
-                console.error('Empleado fetch error:', empleadoError)
-                throw new Error('Error al consultar el perfil del empleado')
-            }
+            const rawData = await cargarEmpleadoPorCedula(cedula);
 
-            if (!empleadoData) {
+            if (!rawData || Object.keys(rawData).length === 0) {
                 throw new Error('Empleado no encontrado. Verifica la cédula.')
             }
 
-            // 2. Get vacation balance from view - uses 'cedula' column
-            console.log('Searching for balance in personalconjefe_api view:', cedula);
-            const { data: balanceData, error: balanceError } = await (supabase as any)
-                .from('personalconjefe_api')
-                .select('dias_pendientes')
-                .eq('cedula', parseInt(cedula))
-                .maybeSingle()
-
-            if (balanceError) {
-                console.error('Balance view fetch error:', balanceError)
-            }
-
-            // Normalize and Combine
+            // Normalize
             const normalizedEmpleado = {
-                ...(empleadoData as any),
-                cedula: (empleadoData as any).id, // National ID is stored in 'id' column
-                dias_pendientes: (balanceData as any)?.dias_pendientes || 0,
-                nombre_completo: (empleadoData as any)?.nombreCompleto
+                id: rawData.id,
+                cedula: rawData.id,
+                nombreCompleto: rawData.nombrecompleto,
+                nombre_completo: rawData.nombrecompleto, // Aliasing for compatibility
+                planta: rawData.area, // Mapping area to planta concept
+                area: rawData.area,
+                jefe: rawData.jefe,
+                dias_pendientes: rawData.Dias_Pendientes || 0,
+                correo_jefe: rawData.CorreoJefe
             }
 
             setEmpleado(normalizedEmpleado)
