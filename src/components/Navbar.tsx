@@ -26,7 +26,6 @@ export function Navbar() {
         { href: '/procesos-disciplinarios', label: 'Disciplinarios' },
         { href: '/competencias', label: 'Competencias' },
         { href: '/indicadores', label: 'Indicadores' },
-        { href: '/comisiones', label: 'Comisiones' },
     ]
 
     return (

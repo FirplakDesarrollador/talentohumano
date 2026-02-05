@@ -142,14 +142,14 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             if (id) {
                 const { error } = await supabase
                     .from('empleados')
-                    .update(dataToSave as any)
+                    .update(dataToSave)
                     .eq('id', id);
                 if (error) throw error;
                 toast.success('Empleado actualizado correctamente');
             } else {
                 const { error } = await supabase
                     .from('empleados')
-                    .insert([{ ...dataToSave, created_at: new Date().toISOString() }] as any);
+                    .insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
                 if (error) throw error;
                 toast.success('Empleado creado correctamente');
             }

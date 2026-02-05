@@ -281,44 +281,6 @@ export interface Database {
                     created_at?: string | null
                 }
             }
-            comisiones: {
-                Row: {
-                    id: number
-                    nombreArchivo: string
-                    urlArchivo: string
-                    ano: string
-                    mes: string
-                    area: string
-                    creador: string
-                    pagado: boolean | null
-                    comentarios: string | null
-                    fechaCreacion: string | null
-                }
-                Insert: {
-                    id?: number
-                    nombreArchivo: string
-                    urlArchivo: string
-                    ano: string
-                    mes: string
-                    area: string
-                    creador: string
-                    pagado?: boolean | null
-                    comentarios?: string | null
-                    fechaCreacion?: string | null
-                }
-                Update: {
-                    id?: number
-                    nombreArchivo?: string
-                    urlArchivo?: string
-                    ano?: string
-                    mes?: string
-                    area?: string
-                    creador?: string
-                    pagado?: boolean | null
-                    comentarios?: string | null
-                    fechaCreacion?: string | null
-                }
-            }
             usuarios: {
                 Row: {
                     id: number
