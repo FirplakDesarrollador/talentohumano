@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Save,
-    X,
     User,
     IdCard,
     Briefcase,
@@ -17,7 +17,19 @@ import {
     Building2,
     UserPlus,
     Camera,
-    Loader2
+    Loader2,
+    Phone,
+    Mail,
+    Heart,
+    GraduationCap,
+    Stethoscope,
+    Car,
+    Shirt,
+    ChevronDown,
+    ChevronUp,
+    Calendar,
+    Baby,
+    Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
@@ -27,11 +39,80 @@ import type { Database } from '@/lib/supabase/types';
 type Empleado = Database['public']['Tables']['empleados']['Row'];
 
 interface FormularioGestorPersonalProps {
-    id?: number; // If provided, it's an edit form
+    id?: number;
     onSuccess?: () => void;
 }
 
-const EMPRESAS = ['FIRPLAK S.A.', 'TÉCNICOS Y SERVICIOS S.A.S'];
+const EMPRESAS = ['FIRPLAK S.A.', 'TÉCNICOS Y SERVICIOS S.A.S', 'JIRO', 'VINCULAMOS', 'VIVENTTA', 'SAITEMP'];
+const TIPOS_SANGRE = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const NIVELES_CARGO = ['Operario', 'Supervisor', 'Coordinador', 'Jefe', 'Gerente', 'Director'];
+const NIVELES_EDUCATIVOS = ['Primaria', 'Secundaria', 'Técnico', 'Tecnólogo', 'Profesional', 'Especialización', 'Maestría', 'Doctorado'];
+const CONSUMO_OPTIONS = ['Nunca', 'Ocasionalmente', 'Siempre'];
+const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const TALLAS_PANTALON = ['28', '30', '32', '34', '36', '38', '40', '42'];
+const TIPOS_CAMISA = ['Polo', 'Camiseta', 'Camisa Formal'];
+const TIPOS_PANTALON = ['Jean', 'Cargo', 'Formal'];
+const SEXOS = ['Masculino', 'Femenino'];
+
+// Collapsible Section Component
+const CollapsibleSection: React.FC<{
+    title: string;
+    icon: React.ReactNode;
+    children: React.ReactNode;
+    defaultOpen?: boolean;
+}> = ({ title, icon, children, defaultOpen = false }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <Card className="border-gray-100 shadow-sm overflow-hidden">
+            <div
+                className="cursor-pointer hover:bg-gray-50/50 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <CardHeader className="py-4">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-3 text-base font-bold text-[#1e2f3d]">
+                            <div className="h-9 w-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                                {icon}
+                            </div>
+                            {title}
+                        </CardTitle>
+                        {isOpen ? (
+                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                        ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-400" />
+                        )}
+                    </div>
+                </CardHeader>
+            </div>
+            {isOpen && (
+                <CardContent className="pt-0 pb-6">
+                    {children}
+                </CardContent>
+            )}
+        </Card>
+    );
+};
+
+// Field Component
+const FormField: React.FC<{
+    label: string;
+    icon?: React.ReactNode;
+    children: React.ReactNode;
+    required?: boolean;
+}> = ({ label, icon, children, required }) => (
+    <div className="space-y-2">
+        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
+            {icon && <span className="text-blue-400">{icon}</span>}
+            {label}
+            {required && <span className="text-red-500">*</span>}
+        </Label>
+        {children}
+    </div>
+);
+
+const inputClass = "h-11 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-medium text-sm";
+const selectClass = "flex h-11 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium";
 
 export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> = ({ id, onSuccess }) => {
     const router = useRouter();
@@ -39,16 +120,66 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(!!id);
 
-    // Form State
+    // Complete Form State
     const [formData, setFormData] = useState({
+        // Basic
         cedula: '',
         nombreCompleto: '',
+        foto: '',
+        activo: true,
+        // Personal
+        fecha_nacimiento: '',
+        fecha_expedicion_cedula: '',
+        tipo_sangre: '',
+        // Work
         cargo: '',
         planta: '',
         jefe: '',
         empresa: '',
-        foto: '',
-        activo: true
+        primer_ingreso: '',
+        nivel_cargo: '',
+        locker: '',
+        referido: '',
+        // Contact
+        direccion: '',
+        ciudad: '',
+        telefono: '',
+        celular: '',
+        correo: '',
+        contacto_emergencia: '',
+        telefono_emergencia: '',
+        // Family
+        tiene_esposo: false,
+        nombre_esposo: '',
+        num_hijos: 0,
+        hijo1_nombre: '', hijo1_nacimiento: '', hijo1_sexo: '',
+        hijo2_nombre: '', hijo2_nacimiento: '', hijo2_sexo: '',
+        hijo3_nombre: '', hijo3_nacimiento: '', hijo3_sexo: '',
+        hijo4_nombre: '', hijo4_nacimiento: '', hijo4_sexo: '',
+        // Education
+        nivel_educativo: '',
+        ultimo_grado: '',
+        actualmente_estudiando: false,
+        que_estudia: '',
+        // Health
+        tiene_recomendaciones_medicas: false,
+        recomendaciones_medicas: '',
+        enfermedades: '',
+        consume_psicoactivas: 'Nunca',
+        consume_tabaco: 'Nunca',
+        consume_alcohol: 'Nunca',
+        realiza_deporte: 'Nunca',
+        // Mobility
+        frecuencia_visita: '',
+        medio_transporte: '',
+        tipo_combustible: '',
+        modelo_vehiculo: '',
+        // Uniform
+        tipo_camisa: '',
+        talla_camisa: '',
+        tipo_pantalon: '',
+        talla_pantalon: '',
+        talla_chaleco: ''
     });
 
     // Helper State for Dropdowns
@@ -57,14 +188,12 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
     useEffect(() => {
         const fetchHelpers = async () => {
-            console.log('Fetching helpers (bosses/jobs)...');
             try {
                 const { data: bosses } = await supabase.from('empleados').select('jefe').not('jefe', 'is', null).eq('activo', true);
                 const { data: jobs } = await supabase.from('empleados').select('cargo').not('cargo', 'is', null);
 
                 if (bosses) setExistingJefes(Array.from(new Set((bosses as any[]).map((e: any) => e.jefe).filter(Boolean))).sort() as string[]);
                 if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map((e: any) => e.cargo).filter(Boolean))).sort() as string[]);
-                console.log('Helpers fetched successfully');
             } catch (err) {
                 console.error('Error fetching helpers:', err);
             }
@@ -74,16 +203,13 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
     useEffect(() => {
         const fetchEmpleado = async () => {
-            console.log('fetchEmpleado triggered with id:', id, 'type:', typeof id);
             if (!id || isNaN(id)) {
-                console.log('No valid ID provided or ID is NaN, skipping fetch');
                 setFetching(false);
                 return;
             }
 
             setFetching(true);
             try {
-                console.log('Querying supabase for employee id:', id);
                 const { data, error } = await supabase
                     .from('empleados')
                     .select('*')
@@ -91,26 +217,72 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     .single();
 
                 if (error) {
-                    console.error('Error fetching employee:', error);
                     toast.error('No se pudo encontrar el empleado');
                 } else if (data) {
-                    console.log('Employee data received:', data);
                     const emp = data as Empleado;
                     setFormData({
-                        cedula: emp.cedula?.toString() || '',
+                        cedula: emp.id?.toString() || '',
                         nombreCompleto: emp.nombreCompleto || '',
+                        foto: emp.foto || '',
+                        activo: emp.activo ?? true,
+                        fecha_nacimiento: emp.fecha_nacimiento || '',
+                        fecha_expedicion_cedula: emp.fecha_expedicion_cedula || '',
+                        tipo_sangre: emp.tipo_sangre || '',
                         cargo: emp.cargo || '',
                         planta: emp.planta || '',
                         jefe: emp.jefe || '',
                         empresa: emp.empresa || '',
-                        foto: emp.foto || '',
-                        activo: emp.activo ?? true
+                        primer_ingreso: emp.primer_ingreso || '',
+                        nivel_cargo: emp.nivel_cargo || '',
+                        locker: emp.locker || '',
+                        referido: emp.referido || '',
+                        direccion: emp.direccion || '',
+                        ciudad: emp.ciudad || '',
+                        telefono: emp.telefono || '',
+                        celular: emp.celular || '',
+                        correo: emp.correo || '',
+                        contacto_emergencia: emp.contacto_emergencia || '',
+                        telefono_emergencia: emp.telefono_emergencia || '',
+                        tiene_esposo: emp.tiene_esposo ?? false,
+                        nombre_esposo: emp.nombre_esposo || '',
+                        num_hijos: emp.num_hijos ?? 0,
+                        hijo1_nombre: emp.hijo1_nombre || '',
+                        hijo1_nacimiento: emp.hijo1_nacimiento || '',
+                        hijo1_sexo: emp.hijo1_sexo || '',
+                        hijo2_nombre: emp.hijo2_nombre || '',
+                        hijo2_nacimiento: emp.hijo2_nacimiento || '',
+                        hijo2_sexo: emp.hijo2_sexo || '',
+                        hijo3_nombre: emp.hijo3_nombre || '',
+                        hijo3_nacimiento: emp.hijo3_nacimiento || '',
+                        hijo3_sexo: emp.hijo3_sexo || '',
+                        hijo4_nombre: emp.hijo4_nombre || '',
+                        hijo4_nacimiento: emp.hijo4_nacimiento || '',
+                        hijo4_sexo: emp.hijo4_sexo || '',
+                        nivel_educativo: emp.nivel_educativo || '',
+                        ultimo_grado: emp.ultimo_grado || '',
+                        actualmente_estudiando: emp.actualmente_estudiando ?? false,
+                        que_estudia: emp.que_estudia || '',
+                        tiene_recomendaciones_medicas: emp.tiene_recomendaciones_medicas ?? false,
+                        recomendaciones_medicas: emp.recomendaciones_medicas || '',
+                        enfermedades: emp.enfermedades || '',
+                        consume_psicoactivas: emp.consume_psicoactivas || 'Nunca',
+                        consume_tabaco: emp.consume_tabaco || 'Nunca',
+                        consume_alcohol: emp.consume_alcohol || 'Nunca',
+                        realiza_deporte: emp.realiza_deporte || 'Nunca',
+                        frecuencia_visita: emp.frecuencia_visita || '',
+                        medio_transporte: emp.medio_transporte || '',
+                        tipo_combustible: emp.tipo_combustible || '',
+                        modelo_vehiculo: emp.modelo_vehiculo || '',
+                        tipo_camisa: emp.tipo_camisa || '',
+                        talla_camisa: emp.talla_camisa || '',
+                        tipo_pantalon: emp.tipo_pantalon || '',
+                        talla_pantalon: emp.talla_pantalon || '',
+                        talla_chaleco: emp.talla_chaleco || ''
                     });
                 }
             } catch (err) {
                 console.error('Unexpected error fetching employee:', err);
             } finally {
-                console.log('Setting fetching to false');
                 setFetching(false);
             }
         };
@@ -130,26 +302,75 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             const dataToSave = {
                 cedula: formData.cedula ? parseInt(formData.cedula) : 0,
                 nombreCompleto: formData.nombreCompleto,
-                cargo: formData.cargo,
-                planta: formData.planta,
-                jefe: formData.jefe,
-                empresa: formData.empresa,
-                foto: formData.foto,
+                foto: formData.foto || null,
                 activo: formData.activo,
+                fecha_nacimiento: formData.fecha_nacimiento || null,
+                fecha_expedicion_cedula: formData.fecha_expedicion_cedula || null,
+                tipo_sangre: formData.tipo_sangre || null,
+                cargo: formData.cargo || null,
+                planta: formData.planta || null,
+                jefe: formData.jefe || null,
+                empresa: formData.empresa || null,
+                primer_ingreso: formData.primer_ingreso || null,
+                nivel_cargo: formData.nivel_cargo || null,
+                locker: formData.locker || null,
+                referido: formData.referido || null,
+                direccion: formData.direccion || null,
+                ciudad: formData.ciudad || null,
+                telefono: formData.telefono || null,
+                celular: formData.celular || null,
+                correo: formData.correo || null,
+                contacto_emergencia: formData.contacto_emergencia || null,
+                telefono_emergencia: formData.telefono_emergencia || null,
+                tiene_esposo: formData.tiene_esposo,
+                nombre_esposo: formData.nombre_esposo || null,
+                num_hijos: formData.num_hijos,
+                hijo1_nombre: formData.hijo1_nombre || null,
+                hijo1_nacimiento: formData.hijo1_nacimiento || null,
+                hijo1_sexo: formData.hijo1_sexo || null,
+                hijo2_nombre: formData.hijo2_nombre || null,
+                hijo2_nacimiento: formData.hijo2_nacimiento || null,
+                hijo2_sexo: formData.hijo2_sexo || null,
+                hijo3_nombre: formData.hijo3_nombre || null,
+                hijo3_nacimiento: formData.hijo3_nacimiento || null,
+                hijo3_sexo: formData.hijo3_sexo || null,
+                hijo4_nombre: formData.hijo4_nombre || null,
+                hijo4_nacimiento: formData.hijo4_nacimiento || null,
+                hijo4_sexo: formData.hijo4_sexo || null,
+                nivel_educativo: formData.nivel_educativo || null,
+                ultimo_grado: formData.ultimo_grado || null,
+                actualmente_estudiando: formData.actualmente_estudiando,
+                que_estudia: formData.que_estudia || null,
+                tiene_recomendaciones_medicas: formData.tiene_recomendaciones_medicas,
+                recomendaciones_medicas: formData.recomendaciones_medicas || null,
+                enfermedades: formData.enfermedades || null,
+                consume_psicoactivas: formData.consume_psicoactivas || null,
+                consume_tabaco: formData.consume_tabaco || null,
+                consume_alcohol: formData.consume_alcohol || null,
+                realiza_deporte: formData.realiza_deporte || null,
+                frecuencia_visita: formData.frecuencia_visita || null,
+                medio_transporte: formData.medio_transporte || null,
+                tipo_combustible: formData.tipo_combustible || null,
+                modelo_vehiculo: formData.modelo_vehiculo || null,
+                tipo_camisa: formData.tipo_camisa || null,
+                talla_camisa: formData.talla_camisa || null,
+                tipo_pantalon: formData.tipo_pantalon || null,
+                talla_pantalon: formData.talla_pantalon || null,
+                talla_chaleco: formData.talla_chaleco || null,
                 updated_at: new Date().toISOString()
             };
 
             if (id) {
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from('empleados')
-                    .update(dataToSave)
+                    .update(dataToSave as any)
                     .eq('id', id);
                 if (error) throw error;
                 toast.success('Empleado actualizado correctamente');
             } else {
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from('empleados')
-                    .insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
+                    .insert([{ ...dataToSave, created_at: new Date().toISOString() }] as any);
                 if (error) throw error;
                 toast.success('Empleado creado correctamente');
             }
@@ -163,6 +384,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         }
     };
 
+    const updateField = (field: string, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
     if (fetching) {
         return (
             <div className="flex flex-col items-center justify-center py-20">
@@ -173,158 +398,212 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm max-w-4xl mx-auto">
-            {/* Header Section */}
-            <div className="flex items-center gap-4 pb-6 border-b border-gray-50">
-                <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500">
-                    {id ? <Save className="h-6 w-6" /> : <UserPlus className="h-6 w-6" />}
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-8">
+            {/* Header */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500">
+                    {id ? <Save className="h-7 w-7" /> : <UserPlus className="h-7 w-7" />}
                 </div>
                 <div>
                     <h2 className="text-xl font-black text-[#1e2f3d] tracking-tight uppercase">
                         {id ? 'Editar Empleado' : 'Nuevo Empleado'}
                     </h2>
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        Información administrativa y laboral
+                        Complete todos los campos requeridos
                     </p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Left Column: ID and Name */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
-                            <IdCard className="h-3 w-3 text-blue-400" /> Cédula de Identidad
-                        </Label>
+            {/* Photo Section */}
+            <Card className="border-gray-100 shadow-sm">
+                <CardContent className="p-6">
+                    <div className="flex flex-col sm:flex-row gap-6 items-center">
+                        <div className="relative w-28 h-28 rounded-2xl bg-gray-50 shadow-sm border border-gray-100 overflow-hidden flex-shrink-0">
+                            {formData.foto ? (
+                                <Image src={formData.foto} alt="Preview" fill className="object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                    <User className="h-12 w-12" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1 space-y-3 w-full">
+                            <FormField label="URL de Fotografía" icon={<Camera className="h-3 w-3" />}>
+                                <Input
+                                    value={formData.foto}
+                                    onChange={(e) => updateField('foto', e.target.value)}
+                                    placeholder="Pegue aquí el enlace de la imagen"
+                                    className={inputClass}
+                                />
+                            </FormField>
+                            <p className="text-[10px] text-gray-400 font-medium">Link directo a la imagen hospedada en la nube</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Section 1: Personal Information */}
+            <CollapsibleSection title="Información Personal" icon={<User className="h-5 w-5" />} defaultOpen>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
                         <Input
                             type="number"
                             value={formData.cedula}
-                            onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+                            onChange={(e) => updateField('cedula', e.target.value)}
                             placeholder="Ingrese número de cédula"
-                            className="h-12 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-medium"
+                            className={inputClass}
                             required
                         />
-                    </div>
+                    </FormField>
 
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
-                            <User className="h-3 w-3 text-blue-400" /> Nombre Completo
-                        </Label>
+                    <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
                         <Input
                             value={formData.nombreCompleto}
-                            onChange={(e) => setFormData({ ...formData, nombreCompleto: e.target.value })}
+                            onChange={(e) => updateField('nombreCompleto', e.target.value)}
                             placeholder="Nombre y apellidos"
-                            className="h-12 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-medium"
+                            className={inputClass}
                             required
                         />
-                    </div>
+                    </FormField>
 
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
-                            <Briefcase className="h-3 w-3 text-blue-400" /> Cargo / Puesto
-                        </Label>
+                    <FormField label="Fecha de Nacimiento" icon={<Calendar className="h-3 w-3" />}>
+                        <Input
+                            type="date"
+                            value={formData.fecha_nacimiento}
+                            onChange={(e) => updateField('fecha_nacimiento', e.target.value)}
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Fecha Expedición Cédula" icon={<Calendar className="h-3 w-3" />}>
+                        <Input
+                            type="date"
+                            value={formData.fecha_expedicion_cedula}
+                            onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)}
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Tipo de Sangre">
+                        <select
+                            value={formData.tipo_sangre}
+                            onChange={(e) => updateField('tipo_sangre', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione tipo de sangre</option>
+                            {TIPOS_SANGRE.map(tipo => (
+                                <option key={tipo} value={tipo}>{tipo}</option>
+                            ))}
+                        </select>
+                    </FormField>
+                </div>
+            </CollapsibleSection>
+
+            {/* Section 2: Work Information */}
+            <CollapsibleSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />} defaultOpen>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Cargo / Puesto" icon={<Briefcase className="h-3 w-3" />}>
                         <div className="relative">
                             <input
                                 list="cargos-list"
                                 value={formData.cargo}
-                                onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                                className="flex h-12 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium"
+                                onChange={(e) => updateField('cargo', e.target.value)}
+                                className={selectClass}
                                 placeholder="Seleccione o escriba el cargo"
                             />
                             <datalist id="cargos-list">
                                 {existingCargos.map(cargo => <option key={cargo} value={cargo} />)}
                             </datalist>
                         </div>
-                    </div>
-                </div>
+                    </FormField>
 
-                {/* Right Column: Plant, Boss, Company */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3 text-blue-400" /> Planta / Área
-                        </Label>
+                    <FormField label="Planta / Área" icon={<MapPin className="h-3 w-3" />}>
                         <select
                             value={formData.planta}
-                            onChange={(e) => setFormData({ ...formData, planta: e.target.value })}
-                            className="flex h-12 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium"
+                            onChange={(e) => updateField('planta', e.target.value)}
+                            className={selectClass}
                         >
                             <option value="">Seleccione planta</option>
                             {PLANTAS.filter(p => p !== 'Todos').map(planta => (
                                 <option key={planta} value={planta}>{planta}</option>
                             ))}
                         </select>
-                    </div>
+                    </FormField>
 
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
-                            <User className="h-3 w-3 text-blue-400" /> Jefe Directo
-                        </Label>
+                    <FormField label="Jefe Directo" icon={<User className="h-3 w-3" />}>
                         <div className="relative">
                             <input
                                 list="jefes-list"
                                 value={formData.jefe}
-                                onChange={(e) => setFormData({ ...formData, jefe: e.target.value })}
-                                className="flex h-12 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium"
+                                onChange={(e) => updateField('jefe', e.target.value)}
+                                className={selectClass}
                                 placeholder="Seleccione o escriba el jefe"
                             />
                             <datalist id="jefes-list">
                                 {existingJefes.map(jefe => <option key={jefe} value={jefe} />)}
                             </datalist>
                         </div>
-                    </div>
+                    </FormField>
 
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] ml-1 flex items-center gap-1.5">
-                            <Building2 className="h-3 w-3 text-blue-400" /> Empresa
-                        </Label>
+                    <FormField label="Empresa" icon={<Building2 className="h-3 w-3" />}>
                         <select
                             value={formData.empresa}
-                            onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
-                            className="flex h-12 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium"
+                            onChange={(e) => updateField('empresa', e.target.value)}
+                            className={selectClass}
                         >
                             <option value="">Seleccione empresa</option>
                             {EMPRESAS.map(emp => (
                                 <option key={emp} value={emp}>{emp}</option>
                             ))}
                         </select>
-                    </div>
-                </div>
-            </div>
+                    </FormField>
 
-            {/* Photo Section */}
-            <div className="bg-gray-50/50 p-6 rounded-2xl border border-dashed border-gray-200 space-y-4">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d] flex items-center gap-1.5">
-                    <Camera className="h-3 w-3 text-blue-400" /> Fotografía de Perfil
-                </Label>
-                <div className="flex flex-col sm:flex-row gap-6 items-center">
-                    <div className="relative w-24 h-24 rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden flex-shrink-0">
-                        {formData.foto ? (
-                            <Image src={formData.foto} alt="Preview" fill className="object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                <User className="h-10 w-10" />
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex-1 space-y-2 w-full">
+                    <FormField label="Primer Ingreso" icon={<Calendar className="h-3 w-3" />}>
                         <Input
-                            value={formData.foto}
-                            onChange={(e) => setFormData({ ...formData, foto: e.target.value })}
-                            placeholder="Pegue aquí el enlace de la imagen"
-                            className="h-11 rounded-xl border-gray-100 bg-white"
+                            type="date"
+                            value={formData.primer_ingreso}
+                            onChange={(e) => updateField('primer_ingreso', e.target.value)}
+                            className={inputClass}
                         />
-                        <p className="text-[10px] text-gray-400 font-medium">Link directo a la imagen hospedada en la nube</p>
-                    </div>
-                </div>
-            </div>
+                    </FormField>
 
-            {/* Status Footer */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-gray-50">
-                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2.5 rounded-2xl border border-gray-100">
+                    <FormField label="Nivel del Cargo">
+                        <select
+                            value={formData.nivel_cargo}
+                            onChange={(e) => updateField('nivel_cargo', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione nivel</option>
+                            {NIVELES_CARGO.map(nivel => (
+                                <option key={nivel} value={nivel}>{nivel}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    <FormField label="Locker Asignado">
+                        <Input
+                            value={formData.locker}
+                            onChange={(e) => updateField('locker', e.target.value)}
+                            placeholder="Número de locker"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Referido Por">
+                        <Input
+                            value={formData.referido}
+                            onChange={(e) => updateField('referido', e.target.value)}
+                            placeholder="Nombre de quien lo refirió"
+                            className={inputClass}
+                        />
+                    </FormField>
+                </div>
+
+                {/* Status Toggle */}
+                <div className="mt-6 flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
                     <Switch
                         checked={formData.activo}
-                        onCheckedChange={(val) => setFormData({ ...formData, activo: val })}
+                        onCheckedChange={(val) => updateField('activo', val)}
                     />
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d]">Estado Laboral</span>
@@ -333,29 +612,426 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </span>
                     </div>
                 </div>
+            </CollapsibleSection>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => router.push('/gestor-de-personal')}
-                        className="flex-1 sm:flex-none h-12 px-8 rounded-xl border-gray-200 text-gray-400 hover:text-gray-600 font-bold text-xs tracking-widest uppercase hover:bg-gray-50"
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 sm:flex-none h-12 px-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-widest uppercase shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                    >
-                        {loading ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                        )}
-                        {id ? 'Actualizar' : 'Crear'}
-                    </Button>
+            {/* Section 3: Contact Information */}
+            <CollapsibleSection title="Información de Contacto" icon={<Phone className="h-5 w-5" />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Dirección" icon={<MapPin className="h-3 w-3" />}>
+                        <Input
+                            value={formData.direccion}
+                            onChange={(e) => updateField('direccion', e.target.value)}
+                            placeholder="Dirección de residencia"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Ciudad">
+                        <Input
+                            value={formData.ciudad}
+                            onChange={(e) => updateField('ciudad', e.target.value)}
+                            placeholder="Ciudad"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Teléfono" icon={<Phone className="h-3 w-3" />}>
+                        <Input
+                            type="tel"
+                            value={formData.telefono}
+                            onChange={(e) => updateField('telefono', e.target.value)}
+                            placeholder="Teléfono fijo"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Celular" icon={<Phone className="h-3 w-3" />}>
+                        <Input
+                            type="tel"
+                            value={formData.celular}
+                            onChange={(e) => updateField('celular', e.target.value)}
+                            placeholder="Número celular"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Correo Electrónico" icon={<Mail className="h-3 w-3" />}>
+                        <Input
+                            type="email"
+                            value={formData.correo}
+                            onChange={(e) => updateField('correo', e.target.value)}
+                            placeholder="correo@ejemplo.com"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Contacto de Emergencia</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField label="Nombre del Contacto">
+                                <Input
+                                    value={formData.contacto_emergencia}
+                                    onChange={(e) => updateField('contacto_emergencia', e.target.value)}
+                                    placeholder="Nombre del contacto de emergencia"
+                                    className={inputClass}
+                                />
+                            </FormField>
+                            <FormField label="Teléfono de Emergencia">
+                                <Input
+                                    type="tel"
+                                    value={formData.telefono_emergencia}
+                                    onChange={(e) => updateField('telefono_emergencia', e.target.value)}
+                                    placeholder="Teléfono del contacto"
+                                    className={inputClass}
+                                />
+                            </FormField>
+                        </div>
+                    </div>
                 </div>
+            </CollapsibleSection>
+
+            {/* Section 4: Family Information */}
+            <CollapsibleSection title="Información Familiar" icon={<Heart className="h-5 w-5" />}>
+                <div className="space-y-6">
+                    {/* Spouse */}
+                    <div className="flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                        <Switch
+                            checked={formData.tiene_esposo}
+                            onCheckedChange={(val) => updateField('tiene_esposo', val)}
+                        />
+                        <span className="text-sm font-medium text-[#1e2f3d]">¿Tiene esposo/a o compañero/a?</span>
+                    </div>
+
+                    {formData.tiene_esposo && (
+                        <FormField label="Nombre del Esposo/a o Compañero/a" icon={<Users className="h-3 w-3" />}>
+                            <Input
+                                value={formData.nombre_esposo}
+                                onChange={(e) => updateField('nombre_esposo', e.target.value)}
+                                placeholder="Nombre completo"
+                                className={inputClass}
+                            />
+                        </FormField>
+                    )}
+
+                    {/* Children */}
+                    <FormField label="Número de Hijos" icon={<Baby className="h-3 w-3" />}>
+                        <select
+                            value={formData.num_hijos}
+                            onChange={(e) => updateField('num_hijos', parseInt(e.target.value))}
+                            className={selectClass}
+                        >
+                            {[0, 1, 2, 3, 4].map(n => (
+                                <option key={n} value={n}>{n}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    {/* Dynamic Children Fields */}
+                    {Array.from({ length: formData.num_hijos }).map((_, index) => {
+                        const n = index + 1;
+                        return (
+                            <div key={n} className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Hijo/a #{n}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <FormField label="Nombre">
+                                        <Input
+                                            value={(formData as any)[`hijo${n}_nombre`]}
+                                            onChange={(e) => updateField(`hijo${n}_nombre`, e.target.value)}
+                                            placeholder="Nombre del hijo/a"
+                                            className={inputClass}
+                                        />
+                                    </FormField>
+                                    <FormField label="Fecha de Nacimiento">
+                                        <Input
+                                            type="date"
+                                            value={(formData as any)[`hijo${n}_nacimiento`]}
+                                            onChange={(e) => updateField(`hijo${n}_nacimiento`, e.target.value)}
+                                            className={inputClass}
+                                        />
+                                    </FormField>
+                                    <FormField label="Sexo">
+                                        <select
+                                            value={(formData as any)[`hijo${n}_sexo`]}
+                                            onChange={(e) => updateField(`hijo${n}_sexo`, e.target.value)}
+                                            className={selectClass}
+                                        >
+                                            <option value="">Seleccione</option>
+                                            {SEXOS.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                    </FormField>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </CollapsibleSection>
+
+            {/* Section 5: Education Information */}
+            <CollapsibleSection title="Información Educativa" icon={<GraduationCap className="h-5 w-5" />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Nivel Educativo">
+                        <select
+                            value={formData.nivel_educativo}
+                            onChange={(e) => updateField('nivel_educativo', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione nivel</option>
+                            {NIVELES_EDUCATIVOS.map(nivel => (
+                                <option key={nivel} value={nivel}>{nivel}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    <FormField label="Último Grado Cursado">
+                        <Input
+                            value={formData.ultimo_grado}
+                            onChange={(e) => updateField('ultimo_grado', e.target.value)}
+                            placeholder="Ej: 11°, Semestre 5"
+                            className={inputClass}
+                        />
+                    </FormField>
+                </div>
+
+                <div className="mt-6 flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                    <Switch
+                        checked={formData.actualmente_estudiando}
+                        onCheckedChange={(val) => updateField('actualmente_estudiando', val)}
+                    />
+                    <span className="text-sm font-medium text-[#1e2f3d]">¿Actualmente estudiando?</span>
+                </div>
+
+                {formData.actualmente_estudiando && (
+                    <div className="mt-4">
+                        <FormField label="¿Qué estudia?">
+                            <Input
+                                value={formData.que_estudia}
+                                onChange={(e) => updateField('que_estudia', e.target.value)}
+                                placeholder="Carrera o programa de estudios"
+                                className={inputClass}
+                            />
+                        </FormField>
+                    </div>
+                )}
+            </CollapsibleSection>
+
+            {/* Section 6: Health Information */}
+            <CollapsibleSection title="Información de Salud" icon={<Stethoscope className="h-5 w-5" />}>
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                        <Switch
+                            checked={formData.tiene_recomendaciones_medicas}
+                            onCheckedChange={(val) => updateField('tiene_recomendaciones_medicas', val)}
+                        />
+                        <span className="text-sm font-medium text-[#1e2f3d]">¿Tiene recomendaciones médicas?</span>
+                    </div>
+
+                    {formData.tiene_recomendaciones_medicas && (
+                        <FormField label="Detalle las Recomendaciones">
+                            <textarea
+                                value={formData.recomendaciones_medicas}
+                                onChange={(e) => updateField('recomendaciones_medicas', e.target.value)}
+                                placeholder="Describa las recomendaciones médicas"
+                                className={`${selectClass} min-h-[80px] resize-none`}
+                            />
+                        </FormField>
+                    )}
+
+                    <FormField label="Enfermedades o Condiciones">
+                        <textarea
+                            value={formData.enfermedades}
+                            onChange={(e) => updateField('enfermedades', e.target.value)}
+                            placeholder="Describa enfermedades o condiciones médicas"
+                            className={`${selectClass} min-h-[80px] resize-none`}
+                        />
+                    </FormField>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField label="¿Consume sustancias psicoactivas?">
+                            <select
+                                value={formData.consume_psicoactivas}
+                                onChange={(e) => updateField('consume_psicoactivas', e.target.value)}
+                                className={selectClass}
+                            >
+                                {CONSUMO_OPTIONS.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </FormField>
+
+                        <FormField label="¿Consume tabaco?">
+                            <select
+                                value={formData.consume_tabaco}
+                                onChange={(e) => updateField('consume_tabaco', e.target.value)}
+                                className={selectClass}
+                            >
+                                {CONSUMO_OPTIONS.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </FormField>
+
+                        <FormField label="¿Consume alcohol?">
+                            <select
+                                value={formData.consume_alcohol}
+                                onChange={(e) => updateField('consume_alcohol', e.target.value)}
+                                className={selectClass}
+                            >
+                                {CONSUMO_OPTIONS.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </FormField>
+
+                        <FormField label="¿Realiza deporte?">
+                            <select
+                                value={formData.realiza_deporte}
+                                onChange={(e) => updateField('realiza_deporte', e.target.value)}
+                                className={selectClass}
+                            >
+                                {CONSUMO_OPTIONS.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </FormField>
+                    </div>
+                </div>
+            </CollapsibleSection>
+
+            {/* Section 7: Mobility */}
+            <CollapsibleSection title="Movilidad" icon={<Car className="h-5 w-5" />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Frecuencia de Visita a Firplak">
+                        <Input
+                            value={formData.frecuencia_visita}
+                            onChange={(e) => updateField('frecuencia_visita', e.target.value)}
+                            placeholder="Ej: Diario, 3 veces por semana"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Medio de Transporte">
+                        <Input
+                            value={formData.medio_transporte}
+                            onChange={(e) => updateField('medio_transporte', e.target.value)}
+                            placeholder="Ej: Bus, Moto, Carro, Bicicleta"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Tipo de Combustible/Energía">
+                        <Input
+                            value={formData.tipo_combustible}
+                            onChange={(e) => updateField('tipo_combustible', e.target.value)}
+                            placeholder="Ej: Gasolina, Eléctrico, Gas"
+                            className={inputClass}
+                        />
+                    </FormField>
+
+                    <FormField label="Modelo del Vehículo">
+                        <Input
+                            value={formData.modelo_vehiculo}
+                            onChange={(e) => updateField('modelo_vehiculo', e.target.value)}
+                            placeholder="Ej: 2020, 2018"
+                            className={inputClass}
+                        />
+                    </FormField>
+                </div>
+            </CollapsibleSection>
+
+            {/* Section 8: Uniform/Dotación */}
+            <CollapsibleSection title="Dotación" icon={<Shirt className="h-5 w-5" />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Tipo de Camisa">
+                        <select
+                            value={formData.tipo_camisa}
+                            onChange={(e) => updateField('tipo_camisa', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione tipo</option>
+                            {TIPOS_CAMISA.map(tipo => (
+                                <option key={tipo} value={tipo}>{tipo}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    <FormField label="Talla de Camisa">
+                        <select
+                            value={formData.talla_camisa}
+                            onChange={(e) => updateField('talla_camisa', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione talla</option>
+                            {TALLAS_CAMISA.map(talla => (
+                                <option key={talla} value={talla}>{talla}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    <FormField label="Tipo de Pantalón">
+                        <select
+                            value={formData.tipo_pantalon}
+                            onChange={(e) => updateField('tipo_pantalon', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione tipo</option>
+                            {TIPOS_PANTALON.map(tipo => (
+                                <option key={tipo} value={tipo}>{tipo}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    <FormField label="Talla de Pantalón">
+                        <select
+                            value={formData.talla_pantalon}
+                            onChange={(e) => updateField('talla_pantalon', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione talla</option>
+                            {TALLAS_PANTALON.map(talla => (
+                                <option key={talla} value={talla}>{talla}</option>
+                            ))}
+                        </select>
+                    </FormField>
+
+                    <FormField label="Talla de Chaleco">
+                        <select
+                            value={formData.talla_chaleco}
+                            onChange={(e) => updateField('talla_chaleco', e.target.value)}
+                            className={selectClass}
+                        >
+                            <option value="">Seleccione talla</option>
+                            {TALLAS_CAMISA.map(talla => (
+                                <option key={talla} value={talla}>{talla}</option>
+                            ))}
+                        </select>
+                    </FormField>
+                </div>
+            </CollapsibleSection>
+
+            {/* Submit Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/gestor-de-personal')}
+                    className="w-full sm:w-auto h-12 px-8 rounded-xl border-gray-200 text-gray-400 hover:text-gray-600 font-bold text-xs tracking-widest uppercase hover:bg-gray-50"
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full sm:w-auto h-12 px-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-widest uppercase shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                >
+                    {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                    )}
+                    {id ? 'Actualizar' : 'Crear Empleado'}
+                </Button>
             </div>
         </form>
     );

@@ -134,29 +134,16 @@ export default function AusentismosPage() {
     return (
         <div className="min-h-screen bg-[#F1F4F8]">
             {/* Header */}
-            <header className="bg-[#1D3557] text-white px-8 py-4 shadow-lg sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => router.push('/menu')}
-                            className="text-white hover:bg-white/10"
-                        >
-                            <ArrowLeft className="h-6 w-6" />
-                        </Button>
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/10 p-2 rounded-xl">
-                                <UserX className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-black tracking-tight uppercase">Gestión de Ausentismos</h1>
-                                <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Panel administrativo</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <div className="bg-[#2d4356] h-14 flex items-center px-4 sticky top-0 z-50 shadow-md">
+                <button
+                    onClick={() => router.push('/menu')}
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                >
+                    <ArrowLeft className="h-6 w-6 text-white" />
+                </button>
+                <h1 className="flex-1 text-center text-white font-medium text-lg">Ausentismos</h1>
+                <div className="w-8" />
+            </div>
 
             <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* Actions & Filters */}

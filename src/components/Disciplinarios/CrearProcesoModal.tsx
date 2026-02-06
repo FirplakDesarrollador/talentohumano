@@ -35,6 +35,7 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: Cr
         if (isOpen) {
             fetchMotivos()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen])
 
     const fetchMotivos = async () => {

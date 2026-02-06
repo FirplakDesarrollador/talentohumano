@@ -96,6 +96,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
         if (empleado?.cedula !== localEmpleado?.cedula) {
             setLocalEmpleado(empleado)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado?.cedula])
 
     // Generic update function (Internal sync)

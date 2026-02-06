@@ -23,6 +23,63 @@ export interface Database {
                     created_at: string | null
                     updated_at: string | null
                     ultima_auditoria: string | null
+                    // Información Personal
+                    fecha_nacimiento: string | null
+                    fecha_expedicion_cedula: string | null
+                    tipo_sangre: string | null
+                    // Información Laboral
+                    primer_ingreso: string | null
+                    nivel_cargo: string | null
+                    locker: string | null
+                    referido: string | null
+                    // Información de Contacto
+                    direccion: string | null
+                    ciudad: string | null
+                    telefono: string | null
+                    celular: string | null
+                    correo: string | null
+                    contacto_emergencia: string | null
+                    telefono_emergencia: string | null
+                    // Información Familiar
+                    tiene_esposo: boolean | null
+                    nombre_esposo: string | null
+                    num_hijos: number | null
+                    hijo1_nombre: string | null
+                    hijo1_nacimiento: string | null
+                    hijo1_sexo: string | null
+                    hijo2_nombre: string | null
+                    hijo2_nacimiento: string | null
+                    hijo2_sexo: string | null
+                    hijo3_nombre: string | null
+                    hijo3_nacimiento: string | null
+                    hijo3_sexo: string | null
+                    hijo4_nombre: string | null
+                    hijo4_nacimiento: string | null
+                    hijo4_sexo: string | null
+                    // Información Educativa
+                    nivel_educativo: string | null
+                    ultimo_grado: string | null
+                    actualmente_estudiando: boolean | null
+                    que_estudia: string | null
+                    // Información de Salud
+                    tiene_recomendaciones_medicas: boolean | null
+                    recomendaciones_medicas: string | null
+                    enfermedades: string | null
+                    consume_psicoactivas: string | null
+                    consume_tabaco: string | null
+                    consume_alcohol: string | null
+                    realiza_deporte: string | null
+                    // Movilidad
+                    frecuencia_visita: string | null
+                    medio_transporte: string | null
+                    tipo_combustible: string | null
+                    modelo_vehiculo: string | null
+                    // Dotación
+                    tipo_camisa: string | null
+                    talla_camisa: string | null
+                    tipo_pantalon: string | null
+                    talla_pantalon: string | null
+                    talla_chaleco: string | null
                 }
                 Insert: {
                     id?: number
@@ -37,6 +94,63 @@ export interface Database {
                     created_at?: string | null
                     updated_at?: string | null
                     ultima_auditoria?: string | null
+                    // Información Personal
+                    fecha_nacimiento?: string | null
+                    fecha_expedicion_cedula?: string | null
+                    tipo_sangre?: string | null
+                    // Información Laboral
+                    primer_ingreso?: string | null
+                    nivel_cargo?: string | null
+                    locker?: string | null
+                    referido?: string | null
+                    // Información de Contacto
+                    direccion?: string | null
+                    ciudad?: string | null
+                    telefono?: string | null
+                    celular?: string | null
+                    correo?: string | null
+                    contacto_emergencia?: string | null
+                    telefono_emergencia?: string | null
+                    // Información Familiar
+                    tiene_esposo?: boolean | null
+                    nombre_esposo?: string | null
+                    num_hijos?: number | null
+                    hijo1_nombre?: string | null
+                    hijo1_nacimiento?: string | null
+                    hijo1_sexo?: string | null
+                    hijo2_nombre?: string | null
+                    hijo2_nacimiento?: string | null
+                    hijo2_sexo?: string | null
+                    hijo3_nombre?: string | null
+                    hijo3_nacimiento?: string | null
+                    hijo3_sexo?: string | null
+                    hijo4_nombre?: string | null
+                    hijo4_nacimiento?: string | null
+                    hijo4_sexo?: string | null
+                    // Información Educativa
+                    nivel_educativo?: string | null
+                    ultimo_grado?: string | null
+                    actualmente_estudiando?: boolean | null
+                    que_estudia?: string | null
+                    // Información de Salud
+                    tiene_recomendaciones_medicas?: boolean | null
+                    recomendaciones_medicas?: string | null
+                    enfermedades?: string | null
+                    consume_psicoactivas?: string | null
+                    consume_tabaco?: string | null
+                    consume_alcohol?: string | null
+                    realiza_deporte?: string | null
+                    // Movilidad
+                    frecuencia_visita?: string | null
+                    medio_transporte?: string | null
+                    tipo_combustible?: string | null
+                    modelo_vehiculo?: string | null
+                    // Dotación
+                    tipo_camisa?: string | null
+                    talla_camisa?: string | null
+                    tipo_pantalon?: string | null
+                    talla_pantalon?: string | null
+                    talla_chaleco?: string | null
                 }
                 Update: {
                     id?: number
@@ -51,6 +165,63 @@ export interface Database {
                     created_at?: string | null
                     updated_at?: string | null
                     ultima_auditoria?: string | null
+                    // Información Personal
+                    fecha_nacimiento?: string | null
+                    fecha_expedicion_cedula?: string | null
+                    tipo_sangre?: string | null
+                    // Información Laboral
+                    primer_ingreso?: string | null
+                    nivel_cargo?: string | null
+                    locker?: string | null
+                    referido?: string | null
+                    // Información de Contacto
+                    direccion?: string | null
+                    ciudad?: string | null
+                    telefono?: string | null
+                    celular?: string | null
+                    correo?: string | null
+                    contacto_emergencia?: string | null
+                    telefono_emergencia?: string | null
+                    // Información Familiar
+                    tiene_esposo?: boolean | null
+                    nombre_esposo?: string | null
+                    num_hijos?: number | null
+                    hijo1_nombre?: string | null
+                    hijo1_nacimiento?: string | null
+                    hijo1_sexo?: string | null
+                    hijo2_nombre?: string | null
+                    hijo2_nacimiento?: string | null
+                    hijo2_sexo?: string | null
+                    hijo3_nombre?: string | null
+                    hijo3_nacimiento?: string | null
+                    hijo3_sexo?: string | null
+                    hijo4_nombre?: string | null
+                    hijo4_nacimiento?: string | null
+                    hijo4_sexo?: string | null
+                    // Información Educativa
+                    nivel_educativo?: string | null
+                    ultimo_grado?: string | null
+                    actualmente_estudiando?: boolean | null
+                    que_estudia?: string | null
+                    // Información de Salud
+                    tiene_recomendaciones_medicas?: boolean | null
+                    recomendaciones_medicas?: string | null
+                    enfermedades?: string | null
+                    consume_psicoactivas?: string | null
+                    consume_tabaco?: string | null
+                    consume_alcohol?: string | null
+                    realiza_deporte?: string | null
+                    // Movilidad
+                    frecuencia_visita?: string | null
+                    medio_transporte?: string | null
+                    tipo_combustible?: string | null
+                    modelo_vehiculo?: string | null
+                    // Dotación
+                    tipo_camisa?: string | null
+                    talla_camisa?: string | null
+                    tipo_pantalon?: string | null
+                    talla_pantalon?: string | null
+                    talla_chaleco?: string | null
                 }
             }
             competencias: {

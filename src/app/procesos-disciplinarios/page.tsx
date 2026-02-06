@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Navbar } from '@/components/Navbar'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
@@ -60,6 +60,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
             }
         }
         fetchUserData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supabase])
 
     // 2. Fetch Empleados
@@ -110,17 +111,17 @@ export default function BuscadorProcesosDisciplinariosPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
 
-            {/* Compact Appbar - Following HILU/Comisiones style */}
-            <div className="bg-[#1D3557] h-14 flex items-center px-6 shadow-md text-white sticky top-0 md:top-16 z-40 transition-all">
+
+            {/* Compact Appbar - Standardized */}
+            <div className="bg-[#2d4356] h-14 flex items-center px-6 shadow-md text-white sticky top-0 z-40 transition-all">
                 <button
                     onClick={() => router.push('/menu')}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors mr-4"
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors mr-4"
                 >
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <div className="flex-1 text-center font-black text-base uppercase tracking-widest hidden sm:block">
+                <div className="flex-1 text-center font-medium text-lg">
                     Procesos Disciplinarios
                 </div>
                 <div className="flex items-center gap-2">

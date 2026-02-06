@@ -107,7 +107,7 @@ export default function CesantiasPage() {
         } finally {
             setHistoryLoading(false)
         }
-    }, [supabase, filterCedula, filterTipo, filterMotivo])
+    }, [supabase, filterCedula, filterTipo, filterMotivo, isAdmin, currentUser])
 
     useEffect(() => {
         if (view === 'history') {

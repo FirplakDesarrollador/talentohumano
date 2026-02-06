@@ -69,6 +69,7 @@ export function NovedadesForm({ cedulaViene, onSuccess }: NovedadesFormProps) {
         if (cedulaViene) {
             buscarEmpleado(cedulaViene)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cedulaViene])
 
     const buscarEmpleado = async (cedula: string) => {
@@ -109,7 +110,7 @@ export function NovedadesForm({ cedulaViene, onSuccess }: NovedadesFormProps) {
 
         setIsSubmitting(true)
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from('novedades_nomina')
                 .insert({
                     empleado_id: empleado.cedula,
@@ -123,7 +124,7 @@ export function NovedadesForm({ cedulaViene, onSuccess }: NovedadesFormProps) {
                     mes_aplicacion: form.mes_aplicacion,
                     periodo: form.periodo,
                     observacion: form.observacion || null
-                })
+                }) as any
 
             if (error) throw error
 

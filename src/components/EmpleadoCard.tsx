@@ -44,7 +44,7 @@ export const EmpleadoCard: React.FC<EmpleadoProps> = ({ empleado }) => {
                                 {empleado.nombreCompleto}
                             </h2>
                             <p className="text-sm font-medium text-gray-500">
-                                C.C. {empleado.cedula}
+                                C.C. {empleado.id}
                             </p>
                         </div>
 

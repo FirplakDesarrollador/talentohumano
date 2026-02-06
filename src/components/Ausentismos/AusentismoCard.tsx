@@ -107,9 +107,9 @@ export const AusentismoCard: React.FC<AusentismoCardProps> = ({ ausentismo }) =>
                 <div className="px-5 pb-4 pt-1">
                     <p className="text-[11px] text-gray-500 italic flex items-start gap-1.5 bg-yellow-50/50 p-2 rounded-lg border border-yellow-100/50">
                         <Info className="h-3 w-3 mt-0.5 shrink-0" />
-                        "{ausentismo['Observaciones'].length > 120
+                        &quot;{ausentismo['Observaciones'].length > 120
                             ? `${substring(ausentismo['Observaciones'], 0, 120)}...`
-                            : ausentismo['Observaciones']}"
+                            : ausentismo['Observaciones']}&quot;
                     </p>
                 </div>
             )}

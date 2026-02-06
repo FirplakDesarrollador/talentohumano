@@ -253,28 +253,16 @@ export default function VacacionesPage() {
     return (
         <div className="min-h-screen bg-[#F1F4F8] pb-12">
             {/* Header */}
-            <header className="bg-[#2d4356] text-white px-8 py-4 flex items-center justify-between shadow-lg sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => view === 'welcome' ? router.push('/menu') : setView('welcome')}
-                        className="text-white hover:bg-white/10"
-                    >
-                        <ArrowLeft className="h-6 w-6" />
-                    </Button>
-                    <div className="flex items-center gap-3">
-                        <Umbrella className="h-8 w-8 text-blue-300" />
-                        <div>
-                            <h1 className="text-xl font-black tracking-tight uppercase">Proceso Vacaciones</h1>
-                            <p className="text-[10px] text-blue-200 font-medium uppercase tracking-wider">Gestión de Solicitudes</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex flex-col items-end">
-                    {/* Branding removed as requested */}
-                </div>
-            </header>
+            <div className="bg-[#2d4356] h-14 flex items-center px-4 sticky top-0 z-50 shadow-md">
+                <button
+                    onClick={() => view === 'welcome' ? router.push('/menu') : setView('welcome')}
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                >
+                    <ArrowLeft className="h-6 w-6 text-white" />
+                </button>
+                <h1 className="flex-1 text-center text-white font-medium text-lg">Vacaciones</h1>
+                <div className="w-8" />
+            </div>
 
             <main className="max-w-4xl mx-auto px-4 pt-8">
                 {view === 'welcome' && (
