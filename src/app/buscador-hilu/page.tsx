@@ -1,52 +1,39 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Search, User, Briefcase, MapPin, Building2, Filter, ArrowUpDown } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { EmpleadoCardHILU } from '@/components/HILU/EmpleadoCardHILU'
 import type { Database } from '@/lib/supabase/types'
 
-type Empleado = Database['public']['Tables']['empleados']['Row']
+type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
 
 export default function BuscadorHiluPage() {
-    const [empleados, setEmpleados] = useState<Empleado[]>([])
+    const router = useRouter()
+    const [empleados, setEmpleados] = useState<EmpleadoHILU[]>([])
     const [busqueda, setBusqueda] = useState('')
     const [loading, setLoading] = useState(true)
 
     // Filters
-    const [jefes, setJefes] = useState<string[]>([])
     const [plantas, setPlantas] = useState<string[]>([])
-    const [selectedJefe, setSelectedJefe] = useState<string>('all')
     const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
-    const [selectedStatus, setSelectedStatus] = useState<string>('all') // 'all', 'active', 'inactive'
-    const [sortByDate, setSortByDate] = useState(false)
+    const [selectedStatus, setSelectedStatus] = useState<string>('activo') // 'all', 'activo', 'inactivo'
 
     const supabase = createClient()
 
     const fetchFilters = useCallback(async () => {
         try {
-            // Fetch unique Jefes
-            const { data: jefesData } = await supabase
-                .from('empleados')
-                .select('jefe')
-                .not('jefe', 'is', null)
-
-            if (jefesData) {
-                const uniqueJefes = Array.from(new Set(jefesData.map(j => j.jefe).filter(Boolean))) as string[]
-                setJefes(uniqueJefes.sort())
-            }
-
             // Fetch unique Plantas
             const { data: plantasData } = await supabase
-                .from('empleados')
+                .from('query_estado_hilu')
                 .select('planta')
-                .not('planta', 'is', null)
+                .not('planta', 'is', null) as { data: { planta: string | null }[] | null }
 
             if (plantasData) {
                 const uniquePlantas = Array.from(new Set(plantasData.map(p => p.planta).filter(Boolean))) as string[]
@@ -61,17 +48,12 @@ export default function BuscadorHiluPage() {
         setLoading(true)
         try {
             let query = supabase
-                .from('empleados')
+                .from('query_estado_hilu')
                 .select('*')
 
-            // Search
-            if (busqueda) {
-                query = query.or(`nombreCompleto.ilike.%${busqueda}%,cedula.eq.${busqueda}`)
-            }
-
-            // Filter by Jefe
-            if (selectedJefe && selectedJefe !== 'all') {
-                query = query.eq('jefe', selectedJefe)
+            // Filter by Status
+            if (selectedStatus !== 'all') {
+                query = query.eq('activo', selectedStatus === 'activo')
             }
 
             // Filter by Planta
@@ -79,29 +61,25 @@ export default function BuscadorHiluPage() {
                 query = query.eq('planta', selectedPlanta)
             }
 
-            // Filter by Status
-            if (selectedStatus !== 'all') {
-                query = query.eq('activo', selectedStatus === 'active')
+            // Search by name or cedula
+            if (busqueda) {
+                query = query.or(`nombreCompleto.ilike.%${busqueda}%,id.eq.${busqueda}`)
             }
 
-            // Sorting
-            // Assuming 'ordenarfecha' refers to created_at or updated_at. Using created_at for now.
-            if (sortByDate) {
-                query = query.order('created_at', { ascending: false })
-            } else {
-                query = query.order('nombreCompleto', { ascending: true })
-            }
+            // Filter out management positions (same logic as Flutter code)
+            query = query.order('nombreCompleto', { ascending: true })
 
-            const { data, error } = await query.limit(50)
+            const { data, error } = await query
 
             if (error) throw error
-            setEmpleados(data || [])
+
+            setEmpleados(data as EmpleadoHILU[])
         } catch (error) {
             console.error('Error fetching empleados:', error)
         } finally {
             setLoading(false)
         }
-    }, [busqueda, selectedJefe, selectedPlanta, selectedStatus, sortByDate, supabase])
+    }, [busqueda, selectedPlanta, selectedStatus, supabase])
 
     useEffect(() => {
         fetchFilters()
@@ -111,156 +89,133 @@ export default function BuscadorHiluPage() {
         fetchEmpleados()
     }, [fetchEmpleados])
 
+    const handleEmpleadoClick = (empleado: EmpleadoHILU) => {
+        router.push(`/entrenamiento/${empleado.id}`)
+    }
+
+    const handleClearFilters = () => {
+        setBusqueda('')
+        setSelectedPlanta('all')
+        setSelectedStatus('activo')
+    }
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <Navbar />
-
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Gestor de Personal
-                    </h1>
-                    <p className="text-gray-600">
-                        Gestiona y visualiza la información de los empleados
-                    </p>
+        <div className="min-h-screen bg-white">
+            {/* Custom Header */}
+            <div className="bg-[#1e2f3d] h-14 flex items-center px-4 shadow-md text-white sticky top-0 z-50">
+                <button
+                    onClick={() => router.push('/menu')}
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors mr-4"
+                >
+                    <ArrowLeft className="h-6 w-6" />
+                </button>
+                <div className="flex-1 text-center font-medium text-lg tracking-wide">
+                    Entrenamiento
                 </div>
+                <div className="w-8" /> {/* Spacer for balance */}
+            </div>
 
-                {/* Filters Section */}
-                <Card className="mb-6">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Filter className="h-5 w-5" />
-                            Filtros de Búsqueda
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="col-span-1 md:col-span-2 lg:col-span-1">
-                            <Label htmlFor="search" className="mb-2 block">Búsqueda</Label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="max-w-[1400px] mx-auto px-4 py-8">
+                {/* Filters Row */}
+                <div className="flex flex-col lg:flex-row items-end gap-4 mb-6">
+                    <div className="w-full sm:w-48">
+                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1">Estado</Label>
+                        <div className="relative">
+                            <select
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                                value={selectedStatus}
+                                onChange={(e) => setSelectedStatus(e.target.value)}
+                            >
+                                <option value="activo">Activo</option>
+                                <option value="inactivo">Retirado</option>
+                                <option value="all">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="w-full sm:w-56">
+                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1">Planta</Label>
+                        <div className="relative">
+                            <select
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                                value={selectedPlanta}
+                                onChange={(e) => setSelectedPlanta(e.target.value)}
+                            >
+                                <option value="all">Todas las plantas</option>
+                                {plantas.map((planta) => (
+                                    <option key={planta} value={planta}>{planta}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 w-full">
+                        <Label htmlFor="search" className="mb-2 block text-xs font-bold text-gray-500 pl-1">Búsqueda avanzada</Label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
                                 <Input
                                     id="search"
                                     type="text"
-                                    placeholder="Nombre o Cédula..."
+                                    placeholder="Nombre, cédula o cargo..."
                                     value={busqueda}
                                     onChange={(e) => setBusqueda(e.target.value)}
-                                    className="pl-9"
+                                    className="h-10 border-gray-200 pl-4 pr-4 bg-white focus-visible:ring-1 focus-visible:ring-gray-300"
                                 />
                             </div>
+                            <Button
+                                variant="outline"
+                                className="h-10 w-10 p-0 border-gray-200 text-gray-600"
+                                onClick={() => { }}
+                            >
+                                <Search className="h-5 w-5" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleClearFilters}
+                                className="h-10 w-10 p-0 border-gray-200 text-yellow-500 hover:text-yellow-600"
+                            >
+                                <Eraser className="h-5 w-5" />
+                            </Button>
                         </div>
+                    </div>
+                </div>
 
-                        <div>
-                            <Label className="mb-2 block">Jefe Inmediato</Label>
-                            <Select value={selectedJefe} onValueChange={setSelectedJefe}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Todos los jefes" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todos los jefes</SelectItem>
-                                    {jefes.map((jefe) => (
-                                        <SelectItem key={jefe} value={jefe}>{jefe}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                {/* Results Bar */}
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-[#1e2f3d] text-white px-6 py-2.5 rounded-md flex-1 shadow-sm flex items-center">
+                        <span className="font-light text-sm mr-2 text-gray-300">Empleados encontrados: </span>
+                        <span className="font-bold text-sm tracking-wider">{empleados.length}</span>
+                    </div>
 
-                        <div>
-                            <Label className="mb-2 block">Planta</Label>
-                            <Select value={selectedPlanta} onValueChange={setSelectedPlanta}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Todas las plantas" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todas las plantas</SelectItem>
-                                    {plantas.map((planta) => (
-                                        <SelectItem key={planta} value={planta}>{planta}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <Button
+                        onClick={() => router.push('/indicadores-hilu')}
+                        className="bg-[#facc15] hover:bg-[#eab308] text-white h-[42px] px-0 w-[42px] rounded-md shadow-sm"
+                        title="Indicadores"
+                    >
+                        <BarChart3 className="h-6 w-6" />
+                    </Button>
+                </div>
 
-                        <div>
-                            <Label className="mb-2 block">Estado</Label>
-                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Todos" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todos</SelectItem>
-                                    <SelectItem value="active">Activos</SelectItem>
-                                    <SelectItem value="inactive">Inactivos</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="flex items-center space-x-2 mt-4 lg:col-span-4 justify-end">
-                            <Switch
-                                id="sort-date"
-                                checked={sortByDate}
-                                onCheckedChange={setSortByDate}
-                            />
-                            <Label htmlFor="sort-date" className="cursor-pointer flex items-center gap-2">
-                                <ArrowUpDown className="h-4 w-4" />
-                                Ordenar por fecha reciente
-                            </Label>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Results */}
+                {/* Results List */}
                 {loading ? (
-                    <div className="text-center py-12">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        <p className="mt-4 text-gray-600">Cargando empleados...</p>
+                    <div className="text-center py-20">
+                        <Loader2 className="inline-block animate-spin h-10 w-10 text-gray-400 mb-4" />
+                        <p className="text-gray-500">Cargando...</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-3">
                         {empleados.length === 0 ? (
-                            <div className="col-span-full text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
-                                <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                                <p className="text-gray-600">No se encontraron empleados con los filtros seleccionados</p>
+                            <div className="p-12 text-center text-gray-400 border border-dashed rounded-lg">
+                                <p>No se encontraron resultados</p>
                             </div>
                         ) : (
-                            // Using a List view style to match Gestor de Personal better than Cards
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                {empleados.map((empleado, index) => (
-                                    <div
-                                        key={empleado.id}
-                                        className={`p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors ${index !== empleados.length - 1 ? 'border-b border-gray-100' : ''}`}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                                            {empleado.nombreCompleto.charAt(0)}
-                                        </div>
-
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <h3 className="font-medium text-gray-900">{empleado.nombreCompleto}</h3>
-                                                <p className="text-sm text-gray-500">C.C. {empleado.cedula}</p>
-                                            </div>
-
-                                            <div className="hidden md:block">
-                                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                    <Briefcase className="h-4 w-4 text-gray-400" />
-                                                    <span className="truncate">{empleado.cargo || 'Sin cargo'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                                                    <MapPin className="h-4 w-4 text-gray-400" />
-                                                    <span className="truncate">{empleado.planta || 'Sin planta'}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="hidden md:flex flex-col justify-center items-end">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${empleado.activo
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                    {empleado.activo ? 'Activo' : 'Inactivo'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            empleados.map((empleado) => (
+                                <EmpleadoCardHILU
+                                    key={empleado.id}
+                                    empleado={empleado}
+                                    onClick={() => handleEmpleadoClick(empleado)}
+                                />
+                            ))
                         )}
                     </div>
                 )}

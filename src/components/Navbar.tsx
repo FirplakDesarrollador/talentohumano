@@ -23,9 +23,9 @@ export function Navbar() {
         { href: '/menu', label: 'Inicio' },
         { href: '/buscador-hilu', label: 'Empleados' },
         { href: '/aumentossalariales', label: 'Aumentos' },
+        { href: '/procesos-disciplinarios', label: 'Disciplinarios' },
         { href: '/competencias', label: 'Competencias' },
         { href: '/indicadores', label: 'Indicadores' },
-        { href: '/comisiones', label: 'Comisiones' },
     ]
 
     return (

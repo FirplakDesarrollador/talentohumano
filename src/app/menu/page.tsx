@@ -47,11 +47,6 @@ export default function MenuPage() {
             icon: TrendingUp,
         },
         {
-            title: 'Comisiones',
-            href: '/comisiones',
-            icon: TrendingUp, // Analogous to original
-        },
-        {
             title: 'Cesantias',
             href: '/cesantias',
             icon: PiggyBank,
@@ -78,7 +73,7 @@ export default function MenuPage() {
         },
         {
             title: 'Procesos disciplinarios',
-            href: '/buscador-procesos-disciplinarios',
+            href: '/procesos-disciplinarios',
             icon: Handshake,
         },
         {
