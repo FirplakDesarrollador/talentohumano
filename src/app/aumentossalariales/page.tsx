@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { ROLES, APPROVER_ROLES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -56,7 +57,7 @@ export default function AumentosSalarialesPage() {
             const { data: usersData } = await supabase
                 .from('usuarios')
                 .select('*')
-                .in('rol', ['jefe', 'director', 'coordinador', 'gerente'])
+                .in('rol', APPROVER_ROLES)
                 .order('nombre')
 
             if (usersData) setApprovers(usersData)

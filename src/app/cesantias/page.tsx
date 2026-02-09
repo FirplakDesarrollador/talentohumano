@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { SolicitudDetalle } from '@/components/Cesantias/SolicitudDetalle'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -75,26 +76,38 @@ export default function CesantiasPage() {
         fetchUser()
     }, [supabase])
 
-    const isAdmin = currentUser?.correo === 'renata.lainez@firplak.com' || currentUser?.correo === 'aprendiz.desarrollo@firplak.com'
+    const isAdmin = currentUser?.rol && ADMIN_ROLES.includes(currentUser.rol.toLowerCase() as any)
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)
         try {
-            let query = supabase.from('cesantias').select('*').order('created', { ascending: false })
+            let query = (supabase as any).from('Cesantias').select('*').order('Created', { ascending: false })
 
-            if (filterCedula) query = query.ilike('cedula', `%${filterCedula}%`)
-            if (filterTipo) query = query.eq('tipoDeCesantias', filterTipo)
-            if (filterMotivo) query = query.eq('motivo', filterMotivo)
+            if (filterCedula) {
+                if (/^\d+$/.test(filterCedula)) {
+                    query = query.eq('Cedula', parseInt(filterCedula))
+                } else {
+                    query = query.ilike('Nombre', `%${filterCedula}%`)
+                }
+            }
+            if (filterTipo) query = query.eq('Tipo de Cesantias', filterTipo)
+            if (filterMotivo) query = query.eq('Motivo', filterMotivo)
+
+            // Access Control: Non-admins can only see their own requests
+            if (!isAdmin && currentUser?.correo) {
+                query = query.eq('Correo', currentUser.correo)
+            }
 
             const { data, error } = await query
             if (error) throw error
             setHistory(data || [])
-        } catch (err) {
-            console.error('Error fetching history:', err)
+        } catch (err: any) {
+            console.error('Error fetching history:', JSON.stringify(err, null, 2))
+            setError(err.message || 'Error al cargar el historial')
         } finally {
             setHistoryLoading(false)
         }
-    }, [supabase, filterCedula, filterTipo, filterMotivo])
+    }, [supabase, filterCedula, filterTipo, filterMotivo, isAdmin, currentUser])
 
     useEffect(() => {
         if (view === 'history') {
@@ -173,18 +186,18 @@ export default function CesantiasPage() {
 
             // 2. Insert record
             const { error: insertError } = await (supabase as any)
-                .from('cesantias')
+                .from('Cesantias')
                 .insert({
-                    cedula: empleado.cedula,
-                    nombre: empleado.nombreCompleto,
-                    correo: currentUser?.correo || '',
-                    tipoDeCesantias: formData.tipoDeCesantias,
-                    valor: formData.valor,
-                    motivo: formData.motivo,
-                    created: new Date().toISOString(),
-                    aprobacionTHT: 'Pendiente',
-                    EntregoSoporteDePago: false,
-                    soporte: uploadedUrls
+                    Cedula: empleado.cedula,
+                    Nombre: empleado.nombreCompleto,
+                    Correo: currentUser?.correo || '',
+                    "Tipo de Cesantias": formData.tipoDeCesantias,
+                    Valor: formData.valor,
+                    Motivo: formData.motivo,
+                    Created: new Date().toISOString(),
+                    "Aprobación THT": 'Pendiente',
+                    "¿Entregó soporte de pago?": false,
+                    Soporte: uploadedUrls
                 })
 
             if (insertError) throw insertError
@@ -254,16 +267,14 @@ export default function CesantiasPage() {
                                 <PlusCircle className="h-8 w-8 text-white" />
                                 <span className="font-bold text-lg">Ingresar Solicitud</span>
                             </Button>
-                            {isAdmin && (
-                                <Button
-                                    onClick={() => setView('history')}
-                                    variant="secondary"
-                                    className="h-32 flex flex-col gap-2 border-2 border-gray-200 col-md-span-2 md:col-span-2"
-                                >
-                                    <History className="h-8 w-8 text-gray-700" />
-                                    <span className="font-bold text-lg">Visualizar (Admin)</span>
-                                </Button>
-                            )}
+                            <Button
+                                onClick={() => setView('history')}
+                                variant="secondary"
+                                className="h-32 flex flex-col gap-2 border-2 border-gray-200 col-md-span-2 md:col-span-2"
+                            >
+                                <History className="h-8 w-8 text-gray-700" />
+                                <span className="font-bold text-lg">{isAdmin ? 'Visualizar (Todos)' : 'Mis Solicitudes'}</span>
+                            </Button>
                         </div>
 
                         {showInstructions && (
@@ -525,19 +536,19 @@ export default function CesantiasPage() {
                                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-gray-800">{item.nombre}</span>
-                                                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">{item.tipoDeCesantias}</span>
+                                                            <span className="font-bold text-gray-800">{item.Nombre}</span>
+                                                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">{item["Tipo de Cesantias"]}</span>
                                                         </div>
-                                                        <p className="text-sm text-gray-500">C.C. {item.cedula} • {new Date(item.created).toLocaleDateString()}</p>
-                                                        <p className="text-xs text-gray-600 font-medium">Motivo: {item.motivo}</p>
+                                                        <p className="text-sm text-gray-500">C.C. {item.Cedula} • {new Date(item.Created).toLocaleDateString()}</p>
+                                                        <p className="text-xs text-gray-600 font-medium">Motivo: {item.Motivo}</p>
                                                     </div>
                                                     <div className="flex flex-row items-center gap-4 text-right">
                                                         <div className="space-y-1">
-                                                            <p className="text-lg font-black text-blue-600">{formatCurrency(item.valor || '0')}</p>
-                                                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${item.aprobacionTHT === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' :
-                                                                item.aprobacionTHT === 'Aprobado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                            <p className="text-lg font-black text-blue-600">{formatCurrency(item.Valor || '0')}</p>
+                                                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${item["Aprobación THT"] === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' :
+                                                                item["Aprobación THT"] === 'Aprobado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                                                 }`}>
-                                                                {item.aprobacionTHT}
+                                                                {item["Aprobación THT"]}
                                                             </span>
                                                         </div>
                                                         <Button
