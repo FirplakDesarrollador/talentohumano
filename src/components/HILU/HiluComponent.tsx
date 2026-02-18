@@ -14,28 +14,27 @@ import { CrearFirma, VerFirma } from './FirmaComponents'
 import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Image as ImageIcon } from 'lucide-react'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
-type S10Habilidades = Database['public']['Tables']['s10_habilidades']['Row']
 
 interface HiluComponentProps {
     empleado: QueryHiluRow
     onUpdate: () => void
     currentUser?: any
-    s10Data?: S10Habilidades | null
 }
 
 const TOOLS_LIST = ['GI', 'TE-EE', 'A/F', "5'S", 'LIDERAZGO', 'BITACORA', 'OPT', 'OPT SIS', 'RRC', 'QRQC'] as const
-const PHASE_I_CHECKS = ['Explicación de la herramienta', 'Hace acompañado', 'Hace solo'] as const
-const PHASE_LU_CHECKS = ['Entrena en la metodología', 'Acompaña metodología', 'Sabe entrenar solo metodología'] as const
+const PHASE_I_CHECKS = ['Entrenamiento de la herramienta', 'Hace acompañado la herramienta'] as const
+const PHASE_L_CHECKS = ['Ejecuta la herramienta con calidad', 'Cumple con la ejecución de la herramienta', 'Cumple con el estándar de la herramienta'] as const
+const PHASE_U_CHECKS = ['Entrena en la metodología', 'Acompaña metodología', 'Sabe entrenar solo la metodología'] as const
 
 type ToolDetails = Record<string, Record<string, boolean>>
 
 const getRoleType = (cargo: string | null) => {
     if (!cargo) return 'OPERARIO'
-    const c = cargo.toLowerCase().trim()
-    if (c.includes('director')) return 'DIRECTOR'
-    if (c.includes('supervisor')) return 'SUPERVISOR'
+    const cargoLower = cargo.toLowerCase()
+    if (cargoLower.includes('director')) return 'DIRECTOR'
+    if (cargoLower.includes('supervisor')) return 'SUPERVISOR'
     const jefeKeywords = ['jefe', 'coordinador', 'gerente', 'lider', 'líder', 'facilitador']
-    if (jefeKeywords.some(kw => c.includes(kw))) return 'JEFE'
+    if (jefeKeywords.some(kw => cargoLower.includes(kw))) return 'JEFE'
     return 'OPERARIO'
 }
 
@@ -84,7 +83,7 @@ const PhaseHeader = ({ title, progress, isOpen, onClick }: { title: string, prog
     </div>
 )
 
-export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: HiluComponentProps) {
+export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponentProps) {
     const supabase = createClient()
     const [openPhase, setOpenPhase] = useState<'H' | 'I' | 'L' | 'U' | null>('H')
 
@@ -148,7 +147,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
     const isToolComplete = (phase: 'I' | 'L' | 'U', tool: string) => {
         const fieldName: keyof QueryHiluRow = phase === 'I' ? 'fi_detalles' : phase === 'L' ? 'fl_detalles' : 'fu_detalles'
         const details = (localEmpleado[fieldName] as unknown as ToolDetails) || {}
-        const checks = phase === 'I' ? PHASE_I_CHECKS : PHASE_LU_CHECKS
+        const checks = phase === 'I' ? PHASE_I_CHECKS : phase === 'L' ? PHASE_L_CHECKS : PHASE_U_CHECKS
         return checks.every(chk => details[tool]?.[chk])
     }
 
@@ -156,25 +155,22 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
         const role = getRoleType(localEmpleado.cargo)
         const availableTools = role === 'SUPERVISOR'
             ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
-            : TOOLS_LIST
-        const checks = phase === 'I' ? PHASE_I_CHECKS : PHASE_LU_CHECKS
+            : role === 'OPERARIO'
+                ? TOOLS_LIST
+                : TOOLS_LIST.filter(t => ![''].includes(t))
+        const checks = phase === 'I' ? PHASE_I_CHECKS : phase === 'L' ? PHASE_L_CHECKS : PHASE_U_CHECKS
         const fieldName: keyof QueryHiluRow = phase === 'I' ? 'fi_detalles' : phase === 'L' ? 'fl_detalles' : 'fu_detalles'
         const details = (localEmpleado[fieldName] as unknown as ToolDetails) || {}
 
         return (
             <div className="space-y-4">
                 {availableTools.map(tool => {
-                    // Dependency logic for leadership roles: per-tool decoupling
-                    let toolDisabled = false
-                    if (role !== 'OPERARIO') {
-                        if (phase === 'L') {
-                            // Editable if the SAME tool is complete in Phase I
-                            toolDisabled = !isToolComplete('I', tool)
-                        } else if (phase === 'U') {
-                            // Editable if the SAME tool is complete in Phase L
-                            toolDisabled = !isToolComplete('L', tool)
-                        }
-                    }
+                    // Per-tool conditional: L requires same tool complete in I, U requires same tool complete in L
+                    const toolDisabled = phase === 'L'
+                        ? !isToolComplete('I', tool)
+                        : phase === 'U'
+                            ? !isToolComplete('L', tool)
+                            : false
 
                     const toolDetails = (details[tool] as Record<string, boolean>) || {}
                     const completedChecks = checks.filter(chk => toolDetails[chk]).length
@@ -454,6 +450,8 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
         if (!localEmpleado.fl_id) return <div className="p-8 text-center text-gray-500">Fase no iniciada</div>
         const progress = parseFloat(((localEmpleado.fl_avance || 0) * 100).toFixed(0))
         const role = getRoleType(localEmpleado.cargo)
+        // Phase L is disabled until ALL phase I checks are complete (OPERARIO only)
+        const faseIComplete = !!(localEmpleado.fi_titular && localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
@@ -466,19 +464,26 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
                         </div>
 
                         {role === 'OPERARIO' ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <PillCheckbox id="fl_cumple_calidad" label="Cumple Calidad" checked={localEmpleado.fl_cumple_calidad || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fl_cumple_calidad: c }))
-                                    updatePhase('fase_L', localEmpleado.fl_id!, { cumple_calidad: c })
-                                }} />
-                                <PillCheckbox id="fl_cumple_estandar" label="Cumple Estándar" checked={localEmpleado.fl_cumple_estandar || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fl_cumple_estandar: c }))
-                                    updatePhase('fase_L', localEmpleado.fl_id!, { cumple_estandar: c })
-                                }} />
-                                <PillCheckbox id="fl_cumple_tiempo" label="Cumple Tiempo" checked={localEmpleado.fl_cumple_tiempo || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fl_cumple_tiempo: c }))
-                                    updatePhase('fase_L', localEmpleado.fl_id!, { cumple_tiempo: c })
-                                }} />
+                            <div className="space-y-2">
+                                {!faseIComplete && (
+                                    <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
+                                        ⚠️ Complete todas las habilidades de la Fase I para habilitar la Fase L
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <PillCheckbox id="fl_cumple_calidad" label="Cumple Calidad" checked={localEmpleado.fl_cumple_calidad || false} disabled={!faseIComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fl_cumple_calidad: c }))
+                                        updatePhase('fase_L', localEmpleado.fl_id!, { cumple_calidad: c })
+                                    }} />
+                                    <PillCheckbox id="fl_cumple_estandar" label="Cumple Estándar" checked={localEmpleado.fl_cumple_estandar || false} disabled={!faseIComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fl_cumple_estandar: c }))
+                                        updatePhase('fase_L', localEmpleado.fl_id!, { cumple_estandar: c })
+                                    }} />
+                                    <PillCheckbox id="fl_cumple_tiempo" label="Cumple Tiempo" checked={localEmpleado.fl_cumple_tiempo || false} disabled={!faseIComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fl_cumple_tiempo: c }))
+                                        updatePhase('fase_L', localEmpleado.fl_id!, { cumple_tiempo: c })
+                                    }} />
+                                </div>
                             </div>
                         ) : (
                             <div className="bg-white p-4 rounded-lg border border-gray-200">
@@ -507,6 +512,8 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
         if (!localEmpleado.fu_id) return <div className="p-8 text-center text-gray-500">Fase no iniciada</div>
         const progress = parseFloat(((localEmpleado.fu_avance || 0) * 100).toFixed(0))
         const role = getRoleType(localEmpleado.cargo)
+        // Phase U is disabled until ALL phase L checks are complete (OPERARIO only)
+        const faseLComplete = !!(localEmpleado.fl_cumple_calidad && localEmpleado.fl_cumple_estandar && localEmpleado.fl_cumple_tiempo)
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
@@ -519,26 +526,30 @@ export function HiluComponent({ empleado, onUpdate, currentUser, s10Data }: Hilu
                         </div>
 
                         {role === 'OPERARIO' ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para Entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
-                                    updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
-                                }} />
-                                <PillCheckbox id="fu_entrena_solo" label="Entrena Solo" checked={localEmpleado.fu_entrena_solo || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fu_entrena_solo: c }))
-                                    updatePhase('fase_U', localEmpleado.fu_id!, { entrena_solo: c })
-                                }} />
-                                <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña Entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
-                                    updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
-                                }} />
+                            <div className="space-y-2">
+                                {!faseLComplete && (
+                                    <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
+                                        ⚠️ Complete todas las habilidades de la Fase L para habilitar la Fase U
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para Entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} disabled={!faseLComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
+                                        updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
+                                    }} />
+                                    <PillCheckbox id="fu_entrena_solo" label="Entrena Solo" checked={localEmpleado.fu_entrena_solo || false} disabled={!faseLComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fu_entrena_solo: c }))
+                                        updatePhase('fase_U', localEmpleado.fu_id!, { entrena_solo: c })
+                                    }} />
+                                    <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña Entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} disabled={!faseLComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
+                                        updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
+                                    }} />
+                                </div>
                             </div>
                         ) : (
                             <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                <div className="flex justify-between items-center mb-4 bg-gray-50 p-2 rounded">
-                                    <h4 className="font-semibold text-gray-800">Evaluación por Herramienta - Fase U</h4>
-                                    <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">¿Quién aprueba en U?</Badge>
-                                </div>
+                                <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase U</h4>
                                 {renderToolGrid('U')}
                             </div>
                         )}

@@ -18,7 +18,6 @@ import { toast } from 'sonner'
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
 type Auditoria = Database['public']['Tables']['auditorias']['Row']
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
-type S10Habilidades = Database['public']['Tables']['s10_habilidades']['Row']
 
 export default function EntrenamientoDetailPage() {
     const router = useRouter()
@@ -28,7 +27,6 @@ export default function EntrenamientoDetailPage() {
     const [empleadoData, setEmpleadoData] = useState<(QueryHiluRow & { foto?: string | null }) | null>(null)
     const [auditorias, setAuditorias] = useState<Auditoria[]>([])
     const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
-    const [s10Data, setS10Data] = useState<S10Habilidades | null>(null)
     const [loading, setLoading] = useState(true)
     const [generatingPdf, setGeneratingPdf] = useState(false)
     const [currentUser, setCurrentUser] = useState<{ id: number } | null>(null)
@@ -191,61 +189,6 @@ export default function EntrenamientoDetailPage() {
                 setEmpleadoData(pseudo as QueryHiluRow)
             }
 
-            // 3. S10 Habilidades Logic
-            const cargoLower = cargoStr.toLowerCase().trim()
-            const isLeader = ['jefe', 'director', 'coordinador', 'gerente', 'supervisor', 'lider', 'líder', 'facilitador'].some(role => cargoLower.includes(role))
-
-            console.log('[DEBUG] S10 Leader Check:', { isLeader, cargoLower })
-
-            if (isLeader) {
-                try {
-                    const { data: s10Record, error: s10Error } = await (supabase
-                        .from('s10_habilidades') as any)
-                        .select('*')
-                        .eq('empleado_id', resolvedId)
-                        .maybeSingle()
-
-                    if (s10Error) console.log('[DEBUG] S10 fetch error:', s10Error.message)
-
-                    if (s10Record) {
-                        setS10Data(s10Record as S10Habilidades)
-                    } else if (resolvedId && resolvedCedula) {
-                        console.log('[DEBUG] Initializing S10 record for leader...')
-                        const { data: { user } } = await supabase.auth.getUser()
-                        let numericCreatorId = 1
-                        if (user?.email) {
-                            const { data: profile } = await supabase.from('usuarios').select('id').eq('correo', user.email).maybeSingle() as any
-                            if (profile?.id) numericCreatorId = profile.id
-                        }
-
-                        const { data: newS10, error: insErr } = await (supabase
-                            .from('s10_habilidades') as any)
-                            .insert({
-                                empleado_id: resolvedId,
-                                cedula: resolvedCedula
-                            })
-                            .select()
-                            .single()
-
-                        if (newS10) {
-                            setS10Data(newS10 as S10Habilidades)
-                        } else if (insErr && (insErr as any).code === '23505') {
-                            // Duplicate key error - it means it was already created. Refetch one last time.
-                            const { data: refetched } = await (supabase
-                                .from('s10_habilidades') as any)
-                                .select('*')
-                                .eq('empleado_id', resolvedId)
-                                .maybeSingle()
-                            if (refetched) setS10Data(refetched as S10Habilidades)
-                        } else if (insErr) {
-                            console.error('[DEBUG] S10 initialization failed:', insErr.message)
-                        }
-                    }
-                } catch (s10Err) {
-                    console.warn('[DEBUG] S10 logic skipped due to error:', s10Err)
-                }
-            }
-
             // 4. Activity Data
             const [{ data: auditData }, { data: reentrenData }] = await Promise.all([
                 supabase.from('auditorias').select('*').eq('empleado_id', resolvedId).order('created_at', { ascending: false }),
@@ -294,8 +237,6 @@ export default function EntrenamientoDetailPage() {
             </div>
         )
     }
-
-    const isLeader = ['jefe', 'director', 'coordinador', 'gerente', 'supervisor', 'lider', 'líder', 'facilitador'].some(role => (empleadoData.cargo || '').toLowerCase().includes(role))
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">
@@ -398,7 +339,6 @@ export default function EntrenamientoDetailPage() {
                         empleado={empleadoData}
                         onUpdate={fetchEmpleadoData}
                         currentUser={currentUser || { id: 1 }}
-                        s10Data={s10Data}
                     />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
