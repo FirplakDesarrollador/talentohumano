@@ -5,6 +5,9 @@ export function createClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+    // LOG TEMPORAL PARA DEPUREACIÓN EN VERCEL
+    console.log('DEBUG - Supabase URL:', supabaseUrl)
+
     if (!supabaseUrl || !supabaseAnonKey) {
         throw new Error(
             'Las variables de entorno de Supabase no están configuradas. ' +
