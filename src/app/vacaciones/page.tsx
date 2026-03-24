@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
+import { VacacionesDetalle } from '@/components/Vacaciones/VacacionesDetalle'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ export default function VacacionesPage() {
     const [historyLoading, setHistoryLoading] = useState(false)
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [showInstructions, setShowInstructions] = useState(false)
+    const [selectedSolicitud, setSelectedSolicitud] = useState<any>(null)
 
     // Form state for new request
     const [formData, setFormData] = useState({
@@ -649,6 +651,7 @@ export default function VacacionesPage() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-black text-xs"
+                                                                onClick={() => setSelectedSolicitud(solicitud)}
                                                             >
                                                                 DETALLE
                                                                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -665,6 +668,14 @@ export default function VacacionesPage() {
                     </div>
                 )}
             </main>
+
+            {selectedSolicitud && (
+                <VacacionesDetalle
+                    solicitud={selectedSolicitud}
+                    onClose={() => setSelectedSolicitud(null)}
+                    onUpdate={fetchHistory}
+                />
+            )}
         </div>
     )
 }

@@ -37,7 +37,7 @@ export default function BuscadorHiluPage() {
 
             if (plantasData) {
                 const uniquePlantas = Array.from(new Set(plantasData.map(p => p.planta).filter(Boolean))) as string[]
-                setPlantas(uniquePlantas.sort())
+                setPlantas(uniquePlantas.filter(p => !p.toLowerCase().includes('comercial')).sort())
             }
         } catch (error) {
             console.error('Error fetching filters:', error)
@@ -50,6 +50,7 @@ export default function BuscadorHiluPage() {
             let query = supabase
                 .from('query_estado_hilu')
                 .select('*')
+                .not('planta', 'ilike', '%comercial%')
 
             // Filter by Status
             if (selectedStatus !== 'all') {
@@ -63,7 +64,12 @@ export default function BuscadorHiluPage() {
 
             // Search by name or cedula
             if (busqueda) {
-                query = query.or(`nombreCompleto.ilike.%${busqueda}%,id.eq.${busqueda}`)
+                const isNumeric = /^\d+$/.test(busqueda)
+                if (isNumeric) {
+                    query = query.or(`nombreCompleto.ilike.%${busqueda}%,id.eq.${busqueda}`)
+                } else {
+                    query = query.ilike('nombreCompleto', `%${busqueda}%`)
+                }
             }
 
             // Filter out management positions (same logic as Flutter code)

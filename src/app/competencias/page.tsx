@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Award, Plus, ArrowLeft } from 'lucide-react'
 import type { Database } from '@/lib/supabase/types'
 
-type CompetenciaEmpleado = Database['public']['Tables']['competencia_empleado']['Row']
+type CompetenciaEmpleado = any // Cambiado temporalmente de Database['public']['Tables']['competencia_empleado']['Row']
 
 export default function CompetenciasPage() {
     const [competencias, setCompetencias] = useState<CompetenciaEmpleado[]>([])
@@ -34,7 +34,7 @@ export default function CompetenciasPage() {
         setLoading(true)
         try {
             const { data, error } = await supabase
-                .from('competencia_empleado')
+                .from('ComptEmpleados' as any)
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(50)
@@ -219,39 +219,48 @@ export default function CompetenciasPage() {
                         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {competencias.map((comp) => (
-                            <Card key={comp.id} className="hover:shadow-lg transition-shadow">
-                                <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-                                                <Award className="h-6 w-6 text-white" />
-                                            </div>
-                                            <div>
-                                                <CardTitle className="text-lg">{comp.nombre}</CardTitle>
-                                                <CardDescription>
-                                                    {comp.cargo} - Cédula: {comp.cedula}
-                                                </CardDescription>
-                                            </div>
+                    <div className="grid grid-cols-1 gap-6">
+                        {competencias.map((compRow) => (
+                            <Card key={compRow.id} className="overflow-hidden border-none shadow-md bg-white">
+                                <CardHeader className="bg-gray-50/50 pb-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-[#2d4356] flex items-center justify-center text-white">
+                                            <Award className="h-6 w-6" />
                                         </div>
-                                        <div className="text-right">
-                                            <div className={`inline-block px-3 py-1 rounded-full text-white text-sm ${getNivelColor(comp.nivel, comp.nivel_esperado)}`}>
-                                                {comp.nivel} / {comp.nivel_esperado}
-                                            </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-bold text-[#2d4356]">
+                                                {compRow.nombre}
+                                            </CardTitle>
+                                            <CardDescription className="text-sm font-medium text-gray-500">
+                                                {compRow.cargo} • Cédula: {compRow.cedula}
+                                            </CardDescription>
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-2">
-                                        <p className="text-sm">
-                                            <span className="font-medium">Competencia:</span> {comp.comp_nombre} ({comp.comp_codigo})
-                                        </p>
-                                        {comp.comentario && (
-                                            <p className="text-sm text-gray-600">
-                                                <span className="font-medium">Comentario:</span> {comp.comentario}
-                                            </p>
-                                        )}
+                                <CardContent className="pt-6">
+                                    <div className="space-y-6">
+                                        {Object.keys(compRow.competencias || {}).map((compKey) => {
+                                            const nivel = compRow.nivel?.[compKey] || 0;
+                                            const esperado = compRow.nivel_esperado?.[compKey] || 4;
+                                            const color = getNivelColor(nivel, esperado);
+                                            
+                                            return (
+                                                <div key={compKey} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <h4 className="font-bold text-gray-700">{compKey}</h4>
+                                                        <div className={`px-3 py-1 rounded-full text-xs font-bold text-white ${color}`}>
+                                                            {nivel} / {esperado}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {compRow.comentario?.[compKey] && (
+                                                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg italic">
+                                                            "{compRow.comentario[compKey]}"
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </CardContent>
                             </Card>
