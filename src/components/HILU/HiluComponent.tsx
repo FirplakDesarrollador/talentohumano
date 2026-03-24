@@ -213,7 +213,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     // PHASE H RENDER
     const renderFaseH = () => {
         if (!localEmpleado.fh_id) return <div className="p-8 text-center text-gray-500">Fase no iniciada</div>
-        const progress = parseFloat(((localEmpleado.fh_avance || 0) * 100).toFixed(0))
+        const checks = [
+            localEmpleado.fh_induccion_th,
+            localEmpleado.fh_aros_seguridad,
+            localEmpleado.fh_induccion_planta,
+            localEmpleado.fh_puesto_piloto,
+            localEmpleado.fh_observacion_puesto,
+            localEmpleado.fh_explicacion_puesto
+        ]
+        const completed = checks.filter(Boolean).length
+        const progress = Math.round((completed / 6) * 100)
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa]">
@@ -379,8 +388,25 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
     const renderFaseI = () => {
         if (!localEmpleado.fi_id) return <div className="p-8 text-center text-gray-500">Fase no iniciada</div>
-        const progress = parseFloat(((localEmpleado.fi_avance || 0) * 100).toFixed(0))
         const role = getRoleType(localEmpleado.cargo)
+        let progress = 0
+        if (role === 'OPERARIO') {
+            const checks = [
+                localEmpleado.fi_titular,
+                localEmpleado.fi_estandar_hdt,
+                localEmpleado.fi_entrenamiento_calidad,
+                localEmpleado.fi_hace_acompanado,
+                localEmpleado.fi_hace_solo
+            ]
+            const completed = checks.filter(Boolean).length
+            progress = Math.round((completed / 5) * 100)
+        } else {
+            const availableTools = role === 'SUPERVISOR'
+                ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+                : TOOLS_LIST.filter(t => ![''].includes(t))
+            const completedTools = availableTools.filter(t => isToolComplete('I', t)).length
+            progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
+        }
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
@@ -448,8 +474,23 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
     const renderFaseL = () => {
         if (!localEmpleado.fl_id) return <div className="p-8 text-center text-gray-500">Fase no iniciada</div>
-        const progress = parseFloat(((localEmpleado.fl_avance || 0) * 100).toFixed(0))
         const role = getRoleType(localEmpleado.cargo)
+        let progress = 0
+        if (role === 'OPERARIO') {
+            const checks = [
+                localEmpleado.fl_cumple_calidad,
+                localEmpleado.fl_cumple_estandar,
+                localEmpleado.fl_cumple_tiempo
+            ]
+            const completed = checks.filter(Boolean).length
+            progress = Math.round((completed / 3) * 100)
+        } else {
+            const availableTools = role === 'SUPERVISOR'
+                ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+                : TOOLS_LIST.filter(t => ![''].includes(t))
+            const completedTools = availableTools.filter(t => isToolComplete('L', t)).length
+            progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
+        }
         // Phase L is disabled until ALL phase I checks are complete (OPERARIO only)
         const faseIComplete = !!(localEmpleado.fi_titular && localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
 
@@ -510,8 +551,23 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
     const renderFaseU = () => {
         if (!localEmpleado.fu_id) return <div className="p-8 text-center text-gray-500">Fase no iniciada</div>
-        const progress = parseFloat(((localEmpleado.fu_avance || 0) * 100).toFixed(0))
         const role = getRoleType(localEmpleado.cargo)
+        let progress = 0
+        if (role === 'OPERARIO') {
+            const checks = [
+                localEmpleado.fu_capacitado_para_entrenar,
+                localEmpleado.fu_entrena_solo,
+                localEmpleado.fu_acompana_entrenamientos
+            ]
+            const completed = checks.filter(Boolean).length
+            progress = Math.round((completed / 3) * 100)
+        } else {
+            const availableTools = role === 'SUPERVISOR'
+                ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+                : TOOLS_LIST.filter(t => ![''].includes(t))
+            const completedTools = availableTools.filter(t => isToolComplete('U', t)).length
+            progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
+        }
         // Phase U is disabled until ALL phase L checks are complete (OPERARIO only)
         const faseLComplete = !!(localEmpleado.fl_cumple_calidad && localEmpleado.fl_cumple_estandar && localEmpleado.fl_cumple_tiempo)
 
