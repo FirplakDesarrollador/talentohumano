@@ -255,7 +255,7 @@ export default function CompetenciasPage() {
                                                     
                                                     {compRow.comentario?.[compKey] && (
                                                         <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg italic">
-                                                            "{compRow.comentario[compKey]}"
+                                                            &quot;{compRow.comentario[compKey]}&quot;
                                                         </p>
                                                     )}
                                                 </div>
