@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ export default function EntrenamientoDetailPage() {
     const [generatingPdf, setGeneratingPdf] = useState(false)
     const [currentUser, setCurrentUser] = useState<{ id: number } | null>(null)
 
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchEmpleadoData = useCallback(async (showLoader = false) => {
         if (!paramId) return

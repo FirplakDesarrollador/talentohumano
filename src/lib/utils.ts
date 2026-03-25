@@ -566,3 +566,30 @@ export function recargarApp(): void {
         window.location.reload();
     }
 }
+
+/**
+ * Safely parses a JSON string if it looks like JSON.
+ */
+export function safeParseJson(value: any): any {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    if (!((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}')))) {
+        return value;
+    }
+    try {
+        return JSON.parse(trimmed);
+    } catch (e) {
+        return value;
+    }
+}
+
+/**
+ * Formats a motivo value that might be a JSON string/array into a plain string.
+ */
+export function formatMotivo(motivo: any): string {
+    const parsed = safeParseJson(motivo);
+    if (Array.isArray(parsed)) {
+        return parsed.join(', ');
+    }
+    return String(parsed || '');
+}

@@ -83,7 +83,7 @@ export default function MenuPage() {
         },
         {
             title: 'Desempeño',
-            href: '/competencias',
+            href: '/desempeno',
             icon: Component,
         },
     ]

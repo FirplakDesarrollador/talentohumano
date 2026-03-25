@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { ProcesoCard } from '@/components/Disciplinarios/ProcesoCard'
@@ -78,26 +77,24 @@ export default function DetalleProcesosDisciplinarioPage() {
     }, [fetchData])
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
-
-            {/* Compact Header */}
-            <div className="bg-[#1D3557] h-14 flex items-center px-6 shadow-md text-white sticky top-0 md:top-16 z-40 transition-all">
+        <div className="min-h-screen bg-[#F1F4F8] flex flex-col">
+            {/* Standard AppBar */}
+            <div className="bg-[#2d4356] h-14 flex items-center px-4 shadow-md text-white sticky top-0 z-50">
                 <button
                     onClick={() => router.back()}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors mr-4"
+                    className="p-1 hover:bg-white/10 rounded-full transition-colors mr-2"
                 >
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <div className="flex-1 text-center font-black text-base uppercase tracking-widest hidden sm:block">
+                <div className="flex-1 text-center font-medium text-lg">
                     Expediente Disciplinario
                 </div>
                 <Button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="bg-white text-[#1D3557] hover:bg-blue-50 h-9 px-4 rounded-lg font-bold uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-sm border-none"
+                    className="bg-white/10 hover:bg-white/20 text-white h-9 px-4 rounded-full font-bold uppercase text-[10px] tracking-wider flex items-center gap-2 border border-white/20 shadow-none"
                 >
-                    <Plus className="h-4 w-4 text-[#1D3557]" />
-                    <span>Nuevo Registro</span>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Nuevo Registro</span>
                 </Button>
             </div>
 

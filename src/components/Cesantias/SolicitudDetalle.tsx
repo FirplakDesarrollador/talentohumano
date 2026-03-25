@@ -18,6 +18,7 @@ import {
     ExternalLink,
     Paperclip
 } from 'lucide-react'
+import { formatMotivo } from '@/lib/utils'
 
 interface SolicitudDetalleProps {
     solicitud: any
@@ -171,7 +172,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                         <div className="md:col-span-2 space-y-1 pt-2">
                             <p className="text-[10px] font-bold text-gray-400 uppercase">Motivo del Retiro</p>
                             <p className="text-sm text-gray-700 leading-relaxed font-medium bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                {solicitud.Motivo}
+                                {formatMotivo(solicitud.Motivo)}
                             </p>
                         </div>
 

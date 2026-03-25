@@ -1,0 +1,4 @@
+indicadores COLS: empty
+empleado_indicadores COLS: id, cedula_empleado, nombre_empleado, nombre_indicador, tipo, meta, activo, created_at, updated_at
+empleado_indicador_registro ERROR 42P01
+empleado_indicador_meta COLS: empty
