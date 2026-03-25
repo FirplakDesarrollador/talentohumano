@@ -111,7 +111,7 @@ export default function DesempenoDetailPage() {
             case 'competencias':
                 return <CompetenciasTab cedula={cedula} nombre={nombreEmpleado} cargo={cargo} />
             case 'kpis':
-                return <KPIView cedula={cedula} />
+                return <KPIView cedula={cedula} nombre={nombreEmpleado} />
             case 'planner':
                 return <PlannerView />
             case 'kanban':
