@@ -1,0 +1,4 @@
+src/app/buscador-hilu/page.tsx(43,37): error TS2339: Property 'jefe' does not exist on type 'never'.
+src/app/buscador-hilu/page.tsx(58,37): error TS2339: Property 'planta' does not exist on type 'never'.
+src/app/buscador-hilu/page.tsx(208,33): error TS2322: Type '{ id: string; checked: boolean; onCheckedChange: Dispatch<SetStateAction<boolean>>; }' is not assignable to type 'IntrinsicAttributes & InputHTMLAttributes<HTMLInputElement> & RefAttributes<HTMLInputElement>'.
+  Property 'onCheckedChange' does not exist on type 'IntrinsicAttributes & InputHTMLAttributes<HTMLInputElement> & RefAttributes<HTMLInputElement>'.

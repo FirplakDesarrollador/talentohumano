@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
     console.log('Middleware - User:', user ? user.email : 'No user')
 
     // Public routes logic
-    const publicRoutes = ['/login', '/auth/callback']
+    const publicRoutes = ['/login', '/auth/callback', '/forgot-password', '/reset-password']
     const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
     if (!user && !isPublicRoute) {

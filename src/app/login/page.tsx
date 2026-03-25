@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
@@ -122,12 +123,12 @@ export default function LoginPage() {
                         </Button>
 
                         <div className="text-center">
-                            <button
-                                type="button"
+                            <Link
+                                href="/forgot-password"
                                 className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
                             >
                                 ¿Olvidaste tu contraseña?
-                            </button>
+                            </Link>
                         </div>
                     </form>
                 </div>

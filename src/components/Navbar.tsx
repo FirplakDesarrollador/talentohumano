@@ -24,7 +24,7 @@ export function Navbar() {
         { href: '/buscador-hilu', label: 'Empleados' },
         { href: '/aumentossalariales', label: 'Aumentos' },
         { href: '/procesos-disciplinarios', label: 'Disciplinarios' },
-        { href: '/competencias', label: 'Competencias' },
+        { href: '/desempeno', label: 'Desempeño' },
         { href: '/indicadores', label: 'Indicadores' },
     ]
 

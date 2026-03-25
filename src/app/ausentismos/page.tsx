@@ -15,6 +15,7 @@ import {
     FileUp
 } from 'lucide-react'
 import { AusentismoCard, type Ausentismo } from '@/components/Ausentismos/AusentismoCard'
+import { AusentismoRow } from '@/components/Ausentismos/AusentismoRow'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { subMonths, isAfter, parse, isValid } from 'date-fns'
@@ -147,57 +148,58 @@ export default function AusentismosPage() {
 
             <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* Actions & Filters */}
-                <div className="flex flex-col lg:flex-row gap-4 mb-8">
-                    <div className="flex-1 flex flex-col md:flex-row gap-4">
+                <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-col gap-6 mb-8">
+                    <div className="flex flex-col lg:flex-row gap-4">
                         <div className="flex-1 relative">
-                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                                <Search className="h-5 w-5 text-gray-400" />
-                            </div>
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                             <Input
                                 placeholder="Buscar por nombre o motivo..."
                                 value={busqueda}
                                 onChange={(e) => setBusqueda(e.target.value)}
-                                className="pl-12 h-14 bg-white border-gray-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500/20 text-base"
+                                className="pl-12 h-12 bg-gray-50/50 border-none rounded-2xl focus-visible:ring-1 focus-visible:ring-blue-100 transition-all font-medium"
                             />
-                            {busqueda && (
-                                <button
-                                    onClick={() => setBusqueda('')}
-                                    className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-                                >
-                                    <Eraser className="h-5 w-5" />
-                                </button>
-                            )}
                         </div>
-
-                        {/* FF-Ported Toggle */}
-                        <div className="flex items-center gap-3 bg-white px-6 rounded-2xl border border-gray-100 shadow-sm h-14">
-                            <Switch
-                                id="recent-filter"
-                                checked={filtroReciente}
-                                onCheckedChange={setFiltroReciente}
-                                className="data-[state=checked]:bg-blue-600"
-                            />
-                            <Label htmlFor="recent-filter" className="text-sm font-bold text-gray-600 cursor-pointer whitespace-nowrap">
-                                Últimos 5 meses
-                            </Label>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                        <Link href="/ausentismos/registro-masivo">
-                            <Button className="h-14 px-6 bg-white hover:bg-gray-50 text-blue-900 border-2 border-blue-900 font-bold rounded-2xl shadow-sm flex gap-2">
-                                <FileUp className="h-5 w-5" />
-                                <span className="hidden sm:inline">Registro Masivo</span>
+                        <div className="flex gap-2">
+                            <Button
+                                variant={!filtroReciente ? 'default' : 'outline'}
+                                onClick={() => setFiltroReciente(false)}
+                                className="h-12 rounded-2xl px-6 font-bold text-xs tracking-widest uppercase transition-all"
+                            >
+                                Todos
                             </Button>
-                        </Link>
-                        <Button
-                            onClick={() => router.push('/ausentismos/nuevo')}
-                            className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg flex gap-2 transition-all hover:scale-105 active:scale-95"
-                        >
-                            <Plus className="h-5 w-5" />
-                            <span>Crear Ausentismo</span>
-                        </Button>
+                            <Button
+                                variant={filtroReciente ? 'default' : 'outline'}
+                                onClick={() => setFiltroReciente(true)}
+                                className="h-12 rounded-2xl px-6 font-bold text-xs tracking-widest uppercase transition-all"
+                            >
+                                Últimos 5 Meses
+                            </Button>
+                        </div>
                     </div>
+                </div>
+
+                {/* List Header */}
+                <div className="hidden md:flex px-4 py-2 mb-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">
+                    <div className="w-1/3 min-w-[200px]">Empleado / Cargo</div>
+                    <div className="w-32">Motivo</div>
+                    <div className="flex-1">Periodo</div>
+                    <div className="shrink-0 w-32 text-right pr-6">Duración</div>
+                </div>
+
+                <div className="flex justify-end gap-3 mb-6">
+                    <Link href="/ausentismos/registro-masivo">
+                        <Button className="h-12 px-6 bg-white hover:bg-gray-50 text-blue-900 border-2 border-blue-900 font-bold rounded-2xl shadow-sm flex gap-2">
+                            <FileUp className="h-5 w-5" />
+                            <span className="hidden sm:inline">Registro Masivo</span>
+                        </Button>
+                    </Link>
+                    <Button
+                        onClick={() => router.push('/ausentismos/nuevo')}
+                        className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg flex gap-2 transition-all hover:scale-105 active:scale-95"
+                    >
+                        <Plus className="h-5 w-5" />
+                        <span>Crear Ausentismo</span>
+                    </Button>
                 </div>
 
                 {/* List */}
@@ -207,9 +209,9 @@ export default function AusentismosPage() {
                         <p className="text-gray-500 font-medium animate-pulse">Cargando registros...</p>
                     </div>
                 ) : filteredAusentismos.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredAusentismos.map((a) => (
-                            <AusentismoCard key={a.id} ausentismo={a} />
+                    <div className="flex flex-col gap-3">
+                        {filteredAusentismos.map((a, index) => (
+                            <AusentismoRow key={`${a.id}-${index}`} ausentismo={a} />
                         ))}
                     </div>
                 ) : (

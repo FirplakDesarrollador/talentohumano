@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation'
 export default function AumentosSalarialesPage() {
     const [cedula, setCedula] = useState('')
     const [empleado, setEmpleado] = useState<any>(null)
+    const [searchResults, setSearchResults] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
     const [activeTab, setActiveTab] = useState<'create' | 'history'>('create')
     const [approvers, setApprovers] = useState<any[]>([])
@@ -107,37 +108,122 @@ export default function AumentosSalarialesPage() {
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault()
-        if (!cedula) return
+        const cleanQuery = cedula.trim()
+        if (!cleanQuery) return
 
         setLoading(true)
         setEmpleado(null)
+        setSearchResults([])
         setError(null)
         setSuccess(null)
 
         try {
-            const { data, error } = await (supabase
-                .from('empleados') as any)
-                .select('*')
-                .eq('id', parseInt(cedula))
-                .single()
+            let combinedData: any[] = []
+            
+            // 1. Siempre buscamos por nombre (ilike)
+            try {
+                const { data: nameData, error: nameError } = await (supabase.from('empleados') as any)
+                    .select('*')
+                    .ilike('nombreCompleto', `%${cleanQuery}%`)
+                
+                if (nameError) console.warn('Name search error:', nameError)
+                if (nameData) combinedData = [...nameData]
+            } catch (e) {
+                console.warn('Name search exception:', e)
+            }
 
-            if (error) throw new Error('Empleado no encontrado')
-            setEmpleado(data)
+            // 2. Si es numérico, también buscamos por ID o Cédula
+            if (/^\d+$/.test(cleanQuery)) {
+                try {
+                    const searchNum = parseInt(cleanQuery)
+                    
+                    // Buscamos por ID
+                    const { data: idData } = await (supabase.from('empleados') as any)
+                        .select('*')
+                        .eq('id', searchNum)
+                    
+                    if (idData && idData.length > 0) {
+                        idData.forEach((item: any) => {
+                            if (item && item.id && !combinedData.some(ex => ex.id === item.id)) {
+                                combinedData.push(item)
+                            }
+                        })
+                    }
 
+                    // Buscamos por Cédula
+                    const { data: cedData } = await (supabase.from('empleados') as any)
+                        .select('*')
+                        .eq('cedula', searchNum)
+                    
+                    if (cedData && cedData.length > 0) {
+                        cedData.forEach((item: any) => {
+                            if (item && item.id && !combinedData.some(ex => ex.id === item.id)) {
+                                combinedData.push(item)
+                            }
+                        })
+                    }
+
+                    // Por si acaso la cédula está guardada como texto
+                    const { data: cedTextData } = await (supabase.from('empleados') as any)
+                        .select('*')
+                        .eq('cedula', cleanQuery)
+
+                    if (cedTextData && cedTextData.length > 0) {
+                        cedTextData.forEach((item: any) => {
+                            if (item && item.id && !combinedData.some(ex => ex.id === item.id)) {
+                                combinedData.push(item)
+                            }
+                        })
+                    }
+                } catch (e) {
+                    console.warn('Numeric search exception:', e)
+                }
+            }
+
+            if (combinedData.length > 0) {
+                if (combinedData.length === 1) {
+                    await selectEmpleado(combinedData[0])
+                } else {
+                    setSearchResults(combinedData)
+                }
+            } else {
+                throw new Error('No se encontró ningún empleado con ese nombre o cédula')
+            }
+        } catch (err: any) {
+            console.error('Search full error:', err)
+            const msg = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
+            setError(`Error: ${msg !== '{}' ? msg : 'Error inesperado en la base de datos'}`)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const selectEmpleado = async (emp: any) => {
+        if (!emp) return
+        setEmpleado(emp)
+        setSearchResults([])
+        
+        // Actualizar el campo de búsqueda con la cédula del seleccionado
+        const idDisplay = emp.cedula?.toString() || emp.id?.toString() || ''
+        setCedula(idDisplay)
+        
+        setLoading(true)
+        setError(null)
+
+        try {
             // Check for pending requests
             const { data: pending } = await (supabase
                 .from('aumentos_salariales') as any)
                 .select('id')
-                .eq('empleado_id', (data as any).id)
+                .eq('empleado_id', emp.id)
                 .eq('estado', 'Pendiente')
                 .limit(1)
 
             if (pending && pending.length > 0) {
                 setError('¡El empleado ya tiene una solicitud pendiente, se debe completar para poder crear otra!')
             }
-
         } catch (err: any) {
-            setError(err.message)
+            console.error('Error checking pending:', err)
         } finally {
             setLoading(false)
         }
@@ -146,6 +232,7 @@ export default function AumentosSalarialesPage() {
     const resetSearch = () => {
         setCedula('')
         setEmpleado(null)
+        setSearchResults([])
         setError(null)
         setSuccess(null)
         setHistory([])
@@ -250,11 +337,11 @@ export default function AumentosSalarialesPage() {
                     <CardContent className="p-6">
                         <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 items-end">
                             <div className="flex-1 space-y-2">
-                                <label className="text-sm font-semibold text-[#716E6A]">Cédula del Empleado</label>
+                                <label className="text-sm font-semibold text-[#716E6A]">Búsqueda de Empleado</label>
                                 <div className="relative">
                                     <Input
-                                        type="number"
-                                        placeholder="Ingrese cédula..."
+                                        type="text"
+                                        placeholder="Cédula o nombre..."
                                         className="pl-10 h-12"
                                         value={cedula}
                                         onChange={(e) => setCedula(e.target.value)}
@@ -280,6 +367,27 @@ export default function AumentosSalarialesPage() {
                                 </Button>
                             </div>
                         </form>
+
+                        {/* Search Results List */}
+                        {searchResults.length > 0 && !empleado && (
+                            <div className="mt-4 border rounded-lg divide-y bg-gray-50 max-h-60 overflow-y-auto shadow-inner">
+                                {searchResults.map((result) => (
+                                    <button
+                                        key={result.id}
+                                        onClick={() => selectEmpleado(result)}
+                                        className="w-full text-left p-3 hover:bg-blue-50 transition-colors flex items-center justify-between group"
+                                    >
+                                        <div>
+                                            <p className="font-semibold text-gray-800">{result.nombreCompleto}</p>
+                                            <p className="text-xs text-gray-500">
+                                                ID: {result.cedula || result.id} • {result.cargo || 'Sin cargo'}
+                                            </p>
+                                        </div>
+                                        <UserCheck className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

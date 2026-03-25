@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { SolicitudDetalle } from '@/components/Cesantias/SolicitudDetalle'
+import { formatMotivo } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,7 +92,7 @@ export default function CesantiasPage() {
                 }
             }
             if (filterTipo) query = query.eq('Tipo de Cesantias', filterTipo)
-            if (filterMotivo) query = query.eq('Motivo', filterMotivo)
+            if (filterMotivo) query = query.ilike('Motivo', `%${filterMotivo}%`)
 
             // Access Control: Non-admins can only see their own requests
             if (!isAdmin && currentUser?.correo) {
@@ -540,7 +541,7 @@ export default function CesantiasPage() {
                                                             <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">{item["Tipo de Cesantias"]}</span>
                                                         </div>
                                                         <p className="text-sm text-gray-500">C.C. {item.Cedula} • {new Date(item.Created).toLocaleDateString()}</p>
-                                                        <p className="text-xs text-gray-600 font-medium">Motivo: {item.Motivo}</p>
+                                                        <p className="text-xs text-gray-600 font-medium">Motivo: {formatMotivo(item.Motivo)}</p>
                                                     </div>
                                                     <div className="flex flex-row items-center gap-4 text-right">
                                                         <div className="space-y-1">
