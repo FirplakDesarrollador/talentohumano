@@ -55,12 +55,32 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                             <h3 className="text-sm font-bold text-gray-700 truncate max-w-[180px]" title={empleado.nombreCompleto}>
                                 {empleado.nombreCompleto}
                             </h3>
-                            <div className="flex items-center gap-1">
-                                <span className={`text-base font-black ${empleado.fh_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>H</span>
-                                <span className={`text-base font-black ${empleado.fi_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>I</span>
-                                <span className={`text-base font-black ${empleado.fl_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>L</span>
-                                <span className={`text-base font-black ${empleado.fu_completado ? 'text-[#a1eebc]' : 'text-gray-300'}`}>U</span>
-                                {isAllHiluComplete && <CheckCircle2 className="h-4 w-4 text-[#a1eebc] ml-1" />}
+                            <div className="flex items-center gap-1.5 mt-1">
+                                {['H', 'I', 'L', 'U'].map((letter) => {
+                                    const fieldPrefix = letter.toLowerCase();
+                                    const isDone = !!(empleado as any)[`f${fieldPrefix}_completado`];
+                                    
+                                    // Active phase logic: The first one not done
+                                    const prevLetter = letter === 'H' ? null : ['H', 'I', 'L', 'U'][['H', 'I', 'L', 'U'].indexOf(letter) - 1];
+                                    const isPrevDone = prevLetter ? !!(empleado as any)[`f${prevLetter.toLowerCase()}_completado`] : true;
+                                    const isActive = !isDone && isPrevDone;
+
+                                    return (
+                                        <span 
+                                            key={letter}
+                                            className={`text-lg font-black transition-all ${
+                                                isDone 
+                                                ? 'text-[#22c55e] drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' 
+                                                : isActive 
+                                                    ? 'text-[#3b82f6] animate-pulse underline decoration-2 underline-offset-4' 
+                                                    : 'text-gray-300 opacity-40'
+                                            }`}
+                                        >
+                                            {letter}
+                                        </span>
+                                    );
+                                })}
+                                {isAllHiluComplete && <CheckCircle2 className="h-4 w-4 text-[#22c55e] ml-1" />}
                             </div>
                         </div>
                     </div>

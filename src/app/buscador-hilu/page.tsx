@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
@@ -25,7 +25,7 @@ export default function BuscadorHiluPage() {
     const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
     const [selectedStatus, setSelectedStatus] = useState<string>('activo') // 'all', 'activo', 'inactivo'
 
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchFilters = useCallback(async () => {
         try {
@@ -86,6 +86,15 @@ export default function BuscadorHiluPage() {
             setLoading(false)
         }
     }, [busqueda, selectedPlanta, selectedStatus, supabase])
+
+    useEffect(() => {
+        const handleFocus = () => {
+            fetchFilters()
+            fetchEmpleados()
+        }
+        window.addEventListener('focus', handleFocus)
+        return () => window.removeEventListener('focus', handleFocus)
+    }, [fetchFilters, fetchEmpleados])
 
     useEffect(() => {
         fetchFilters()
