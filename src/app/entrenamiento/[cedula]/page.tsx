@@ -43,6 +43,9 @@ export default function EntrenamientoDetailPage() {
         try {
             const parsedParam = parseInt(paramId)
             console.log('[DEBUG] Training Detail Request:', { paramId, parsedParam })
+            
+            // Delay to ensure DB views are synced before re-fetch
+            await new Promise(r => setTimeout(r, 250))
 
             // 1. Resolve Identity
             let emp: any = null
@@ -320,11 +323,44 @@ export default function EntrenamientoDetailPage() {
 
                             <div className="flex gap-4 z-10 overflow-x-auto max-w-full py-2 px-1">
                                 {['H', 'I', 'L', 'U'].map(f => {
-                                    const completado = (empleadoData as any)[`f${f.toLowerCase()}_completado`]
+                                    const fieldPrefix = f.toLowerCase();
+                                    const dbCompletado = (empleadoData as any)[`f${fieldPrefix}_completado`];
+                                    
+                                    // Robust check for Stage H
+                                    let isStageDone = dbCompletado;
+                                    if (f === 'H' && !isStageDone) {
+                                        isStageDone = !!(
+                                            empleadoData.fh_induccion_th && 
+                                            empleadoData.fh_aros_seguridad && 
+                                            empleadoData.fh_induccion_planta && 
+                                            empleadoData.fh_puesto_piloto && 
+                                            empleadoData.fh_observacion_puesto && 
+                                            empleadoData.fh_explicacion_puesto &&
+                                            empleadoData.fh_firma_empleado &&
+                                            empleadoData.fh_firma_supervisor
+                                        );
+                                    }
+
+                                    // Determine active phase
+                                    // H is active if not done. I is active if H is done and I is not, etc.
+                                    const prevPhase = f === 'H' ? null : ['H', 'I', 'L', 'U'][['H', 'I', 'L', 'U'].indexOf(f) - 1];
+                                    const prevDone = prevPhase ? (empleadoData as any)[`f${prevPhase.toLowerCase()}_completado`] : true;
+                                    const isActive = !isStageDone && prevDone;
+
                                     return (
-                                        <div key={f} className={`flex flex-col items-center justify-center h-16 w-20 rounded-2xl transition-all duration-500 border-2 ${completado ? 'bg-green-500/20 border-green-500 shadow-green-500/20' : 'bg-white/5 border-white/10 opacity-30 shadow-none'}`}>
-                                            <span className={`text-xl font-black ${completado ? 'text-green-400' : 'text-white'}`}>{f}</span>
-                                            {completado && <div className="h-1 w-8 bg-green-500 rounded-full mt-1 animate-pulse" />}
+                                        <div 
+                                            key={f} 
+                                            className={`flex flex-col items-center justify-center h-16 w-20 rounded-2xl transition-all duration-500 border-2 ${
+                                                isStageDone 
+                                                ? 'bg-green-500/20 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' 
+                                                : isActive 
+                                                    ? 'bg-blue-600/20 border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.3)] animate-pulse'
+                                                    : 'bg-white/5 border-white/10 opacity-30 shadow-none'
+                                            }`}
+                                        >
+                                            <span className={`text-xl font-black ${isStageDone ? 'text-green-400' : isActive ? 'text-blue-300' : 'text-white'}`}>{f}</span>
+                                            {isStageDone && <div className="h-1.5 w-10 bg-green-500 rounded-full mt-1.5" />}
+                                            {isActive && <div className="h-1 w-8 bg-blue-400 rounded-full mt-1.5 opacity-50" />}
                                         </div>
                                     )
                                 })}
