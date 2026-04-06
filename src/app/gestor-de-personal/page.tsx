@@ -138,7 +138,7 @@ export default function GestorPersonalPage() {
 
             // Database sorting
             if (orderDate) {
-                query = query.order('primer_ingreso', { ascending: false }) // Show newest first
+                query = query.order('primer_ingreso', { ascending: false, nullsFirst: false }) // Newest first, NULLs last
             } else {
                 query = query.order('nombreCompleto', { ascending: true })
             }
