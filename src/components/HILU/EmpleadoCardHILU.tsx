@@ -60,20 +60,13 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                                     const fieldPrefix = letter.toLowerCase();
                                     const isDone = !!(empleado as any)[`f${fieldPrefix}_completado`];
                                     
-                                    // Active phase logic: The first one not done
-                                    const prevLetter = letter === 'H' ? null : ['H', 'I', 'L', 'U'][['H', 'I', 'L', 'U'].indexOf(letter) - 1];
-                                    const isPrevDone = prevLetter ? !!(empleado as any)[`f${prevLetter.toLowerCase()}_completado`] : true;
-                                    const isActive = !isDone && isPrevDone;
-
                                     return (
                                         <span 
                                             key={letter}
                                             className={`text-lg font-black transition-all ${
                                                 isDone 
                                                 ? 'text-[#22c55e] drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' 
-                                                : isActive 
-                                                    ? 'text-[#3b82f6] animate-pulse underline decoration-2 underline-offset-4' 
-                                                    : 'text-gray-300 opacity-40'
+                                                : 'text-gray-300'
                                             }`}
                                         >
                                             {letter}
