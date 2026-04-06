@@ -32,10 +32,15 @@ type ToolDetails = Record<string, Record<string, boolean>>
 const getRoleType = (cargo: string | null) => {
     if (!cargo) return 'OPERARIO'
     const cargoLower = cargo.toLowerCase()
-    if (cargoLower.includes('director')) return 'DIRECTOR'
-    if (cargoLower.includes('supervisor')) return 'SUPERVISOR'
-    const jefeKeywords = ['jefe', 'coordinador', 'gerente', 'lider', 'líder', 'facilitador']
-    if (jefeKeywords.some(kw => cargoLower.includes(kw))) return 'JEFE'
+    
+    // Grupo 10 Herramientas: Jefes, Gerentes, Directores y Coordinadores
+    const highLevel = ['jefe', 'gerente', 'director', 'coordinador']
+    if (highLevel.some(kw => cargoLower.includes(kw))) return 'JEFE_ALTO'
+    
+    // Grupo 8 Herramientas: Supervisores, Líderes, Facilitadores e Implementadores
+    const midLevel = ['supervisor', 'lider', 'líder', 'facilitador', 'implementador']
+    if (midLevel.some(kw => cargoLower.includes(kw))) return 'SUPERVISOR_MEDIO'
+    
     return 'OPERARIO'
 }
 
@@ -171,9 +176,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             }
         } else {
             // For non-operarios, check if all tools are complete
-            const availableTools = role === 'SUPERVISOR'
+            const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
-                : TOOLS_LIST.filter(t => ![''].includes(t))
+                : TOOLS_LIST
 
             const allToolsDone = availableTools.every(t => isToolComplete(phase as 'I' | 'L' | 'U', t))
             const fieldPrefix = `f${phase.toLowerCase()}`
@@ -215,7 +220,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
     const renderToolGrid = (phase: 'I' | 'L' | 'U') => {
         const role = getRoleType(localEmpleado.cargo)
-        const availableTools = role === 'SUPERVISOR'
+        const availableTools = role === 'SUPERVISOR_MEDIO'
             ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
             : role === 'OPERARIO'
                 ? TOOLS_LIST
@@ -492,9 +497,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             const completed = checks.filter(Boolean).length
             progress = Math.round((completed / 5) * 100)
         } else {
-            const availableTools = role === 'SUPERVISOR'
+            const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
-                : TOOLS_LIST.filter(t => ![''].includes(t))
+                : TOOLS_LIST
             const completedTools = availableTools.filter(t => isToolComplete('I', t)).length
             progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
         }
@@ -583,9 +588,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             const completed = checks.filter(Boolean).length
             progress = Math.round((completed / 3) * 100)
         } else {
-            const availableTools = role === 'SUPERVISOR'
+            const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
-                : TOOLS_LIST.filter(t => ![''].includes(t))
+                : TOOLS_LIST
             const completedTools = availableTools.filter(t => isToolComplete('L', t)).length
             progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
         }
@@ -667,9 +672,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             const completed = checks.filter(Boolean).length
             progress = Math.round((completed / 3) * 100)
         } else {
-            const availableTools = role === 'SUPERVISOR'
+            const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
-                : TOOLS_LIST.filter(t => ![''].includes(t))
+                : TOOLS_LIST
             const completedTools = availableTools.filter(t => isToolComplete('U', t)).length
             progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
         }
