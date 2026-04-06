@@ -42,7 +42,7 @@ export default function GestorPersonalPage() {
     const [selectedJefe, setSelectedJefe] = useState('')
     const [selectedPlanta, setSelectedPlanta] = useState('Todos')
     const [statusActivo, setStatusActivo] = useState(true)
-    const [orderDate, setOrderDate] = useState(false) // false = Name, true = Date
+    const [orderDate, setOrderDate] = useState(true) // Default to Date Descending
 
     // 1. Fetch User and Roles
     useEffect(() => {
