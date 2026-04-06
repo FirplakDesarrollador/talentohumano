@@ -341,26 +341,17 @@ export default function EntrenamientoDetailPage() {
                                         );
                                     }
 
-                                    // Determine active phase
-                                    // H is active if not done. I is active if H is done and I is not, etc.
-                                    const prevPhase = f === 'H' ? null : ['H', 'I', 'L', 'U'][['H', 'I', 'L', 'U'].indexOf(f) - 1];
-                                    const prevDone = prevPhase ? (empleadoData as any)[`f${prevPhase.toLowerCase()}_completado`] : true;
-                                    const isActive = !isStageDone && prevDone;
-
                                     return (
                                         <div 
                                             key={f} 
                                             className={`flex flex-col items-center justify-center h-16 w-20 rounded-2xl transition-all duration-500 border-2 ${
                                                 isStageDone 
                                                 ? 'bg-green-500/20 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' 
-                                                : isActive 
-                                                    ? 'bg-blue-600/20 border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.3)] animate-pulse'
-                                                    : 'bg-white/5 border-white/10 opacity-30 shadow-none'
+                                                : 'bg-white/5 border-white/10 opacity-30 shadow-none'
                                             }`}
                                         >
-                                            <span className={`text-xl font-black ${isStageDone ? 'text-green-400' : isActive ? 'text-blue-300' : 'text-white'}`}>{f}</span>
+                                            <span className={`text-xl font-black ${isStageDone ? 'text-green-400' : 'text-white'}`}>{f}</span>
                                             {isStageDone && <div className="h-1.5 w-10 bg-green-500 rounded-full mt-1.5" />}
-                                            {isActive && <div className="h-1 w-8 bg-blue-400 rounded-full mt-1.5 opacity-50" />}
                                         </div>
                                     )
                                 })}
