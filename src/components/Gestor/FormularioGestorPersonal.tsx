@@ -138,8 +138,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         empresa: '',
         primer_ingreso: '',
         nivel_cargo: '',
-        locker: '',
-        referido: '',
         // Contact
         direccion: '',
         ciudad: '',
@@ -234,8 +232,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         empresa: emp.empresa || '',
                         primer_ingreso: emp.primer_ingreso || '',
                         nivel_cargo: emp.nivelCargo || '',
-                        locker: emp.locker_asignado || '',
-                        referido: '', // No existe en SQL
                         direccion: emp.direccion || '',
                         ciudad: emp.ciudad || '',
                         telefono: emp.telefono || '',
@@ -313,7 +309,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 empresa: formData.empresa || null,
                 primer_ingreso: formData.primer_ingreso || null,
                 nivelCargo: formData.nivel_cargo || null,
-                locker_asignado: formData.locker || null,
                 direccion: formData.direccion || null,
                 ciudad: formData.ciudad || null,
                 telefono: formData.telefono || null,
@@ -578,24 +573,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                 <option key={nivel} value={nivel}>{nivel}</option>
                             ))}
                         </select>
-                    </FormField>
-
-                    <FormField label="Locker Asignado">
-                        <Input
-                            value={formData.locker}
-                            onChange={(e) => updateField('locker', e.target.value)}
-                            placeholder="Número de locker"
-                            className={inputClass}
-                        />
-                    </FormField>
-
-                    <FormField label="Referido Por">
-                        <Input
-                            value={formData.referido}
-                            onChange={(e) => updateField('referido', e.target.value)}
-                            placeholder="Nombre de quien lo refirió"
-                            className={inputClass}
-                        />
                     </FormField>
                 </div>
 
