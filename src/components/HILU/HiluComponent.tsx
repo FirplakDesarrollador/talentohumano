@@ -12,6 +12,7 @@ import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
 import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Image as ImageIcon } from 'lucide-react'
+import { toast } from 'sonner'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
 
@@ -90,13 +91,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     // localEmpleado allows for optimistic UI updates without waiting for DB/Parent re-fetch
     const [localEmpleado, setLocalEmpleado] = useState<QueryHiluRow>(empleado)
 
-    // Sync local state only when identity changes to avoid overwrites from stale refreshes
+    // Sync local state when parent data refreshes
     useEffect(() => {
-        if (empleado?.cedula !== localEmpleado?.cedula) {
-            setLocalEmpleado(empleado)
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [empleado?.cedula])
+        setLocalEmpleado(empleado)
+    }, [empleado])
 
     // Generic update function (Internal sync)
     const updatePhase = async (table: 'fase_H' | 'fase_I' | 'fase_L' | 'fase_U', id: number, data: any) => {
@@ -111,7 +109,13 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 .eq('id', id)
 
             if (error) throw error
-            onUpdate() // Still call onUpdate to sync parent state in background
+            
+            // Wait for parent re-fetch
+            if (onUpdate) {
+                await (onUpdate as any)()
+            }
+            
+            toast.success('Cambios guardados')
         } catch (error: any) {
             console.error('Error updating phase:', JSON.stringify(error, null, 2))
             alert(`Error al guardar cambios: ${error.message || 'Consulte la consola'}`)
@@ -142,6 +146,64 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
         // @ts-ignore - Supabase update (requires DB column 'detalles' to be added via migration)
         updatePhase(tableMap[phase], localEmpleado[idMap[phase]] as number, { detalles: newDetails })
+    }
+
+    const checkPhaseCompletion = async (phase: 'H' | 'I' | 'L' | 'U', currentData: QueryHiluRow) => {
+        const role = getRoleType(currentData.cargo)
+        let isDone = false
+
+        if (phase === 'H') {
+            isDone = !!(currentData.fh_induccion_th &&
+                currentData.fh_aros_seguridad &&
+                currentData.fh_induccion_planta &&
+                currentData.fh_puesto_piloto &&
+                currentData.fh_observacion_puesto &&
+                currentData.fh_explicacion_puesto &&
+                currentData.fh_firma_empleado &&
+                currentData.fh_firma_supervisor)
+        } else if (role === 'OPERARIO') {
+            if (phase === 'I') {
+                isDone = !!(currentData.fi_titular && currentData.fi_estandar_hdt && currentData.fi_entrenamiento_calidad && currentData.fi_hace_acompanado && currentData.fi_hace_solo && currentData.fi_firma_empleado && currentData.fi_firma_supervisor)
+            } else if (phase === 'L') {
+                isDone = !!(currentData.fl_cumple_calidad && currentData.fl_cumple_estandar && currentData.fl_cumple_tiempo && currentData.fl_firma_empleado && currentData.fl_firma_supervisor)
+            } else if (phase === 'U') {
+                isDone = !!(currentData.fu_capacitado_para_entrenar && currentData.fu_entrena_solo && currentData.fu_acompana_entrenamientos && currentData.fu_firma_empleado && currentData.fu_firma_supervisor)
+            }
+        } else {
+            // For non-operarios, check if all tools are complete
+            const availableTools = role === 'SUPERVISOR'
+                ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+                : TOOLS_LIST.filter(t => ![''].includes(t))
+
+            const allToolsDone = availableTools.every(t => isToolComplete(phase as 'I' | 'L' | 'U', t))
+            const fieldPrefix = `f${phase.toLowerCase()}`
+            // @ts-ignore
+            const hasSignatures = !!(currentData[`${fieldPrefix}_firma_empleado`] && currentData[`${fieldPrefix}_firma_supervisor`])
+            isDone = allToolsDone && hasSignatures
+        }
+
+        const fieldPrefix = `f${phase.toLowerCase()}`
+        // @ts-ignore
+        const hasComment = !!(currentData[`${fieldPrefix}_comentario`]?.trim())
+        // @ts-ignore
+        const currentStatus = currentData[`${fieldPrefix}_completado`]
+        // @ts-ignore
+        const tableId = currentData[`${fieldPrefix}_id`]
+
+        if (isDone && !hasComment && !currentStatus) {
+            toast.error(`La fase ${phase} tiene todos los requisitos pero falta el comentario obligatorio.`)
+            return
+        }
+
+        if (isDone && hasComment && !currentStatus) {
+            const tableMap = { 'H': 'fase_H', 'I': 'fase_I', 'L': 'fase_L', 'U': 'fase_U' } as const
+            await updatePhase(tableMap[phase], tableId as number, {
+                completado: true,
+                fecha_finalizacion_fase: new Date().toISOString()
+            })
+            // Extra toast for confirmation of completion
+            alert(`¡Fase ${phase} completada satisfactoriamente!`)
+        }
     }
 
     const isToolComplete = (phase: 'I' | 'L' | 'U', tool: string) => {
@@ -255,12 +317,13 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 checked={localEmpleado.fh_induccion_th || false}
                                 onChange={(c) => {
                                     // Optimistic
-                                    setLocalEmpleado(prev => ({ ...prev, fh_induccion_th: c }))
+                                    const next = { ...localEmpleado, fh_induccion_th: c }
+                                    setLocalEmpleado(next)
                                     updatePhase('fase_H', localEmpleado.fh_id!, {
                                         induccion_th: c,
                                         induccion_th_fecha: c ? new Date().toISOString() : null,
                                         induccion_th_responsable_id: c ? currentUser?.id : null
-                                    })
+                                    }).then(() => checkPhaseCompletion('H', next))
                                 }}
                             />
 
@@ -269,8 +332,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 label="Normas de seguridad"
                                 checked={localEmpleado.fh_aros_seguridad || false}
                                 onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fh_aros_seguridad: c }))
+                                    const next = { ...localEmpleado, fh_aros_seguridad: c }
+                                    setLocalEmpleado(next)
                                     updatePhase('fase_H', localEmpleado.fh_id!, { aros_seguridad: c })
+                                        .then(() => checkPhaseCompletion('H', next))
                                 }}
                             />
                         </div>
@@ -282,8 +347,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 label="Inducción inicial en Planta"
                                 checked={localEmpleado.fh_induccion_planta || false}
                                 onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fh_induccion_planta: c }))
+                                    const next = { ...localEmpleado, fh_induccion_planta: c }
+                                    setLocalEmpleado(next)
                                     updatePhase('fase_H', localEmpleado.fh_id!, { induccion_planta: c })
+                                        .then(() => checkPhaseCompletion('H', next))
                                 }}
                             />
                             <PillCheckbox
@@ -291,8 +358,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 label="Entrenamiento puesto piloto"
                                 checked={localEmpleado.fh_puesto_piloto || false}
                                 onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fh_puesto_piloto: c }))
+                                    const next = { ...localEmpleado, fh_puesto_piloto: c }
+                                    setLocalEmpleado(next)
                                     updatePhase('fase_H', localEmpleado.fh_id!, { puesto_piloto: c })
+                                        .then(() => checkPhaseCompletion('H', next))
                                 }}
                             />
                             <PillCheckbox
@@ -300,8 +369,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 label="Observación puesto de trabajo"
                                 checked={localEmpleado.fh_observacion_puesto || false}
                                 onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fh_observacion_puesto: c }))
+                                    const next = { ...localEmpleado, fh_observacion_puesto: c }
+                                    setLocalEmpleado(next)
                                     updatePhase('fase_H', localEmpleado.fh_id!, { observacion_puesto: c })
+                                        .then(() => checkPhaseCompletion('H', next))
                                 }}
                             />
                             <PillCheckbox
@@ -309,8 +380,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 label="Explicación puesto de trabajo"
                                 checked={localEmpleado.fh_explicacion_puesto || false}
                                 onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fh_explicacion_puesto: c }))
+                                    const next = { ...localEmpleado, fh_explicacion_puesto: c }
+                                    setLocalEmpleado(next)
                                     updatePhase('fase_H', localEmpleado.fh_id!, { explicacion_puesto: c })
+                                        .then(() => checkPhaseCompletion('H', next))
                                 }}
                             />
                         </div>
@@ -319,12 +392,17 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                             {/* Comments */}
                             <div className="lg:col-span-3 space-y-2">
-                                <Label className="text-gray-500 font-normal">Comentarios</Label>
+                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
                                 <textarea
                                     className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    placeholder="[fh_comentario]"
+                                    placeholder="Ingrese los comentarios de la fase..."
                                     defaultValue={localEmpleado.fh_comentario || ''}
-                                    onBlur={(e) => updatePhase('fase_H', localEmpleado.fh_id!, { comentario: e.target.value })}
+                                    onBlur={(e) => {
+                                        const next = { ...localEmpleado, fh_comentario: e.target.value }
+                                        setLocalEmpleado(next)
+                                        updatePhase('fase_H', localEmpleado.fh_id!, { comentario: e.target.value })
+                                            .then(() => checkPhaseCompletion('H', next))
+                                    }}
                                 />
                             </div>
 
@@ -346,7 +424,12 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         {localEmpleado.fh_firma_empleado ? (
                                             <VerFirma firmaUrl={localEmpleado.fh_firma_empleado} />
                                         ) : (
-                                            <CrearFirma onFirmaGuardada={(firma) => updatePhase('fase_H', localEmpleado.fh_id!, { firma_empleado: firma })} />
+                                            <CrearFirma onFirmaGuardada={(firma) => {
+                                                const next = { ...localEmpleado, fh_firma_empleado: firma }
+                                                setLocalEmpleado(next)
+                                                updatePhase('fase_H', localEmpleado.fh_id!, { firma_empleado: firma })
+                                                    .then(() => checkPhaseCompletion('H', next))
+                                            }} />
                                         )}
                                     </div>
                                 </div>
@@ -356,7 +439,12 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         {localEmpleado.fh_firma_supervisor ? (
                                             <VerFirma firmaUrl={localEmpleado.fh_firma_supervisor} />
                                         ) : (
-                                            <CrearFirma onFirmaGuardada={(firma) => updatePhase('fase_H', localEmpleado.fh_id!, { firma_supervisor: firma })} />
+                                            <CrearFirma onFirmaGuardada={(firma) => {
+                                                const next = { ...localEmpleado, fh_firma_supervisor: firma }
+                                                setLocalEmpleado(next)
+                                                updatePhase('fase_H', localEmpleado.fh_id!, { firma_supervisor: firma })
+                                                    .then(() => checkPhaseCompletion('H', next))
+                                            }} />
                                         )}
                                     </div>
                                 </div>
@@ -366,10 +454,13 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             <div className="lg:col-span-2 flex flex-col justify-between h-full py-2">
                                 <Button
                                     className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2"
-                                    onClick={() => alert('Cambios guardados')} // Changes execute on blur/click, this is visual feedback
+                                    onClick={async () => {
+                                        await checkPhaseCompletion('H', localEmpleado);
+                                        alert('Información sincronizada correctamente');
+                                    }}
                                 >
-                                    <Save className="h-4 w-4" />
-                                    Guardar
+                                    <Save className="h-4 w-15" />
+                                    Actualizar Estatus
                                 </Button>
 
                                 <div className="mt-auto pt-4">
@@ -456,9 +547,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        {/* Details */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal">Comentarios</Label><textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => updatePhase('fase_I', localEmpleado.fi_id!, { comentario: e.target.value })} /></div>
+                            <div className="lg:col-span-3 space-y-2">
+                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
+                                <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => {
+                                    const next = { ...localEmpleado, fi_comentario: e.target.value }
+                                    setLocalEmpleado(next)
+                                    updatePhase('fase_I', localEmpleado.fi_id!, { comentario: e.target.value })
+                                        .then(() => checkPhaseCompletion('I', next))
+                                }} />
+                            </div>
                             <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal text-center block">Evidencias</Label><EvidenciasComponent evidencias={localEmpleado.fi_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_I', localEmpleado.fi_id!, { evidencias: evs })} path="fase-i" /></div>
                             <div className="lg:col-span-4 grid grid-cols-2 gap-4">
                                 <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fi_firma_empleado ? <VerFirma firmaUrl={localEmpleado.fi_firma_empleado} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_I', localEmpleado.fi_id!, { firma_empleado: f })} />}</div></div>
@@ -533,9 +631,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        {/* Details */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal">Comentarios</Label><textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fl_comentario || ''} onBlur={(e) => updatePhase('fase_L', localEmpleado.fl_id!, { comentario: e.target.value })} /></div>
+                            <div className="lg:col-span-3 space-y-2">
+                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
+                                <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fl_comentario || ''} onBlur={(e) => {
+                                    const next = { ...localEmpleado, fl_comentario: e.target.value }
+                                    setLocalEmpleado(next)
+                                    updatePhase('fase_L', localEmpleado.fl_id!, { comentario: e.target.value })
+                                        .then(() => checkPhaseCompletion('L', next))
+                                }} />
+                            </div>
                             <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal text-center block">Evidencias</Label><EvidenciasComponent evidencias={localEmpleado.fl_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_L', localEmpleado.fl_id!, { evidencias: evs })} path="fase-l" /></div>
                             <div className="lg:col-span-4 grid grid-cols-2 gap-4">
                                 <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fl_firma_empleado ? <VerFirma firmaUrl={localEmpleado.fl_firma_empleado} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_L', localEmpleado.fl_id!, { firma_empleado: f })} />}</div></div>
@@ -610,9 +715,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        {/* Details */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal">Comentarios</Label><textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fu_comentario || ''} onBlur={(e) => updatePhase('fase_U', localEmpleado.fu_id!, { comentario: e.target.value })} /></div>
+                            <div className="lg:col-span-3 space-y-2">
+                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
+                                <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fu_comentario || ''} onBlur={(e) => {
+                                    const next = { ...localEmpleado, fu_comentario: e.target.value }
+                                    setLocalEmpleado(next)
+                                    updatePhase('fase_U', localEmpleado.fu_id!, { comentario: e.target.value })
+                                        .then(() => checkPhaseCompletion('U', next))
+                                }} />
+                            </div>
                             <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal text-center block">Evidencias</Label><EvidenciasComponent evidencias={localEmpleado.fu_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_U', localEmpleado.fu_id!, { evidencias: evs })} path="fase-u" /></div>
                             <div className="lg:col-span-4 grid grid-cols-2 gap-4">
                                 <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fu_firma_empleado ? <VerFirma firmaUrl={localEmpleado.fu_firma_empleado} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_U', localEmpleado.fu_id!, { firma_empleado: f })} />}</div></div>
