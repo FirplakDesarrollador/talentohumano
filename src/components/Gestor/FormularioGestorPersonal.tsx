@@ -219,7 +219,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 if (error) {
                     toast.error('No se pudo encontrar el empleado');
                 } else if (data) {
-                    const emp = data as Empleado;
+                    const emp = data as any;
                     setFormData({
                         cedula: emp.id?.toString() || '',
                         nombreCompleto: emp.nombreCompleto || '',
@@ -233,51 +233,51 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         jefe: emp.jefe || '',
                         empresa: emp.empresa || '',
                         primer_ingreso: emp.primer_ingreso || '',
-                        nivel_cargo: emp.nivel_cargo || '',
-                        locker: emp.locker || '',
-                        referido: emp.referido || '',
+                        nivel_cargo: emp.nivelCargo || '',
+                        locker: emp.locker_asignado || '',
+                        referido: '', // No existe en SQL
                         direccion: emp.direccion || '',
                         ciudad: emp.ciudad || '',
                         telefono: emp.telefono || '',
                         celular: emp.celular || '',
-                        correo: emp.correo || '',
+                        correo: emp.correo_electronico || '',
                         contacto_emergencia: emp.contacto_emergencia || '',
-                        telefono_emergencia: emp.telefono_emergencia || '',
-                        tiene_esposo: emp.tiene_esposo ?? false,
-                        nombre_esposo: emp.nombre_esposo || '',
-                        num_hijos: emp.num_hijos ?? 0,
-                        hijo1_nombre: emp.hijo1_nombre || '',
-                        hijo1_nacimiento: emp.hijo1_nacimiento || '',
-                        hijo1_sexo: emp.hijo1_sexo || '',
-                        hijo2_nombre: emp.hijo2_nombre || '',
-                        hijo2_nacimiento: emp.hijo2_nacimiento || '',
-                        hijo2_sexo: emp.hijo2_sexo || '',
-                        hijo3_nombre: emp.hijo3_nombre || '',
-                        hijo3_nacimiento: emp.hijo3_nacimiento || '',
-                        hijo3_sexo: emp.hijo3_sexo || '',
-                        hijo4_nombre: emp.hijo4_nombre || '',
-                        hijo4_nacimiento: emp.hijo4_nacimiento || '',
-                        hijo4_sexo: emp.hijo4_sexo || '',
+                        telefono_emergencia: emp.telefono_contacto_emergencia || '',
+                        tiene_esposo: emp.tiene_pareja ?? false,
+                        nombre_esposo: emp.nombre_pareja || '',
+                        num_hijos: emp.numero_hijos ?? 0,
+                        hijo1_nombre: emp.nombre_hijo1 || '',
+                        hijo1_nacimiento: emp.fecha_nacimiento_hijo1 || '',
+                        hijo1_sexo: emp.sexo_hijo1 || '',
+                        hijo2_nombre: emp.nombre_hijo2 || '',
+                        hijo2_nacimiento: emp.fecha_nacimiento_hijo2 || '',
+                        hijo2_sexo: emp.sexo_hijo2 || '',
+                        hijo3_nombre: emp.nombre_hijo3 || '',
+                        hijo3_nacimiento: emp.fecha_nacimiento_hijo3 || '',
+                        hijo3_sexo: emp.sexo_hijo3 || '',
+                        hijo4_nombre: emp.nombre_hijo4 || '',
+                        hijo4_nacimiento: emp.fecha_nacimiento_hijo4 || '',
+                        hijo4_sexo: emp.sexo_hijo4 || '',
                         nivel_educativo: emp.nivel_educativo || '',
-                        ultimo_grado: emp.ultimo_grado || '',
-                        actualmente_estudiando: emp.actualmente_estudiando ?? false,
-                        que_estudia: emp.que_estudia || '',
-                        tiene_recomendaciones_medicas: emp.tiene_recomendaciones_medicas ?? false,
+                        ultimo_grado: emp.ultimo_grado_cursado || '',
+                        actualmente_estudiando: emp.estudia_actualmente ?? false,
+                        que_estudia: emp.queestudia || '',
+                        tiene_recomendaciones_medicas: !!emp.recomendaciones_medicas,
                         recomendaciones_medicas: emp.recomendaciones_medicas || '',
                         enfermedades: emp.enfermedades || '',
-                        consume_psicoactivas: emp.consume_psicoactivas || 'Nunca',
-                        consume_tabaco: emp.consume_tabaco || 'Nunca',
-                        consume_alcohol: emp.consume_alcohol || 'Nunca',
-                        realiza_deporte: emp.realiza_deporte || 'Nunca',
-                        frecuencia_visita: emp.frecuencia_visita || '',
+                        consume_psicoactivas: emp.sustancias || 'Nunca',
+                        consume_tabaco: emp.fuma || 'Nunca',
+                        consume_alcohol: emp.toma_alcohol || 'Nunca',
+                        realiza_deporte: emp.deporte || 'Nunca',
+                        frecuencia_visita: emp.frecuencia_presencialidad || '',
                         medio_transporte: emp.medio_transporte || '',
-                        tipo_combustible: emp.tipo_combustible || '',
+                        tipo_combustible: emp.combustible_usado || '',
                         modelo_vehiculo: emp.modelo_vehiculo || '',
-                        tipo_camisa: emp.tipo_camisa || '',
+                        tipo_camisa: emp.camisa || '',
                         talla_camisa: emp.talla_camisa || '',
-                        tipo_pantalon: emp.tipo_pantalon || '',
+                        tipo_pantalon: emp.pantalon || '',
                         talla_pantalon: emp.talla_pantalon || '',
-                        talla_chaleco: emp.talla_chaleco || ''
+                        talla_chaleco: emp.chaleco || ''
                     });
                 }
             } catch (err) {
@@ -300,7 +300,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         setLoading(true);
         try {
             const dataToSave = {
-                cedula: formData.cedula ? parseInt(formData.cedula) : 0,
+                id: formData.cedula ? parseInt(formData.cedula) : 0,
                 nombreCompleto: formData.nombreCompleto,
                 foto: formData.foto || null,
                 activo: formData.activo,
@@ -312,52 +312,50 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 jefe: formData.jefe || null,
                 empresa: formData.empresa || null,
                 primer_ingreso: formData.primer_ingreso || null,
-                nivel_cargo: formData.nivel_cargo || null,
-                locker: formData.locker || null,
-                referido: formData.referido || null,
+                nivelCargo: formData.nivel_cargo || null,
+                locker_asignado: formData.locker || null,
                 direccion: formData.direccion || null,
                 ciudad: formData.ciudad || null,
                 telefono: formData.telefono || null,
                 celular: formData.celular || null,
-                correo: formData.correo || null,
+                correo_electronico: formData.correo || null,
                 contacto_emergencia: formData.contacto_emergencia || null,
-                telefono_emergencia: formData.telefono_emergencia || null,
-                tiene_esposo: formData.tiene_esposo,
-                nombre_esposo: formData.nombre_esposo || null,
-                num_hijos: formData.num_hijos,
-                hijo1_nombre: formData.hijo1_nombre || null,
-                hijo1_nacimiento: formData.hijo1_nacimiento || null,
-                hijo1_sexo: formData.hijo1_sexo || null,
-                hijo2_nombre: formData.hijo2_nombre || null,
-                hijo2_nacimiento: formData.hijo2_nacimiento || null,
-                hijo2_sexo: formData.hijo2_sexo || null,
-                hijo3_nombre: formData.hijo3_nombre || null,
-                hijo3_nacimiento: formData.hijo3_nacimiento || null,
-                hijo3_sexo: formData.hijo3_sexo || null,
-                hijo4_nombre: formData.hijo4_nombre || null,
-                hijo4_nacimiento: formData.hijo4_nacimiento || null,
-                hijo4_sexo: formData.hijo4_sexo || null,
+                telefono_contacto_emergencia: formData.telefono_emergencia || null,
+                tiene_pareja: formData.tiene_esposo,
+                nombre_pareja: formData.nombre_esposo || null,
+                numero_hijos: parseInt(formData.num_hijos.toString()) || 0,
+                nombre_hijo1: formData.hijo1_nombre || null,
+                fecha_nacimiento_hijo1: formData.hijo1_nacimiento || null,
+                sexo_hijo1: formData.hijo1_sexo || null,
+                nombre_hijo2: formData.hijo2_nombre || null,
+                fecha_nacimiento_hijo2: formData.hijo2_nacimiento || null,
+                sexo_hijo2: formData.hijo2_sexo || null,
+                nombre_hijo3: formData.hijo3_nombre || null,
+                fecha_nacimiento_hijo3: formData.hijo3_nacimiento || null,
+                sexo_hijo3: formData.hijo3_sexo || null,
+                nombre_hijo4: formData.hijo4_nombre || null,
+                fecha_nacimiento_hijo4: formData.hijo4_nacimiento || null,
+                sexo_hijo4: formData.hijo4_sexo || null,
                 nivel_educativo: formData.nivel_educativo || null,
-                ultimo_grado: formData.ultimo_grado || null,
-                actualmente_estudiando: formData.actualmente_estudiando,
-                que_estudia: formData.que_estudia || null,
-                tiene_recomendaciones_medicas: formData.tiene_recomendaciones_medicas,
+                ultimo_grado_cursado: formData.ultimo_grado || null,
+                estudia_actualmente: formData.actualmente_estudiando,
+                queestudia: formData.que_estudia || null,
                 recomendaciones_medicas: formData.recomendaciones_medicas || null,
                 enfermedades: formData.enfermedades || null,
-                consume_psicoactivas: formData.consume_psicoactivas || null,
-                consume_tabaco: formData.consume_tabaco || null,
-                consume_alcohol: formData.consume_alcohol || null,
-                realiza_deporte: formData.realiza_deporte || null,
-                frecuencia_visita: formData.frecuencia_visita || null,
+                sustancias: formData.consume_psicoactivas || null,
+                fuma: formData.consume_tabaco || null,
+                toma_alcohol: formData.consume_alcohol || null,
+                deporte: formData.realiza_deporte || null,
+                frecuencia_presencialidad: formData.frecuencia_visita || null,
                 medio_transporte: formData.medio_transporte || null,
-                tipo_combustible: formData.tipo_combustible || null,
+                combustible_usado: formData.tipo_combustible || null,
                 modelo_vehiculo: formData.modelo_vehiculo || null,
-                tipo_camisa: formData.tipo_camisa || null,
+                camisa: formData.tipo_camisa || null,
                 talla_camisa: formData.talla_camisa || null,
-                tipo_pantalon: formData.tipo_pantalon || null,
+                pantalon: formData.tipo_pantalon || null,
                 talla_pantalon: formData.talla_pantalon || null,
-                talla_chaleco: formData.talla_chaleco || null,
-                updated_at: new Date().toISOString()
+                chaleco: formData.talla_chaleco || null,
+                modified: new Date().toISOString()
             };
 
             if (id) {
@@ -370,7 +368,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             } else {
                 const { error } = await (supabase as any)
                     .from('empleados')
-                    .insert([{ ...dataToSave, created_at: new Date().toISOString() }] as any);
+                    .insert([{ ...dataToSave, created: new Date().toISOString() }] as any);
                 if (error) throw error;
                 toast.success('Empleado creado correctamente');
             }
@@ -378,7 +376,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             if (onSuccess) onSuccess();
             else router.push('/gestor-de-personal');
         } catch (error: any) {
-            toast.error('Error al guardar: ' + error.message);
+            console.error('Error completo Supabase:', error);
+            const errorMessage = error.details || error.message || 'Error desconocido';
+            toast.error('Error al guardar: ' + errorMessage);
         } finally {
             setLoading(false);
         }
