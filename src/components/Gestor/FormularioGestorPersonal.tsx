@@ -25,8 +25,6 @@ import {
     Stethoscope,
     Car,
     Shirt,
-    ChevronDown,
-    ChevronUp,
     Calendar,
     Baby,
     Users
@@ -54,42 +52,25 @@ const TIPOS_CAMISA = ['Polo', 'Camiseta', 'Camisa Formal'];
 const TIPOS_PANTALON = ['Jean', 'Cargo', 'Formal'];
 const SEXOS = ['Masculino', 'Femenino'];
 
-// Collapsible Section Component
-const CollapsibleSection: React.FC<{
+// Fixed Section Component
+const FormSection: React.FC<{
     title: string;
     icon: React.ReactNode;
     children: React.ReactNode;
-    defaultOpen?: boolean;
-}> = ({ title, icon, children, defaultOpen = false }) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
-
+}> = ({ title, icon, children }) => {
     return (
-        <Card className="border-gray-100 shadow-sm overflow-hidden">
-            <div
-                className="cursor-pointer hover:bg-gray-50/50 transition-colors"
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                <CardHeader className="py-4">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-3 text-base font-bold text-[#1e2f3d]">
-                            <div className="h-9 w-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                                {icon}
-                            </div>
-                            {title}
-                        </CardTitle>
-                        {isOpen ? (
-                            <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                            <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
+        <Card className="border-gray-100 shadow-sm overflow-hidden bg-white">
+            <CardHeader className="py-5 bg-gray-50/50 border-b border-gray-50">
+                <CardTitle className="flex items-center gap-3 text-base font-black uppercase tracking-tight text-[#1e2f3d]">
+                    <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm shadow-blue-100">
+                        {icon}
                     </div>
-                </CardHeader>
-            </div>
-            {isOpen && (
-                <CardContent className="pt-0 pb-6">
-                    {children}
-                </CardContent>
-            )}
+                    {title}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-8 pb-8">
+                {children}
+            </CardContent>
         </Card>
     );
 };
@@ -119,6 +100,13 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(!!id);
+    const [showPhotoEdit, setShowPhotoEdit] = useState(false);
+    const [showRetiroModal, setShowRetiroModal] = useState(false);
+    const [retiroData, setRetiroData] = useState({
+        motivo: '',
+        comentarios: '',
+        fecha_retiro: new Date().toISOString().split('T')[0]
+    });
 
     // Complete Form State
     const [formData, setFormData] = useState({
@@ -188,10 +176,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         const fetchHelpers = async () => {
             try {
                 const { data: bosses } = await supabase.from('empleados').select('jefe').not('jefe', 'is', null).eq('activo', true);
-                const { data: jobs } = await supabase.from('empleados').select('cargo').not('cargo', 'is', null);
+                const { data: jobs } = await (supabase as any).from('cargos').select('cargo');
 
                 if (bosses) setExistingJefes(Array.from(new Set((bosses as any[]).map((e: any) => e.jefe).filter(Boolean))).sort() as string[]);
-                if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map((e: any) => e.cargo).filter(Boolean))).sort() as string[]);
+                if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map(j => j.cargo).filter(Boolean))).sort() as string[]);
             } catch (err) {
                 console.error('Error fetching helpers:', err);
             }
@@ -359,12 +347,43 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     .update(dataToSave as any)
                     .eq('id', id);
                 if (error) throw error;
+
+                // Handle retirement record if status changed to inactive
+                if (!formData.activo && id) {
+                    await (supabase as any)
+                        .from('retiro_personal')
+                        .insert([{
+                            empleado_id: id,
+                            nombre: formData.nombreCompleto,
+                            motivo: retiroData.motivo,
+                            comentarios: retiroData.comentarios,
+                            fecha_retiro: retiroData.fecha_retiro
+                        }]);
+                }
+
                 toast.success('Empleado actualizado correctamente');
             } else {
-                const { error } = await (supabase as any)
+                const { error, data } = await (supabase as any)
                     .from('empleados')
-                    .insert([{ ...dataToSave, created: new Date().toISOString() }] as any);
+                    .insert([{ ...dataToSave, created: new Date().toISOString() }] as any)
+                    .select('id')
+                    .single();
+                
                 if (error) throw error;
+
+                // Handle retirement record if created as inactive
+                if (!formData.activo && data?.id) {
+                    await (supabase as any)
+                        .from('retiro_personal')
+                        .insert([{
+                            empleado_id: data.id,
+                            nombre: formData.nombreCompleto,
+                            motivo: retiroData.motivo,
+                            comentarios: retiroData.comentarios,
+                            fecha_retiro: retiroData.fecha_retiro
+                        }]);
+                }
+                
                 toast.success('Empleado creado correctamente');
             }
 
@@ -394,52 +413,87 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-8">
-            {/* Header */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500">
-                    {id ? <Save className="h-7 w-7" /> : <UserPlus className="h-7 w-7" />}
-                </div>
-                <div>
-                    <h2 className="text-xl font-black text-[#1e2f3d] tracking-tight uppercase">
-                        {id ? 'Editar Empleado' : 'Nuevo Empleado'}
-                    </h2>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        Complete todos los campos requeridos
-                    </p>
-                </div>
-            </div>
+            {/* Header - Optimized and Centered */}
+            <div className="flex flex-col items-center justify-center py-8 bg-white/50 backdrop-blur-sm rounded-3xl border border-gray-100 shadow-sm mb-6">
+                <h1 className="text-[#1D3557] font-black text-2xl uppercase tracking-[0.2em] mb-8">
+                    Información Personal
+                </h1>
 
-            {/* Photo Section */}
-            <Card className="border-gray-100 shadow-sm">
-                <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row gap-6 items-center">
-                        <div className="relative w-28 h-28 rounded-2xl bg-gray-50 shadow-sm border border-gray-100 overflow-hidden flex-shrink-0">
-                            {formData.foto ? (
-                                <Image src={formData.foto} alt="Preview" fill className="object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                    <User className="h-12 w-12" />
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex-1 space-y-3 w-full">
-                            <FormField label="URL de Fotografía" icon={<Camera className="h-3 w-3" />}>
-                                <Input
-                                    value={formData.foto}
-                                    onChange={(e) => updateField('foto', e.target.value)}
-                                    placeholder="Pegue aquí el enlace de la imagen"
-                                    className={inputClass}
-                                />
-                            </FormField>
-                            <p className="text-[10px] text-gray-400 font-medium">Link directo a la imagen hospedada en la nube</p>
+                {/* Centered Photo */}
+                <div className="relative group mb-6">
+                    <div className="w-48 h-56 rounded-2xl bg-gray-50 shadow-2xl border-4 border-white overflow-hidden transition-all duration-500 group-hover:shadow-blue-500/10 active:scale-[0.98]">
+                        {formData.foto ? (
+                            <Image
+                                src={formData.foto}
+                                alt="Foto Empleado"
+                                fill
+                                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                unoptimized // To avoid Next.js optimization issues with external URLs
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-100 bg-gradient-to-br from-gray-50 to-gray-100">
+                                <User className="h-24 w-24" />
+                            </div>
+                        )}
+
+                        {/* Camera Overlay to Change Photo */}
+                        <div
+                            onClick={() => setShowPhotoEdit(!showPhotoEdit)}
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer"
+                        >
+                            <Camera className="h-8 w-8 text-white animate-pulse" />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
 
-            {/* Section 1: Personal Information */}
-            <CollapsibleSection title="Información Personal" icon={<User className="h-5 w-5" />} defaultOpen>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Quick Navigation Buttons (HILU / DISCIPLINARIOS) */}
+                {id && (
+                    <div className="flex gap-4 mb-4">
+                        <Button
+                            type="button"
+                            onClick={() => router.push(`/entrenamiento/${id}`)}
+                            className="bg-[#2d4356] hover:bg-[#1e2f3d] text-white rounded-xl px-10 h-10 font-bold shadow-md transition-all hover:-translate-y-1 active:scale-95 border-none"
+                        >
+                            Hilu
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => router.push(`/procesos-disciplinarios/${id}`)}
+                            className="bg-[#2d4356] hover:bg-[#1e2f3d] text-white rounded-xl px-6 h-10 font-bold shadow-md transition-all hover:-translate-y-1 active:scale-95 border-none"
+                        >
+                            Procesos disciplinarios
+                        </Button>
+                    </div>
+                )}
+
+                {/* Photo URL Input - Collapsible and discreet */}
+                {showPhotoEdit && (
+                    <div className="w-full max-w-md px-6 animate-in slide-in-from-top-2 duration-300 mb-6">
+                        <FormField label="Editar URL de Fotografía" icon={<Camera className="h-3 w-3" />}>
+                            <Input
+                                value={formData.foto}
+                                onChange={(e) => updateField('foto', e.target.value)}
+                                placeholder="https://ejemplo.com/foto.jpg"
+                                className={inputClass}
+                            />
+                        </FormField>
+                    </div>
+                )}
+            </div>
+
+            {/* Section 1: Personal Information Fields */}
+            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+                <div className="grid grid-cols-1 gap-6">
+                    <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
+                        <Input
+                            value={formData.nombreCompleto}
+                            onChange={(e) => updateField('nombreCompleto', e.target.value)}
+                            placeholder="Nombre y apellidos"
+                            className={inputClass}
+                            required
+                        />
+                    </FormField>
+
                     <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
                         <Input
                             type="number"
@@ -451,33 +505,25 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         />
                     </FormField>
 
-                    <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
-                        <Input
-                            value={formData.nombreCompleto}
-                            onChange={(e) => updateField('nombreCompleto', e.target.value)}
-                            placeholder="Nombre y apellidos"
-                            className={inputClass}
-                            required
-                        />
-                    </FormField>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField label="Fecha de Nacimiento" icon={<Calendar className="h-3 w-3" />}>
+                            <Input
+                                type="date"
+                                value={formData.fecha_nacimiento}
+                                onChange={(e) => updateField('fecha_nacimiento', e.target.value)}
+                                className={inputClass}
+                            />
+                        </FormField>
 
-                    <FormField label="Fecha de Nacimiento" icon={<Calendar className="h-3 w-3" />}>
-                        <Input
-                            type="date"
-                            value={formData.fecha_nacimiento}
-                            onChange={(e) => updateField('fecha_nacimiento', e.target.value)}
-                            className={inputClass}
-                        />
-                    </FormField>
-
-                    <FormField label="Fecha Expedición Cédula" icon={<Calendar className="h-3 w-3" />}>
-                        <Input
-                            type="date"
-                            value={formData.fecha_expedicion_cedula}
-                            onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)}
-                            className={inputClass}
-                        />
-                    </FormField>
+                        <FormField label="Fecha Expedición Cédula" icon={<Calendar className="h-3 w-3" />}>
+                            <Input
+                                type="date"
+                                value={formData.fecha_expedicion_cedula}
+                                onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)}
+                                className={inputClass}
+                            />
+                        </FormField>
+                    </div>
 
                     <FormField label="Tipo de Sangre">
                         <select
@@ -492,10 +538,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </select>
                     </FormField>
                 </div>
-            </CollapsibleSection>
+            </div>
 
             {/* Section 2: Work Information */}
-            <CollapsibleSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />} defaultOpen>
+            <FormSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Cargo / Puesto" icon={<Briefcase className="h-3 w-3" />}>
                         <div className="relative">
@@ -580,7 +626,13 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 <div className="mt-6 flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
                     <Switch
                         checked={formData.activo}
-                        onCheckedChange={(val) => updateField('activo', val)}
+                        onCheckedChange={(val) => {
+                            if (!val) {
+                                setShowRetiroModal(true);
+                            } else {
+                                updateField('activo', true);
+                            }
+                        }}
                     />
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d]">Estado Laboral</span>
@@ -589,10 +641,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </span>
                     </div>
                 </div>
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Section 3: Contact Information */}
-            <CollapsibleSection title="Información de Contacto" icon={<Phone className="h-5 w-5" />}>
+            <FormSection title="Información de Contacto" icon={<Phone className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Dirección" icon={<MapPin className="h-3 w-3" />}>
                         <Input
@@ -665,10 +717,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </div>
                     </div>
                 </div>
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Section 4: Family Information */}
-            <CollapsibleSection title="Información Familiar" icon={<Heart className="h-5 w-5" />}>
+            <FormSection title="Información Familiar" icon={<Heart className="h-5 w-5" />}>
                 <div className="space-y-6">
                     {/* Spouse */}
                     <div className="flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
@@ -743,10 +795,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         );
                     })}
                 </div>
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Section 5: Education Information */}
-            <CollapsibleSection title="Información Educativa" icon={<GraduationCap className="h-5 w-5" />}>
+            <FormSection title="Información Educativa" icon={<GraduationCap className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Nivel Educativo">
                         <select
@@ -791,10 +843,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </FormField>
                     </div>
                 )}
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Section 6: Health Information */}
-            <CollapsibleSection title="Información de Salud" icon={<Stethoscope className="h-5 w-5" />}>
+            <FormSection title="Información de Salud" icon={<Stethoscope className="h-5 w-5" />}>
                 <div className="space-y-6">
                     <div className="flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
                         <Switch
@@ -874,10 +926,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </FormField>
                     </div>
                 </div>
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Section 7: Mobility */}
-            <CollapsibleSection title="Movilidad" icon={<Car className="h-5 w-5" />}>
+            <FormSection title="Movilidad" icon={<Car className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Frecuencia de Visita a Firplak">
                         <Input
@@ -915,10 +967,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         />
                     </FormField>
                 </div>
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Section 8: Uniform/Dotación */}
-            <CollapsibleSection title="Dotación" icon={<Shirt className="h-5 w-5" />}>
+            <FormSection title="Dotación" icon={<Shirt className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Tipo de Camisa">
                         <select
@@ -985,7 +1037,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </select>
                     </FormField>
                 </div>
-            </CollapsibleSection>
+            </FormSection>
 
             {/* Submit Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-4">
@@ -1010,6 +1062,86 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     {id ? 'Actualizar' : 'Crear Empleado'}
                 </Button>
             </div>
+
+            {/* Retiro Confirmation Modal */}
+            {showRetiroModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[28px] w-full max-w-[500px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 border border-gray-100">
+                        <div className="bg-red-600 text-white p-7">
+                            <h3 className="text-xl font-black uppercase tracking-tight">Confirmar Retiro</h3>
+                            <p className="text-red-100 text-xs font-bold uppercase tracking-widest mt-1">
+                                Registro de finalización laboral
+                            </p>
+                        </div>
+                        
+                        <div className="p-8 space-y-6">
+                            <FormField label="Motivo de Retiro" required>
+                                <select 
+                                    className={selectClass}
+                                    value={retiroData.motivo}
+                                    onChange={(e) => setRetiroData({...retiroData, motivo: e.target.value})}
+                                    required
+                                >
+                                    <option value="">Seleccione un motivo</option>
+                                    <option value="Renuncia voluntaria">Renuncia voluntaria</option>
+                                    <option value="Despido sin justa causa">Despido sin justa causa</option>
+                                    <option value="Despido con justa causa">Despido con justa causa</option>
+                                    <option value="Terminación de contrato obra o labor">Terminación de contrato obra o labor</option>
+                                    <option value="Vencimiento de términos">Vencimiento de términos</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </FormField>
+
+                            <FormField label="Fecha de Retiro" required>
+                                <Input 
+                                    type="date"
+                                    className={inputClass}
+                                    value={retiroData.fecha_retiro}
+                                    onChange={(e) => setRetiroData({...retiroData, fecha_retiro: e.target.value})}
+                                    required
+                                />
+                            </FormField>
+
+                            <FormField label="Comentarios Adicionales">
+                                <textarea 
+                                    className={`${selectClass} min-h-[100px] py-3`}
+                                    placeholder="Detalles sobre el retiro..."
+                                    value={retiroData.comentarios}
+                                    onChange={(e) => setRetiroData({...retiroData, comentarios: e.target.value})}
+                                />
+                            </FormField>
+
+                            <div className="flex gap-3 pt-4">
+                                <Button 
+                                    type="button"
+                                    variant="outline"
+                                    className="flex-1 h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest"
+                                    onClick={() => {
+                                        setShowRetiroModal(false);
+                                        updateField('activo', true); // Keep active if cancelled
+                                    }}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button 
+                                    type="button"
+                                    className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold uppercase text-[10px] tracking-widest"
+                                    onClick={() => {
+                                        if (retiroData.motivo) {
+                                            updateField('activo', false);
+                                            setShowRetiroModal(false);
+                                        } else {
+                                            toast.error('Por favor seleccione un motivo');
+                                        }
+                                    }}
+                                >
+                                    Confirmar Retiro
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </form>
     );
 };

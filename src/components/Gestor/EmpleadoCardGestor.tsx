@@ -27,7 +27,10 @@ export const EmpleadoCardGestor: React.FC<EmpleadoCardGestorProps> = ({ empleado
     const defaultPhoto = 'https://jdtjtkncptwqdhlxmzds.supabase.co/storage/v1/object/public/publico/assets/perfil.png';
 
     return (
-        <Card className="overflow-hidden bg-white hover:shadow-lg transition-all duration-300 border border-gray-100 group">
+        <Card 
+            onClick={onEdit}
+            className={`overflow-hidden bg-white hover:shadow-lg transition-all duration-300 border border-gray-100 group ${canEdit ? 'cursor-pointer' : ''}`}
+        >
             <CardContent className="p-0">
                 <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-4 p-4">
                     {/* Photo and Status */}

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
+import { CargosModal } from '@/components/Gestor/CargosModal'
 import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/supabase/types'
@@ -43,6 +44,7 @@ export default function GestorPersonalPage() {
     const [selectedPlanta, setSelectedPlanta] = useState('Todos')
     const [statusActivo, setStatusActivo] = useState(true)
     const [orderDate, setOrderDate] = useState(true) // Default to Date Descending
+    const [isCargosModalOpen, setIsCargosModalOpen] = useState(false)
 
     // 1. Fetch User and Roles
     useEffect(() => {
@@ -243,7 +245,7 @@ export default function GestorPersonalPage() {
                         {ADMIN_ROLES.includes(userRole as any) && (
                             <Button
                                 variant="outline"
-                                onClick={() => { }} // TODO: Modal cargos
+                                onClick={() => setIsCargosModalOpen(true)}
                                 className="border-gray-200 text-gray-700 hover:bg-white flex items-center gap-2 px-6 rounded-xl h-11"
                             >
                                 <ExternalLink className="h-5 w-5 text-blue-500" />
@@ -303,6 +305,11 @@ export default function GestorPersonalPage() {
                         </div>
                     )}
                 </div>
+
+                <CargosModal 
+                    isOpen={isCargosModalOpen}
+                    onClose={() => setIsCargosModalOpen(false)}
+                />
             </div>
         </div>
     )
