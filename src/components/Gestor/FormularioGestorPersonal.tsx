@@ -29,7 +29,8 @@ import {
     Calendar,
     Baby,
     Users,
-    Upload
+    Upload,
+    AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
@@ -230,12 +231,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
             setFetching(true);
             try {
-                const { data, error } = await supabase
-                    .from('empleados')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-
+                const { data, error } = await supabase.from('empleados').select('*').eq('id', id).single();
                 if (error) {
                     toast.error('No se pudo encontrar el empleado');
                 } else if (data) {
@@ -264,18 +260,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         tiene_esposo: emp.tiene_pareja ?? false,
                         nombre_esposo: emp.nombre_pareja || '',
                         num_hijos: emp.numero_hijos ?? 0,
-                        hijo1_nombre: emp.nombre_hijo1 || '',
-                        hijo1_nacimiento: emp.fecha_nacimiento_hijo1 || '',
-                        hijo1_sexo: emp.sexo_hijo1 || '',
-                        hijo2_nombre: emp.nombre_hijo2 || '',
-                        hijo2_nacimiento: emp.fecha_nacimiento_hijo2 || '',
-                        hijo2_sexo: emp.sexo_hijo2 || '',
-                        hijo3_nombre: emp.nombre_hijo3 || '',
-                        hijo3_nacimiento: emp.fecha_nacimiento_hijo3 || '',
-                        hijo3_sexo: emp.sexo_hijo3 || '',
-                        hijo4_nombre: emp.nombre_hijo4 || '',
-                        hijo4_nacimiento: emp.fecha_nacimiento_hijo4 || '',
-                        hijo4_sexo: emp.sexo_hijo4 || '',
+                        hijo1_nombre: emp.nombre_hijo1 || '', hijo1_nacimiento: emp.fecha_nacimiento_hijo1 || '', hijo1_sexo: emp.sexo_hijo1 || '',
+                        hijo2_nombre: emp.nombre_hijo2 || '', hijo2_nacimiento: emp.fecha_nacimiento_hijo2 || '', hijo2_sexo: emp.sexo_hijo2 || '',
+                        hijo3_nombre: emp.nombre_hijo3 || '', hijo3_nacimiento: emp.fecha_nacimiento_hijo3 || '', hijo3_sexo: emp.sexo_hijo3 || '',
+                        hijo4_nombre: emp.nombre_hijo4 || '', hijo4_nacimiento: emp.fecha_nacimiento_hijo4 || '', hijo4_sexo: emp.sexo_hijo4 || '',
                         nivel_educativo: emp.nivel_educativo || '',
                         ultimo_grado: emp.ultimo_grado_cursado || '',
                         actualmente_estudiando: emp.estudia_actualmente ?? false,
@@ -297,28 +285,24 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         talla_pantalon: emp.talla_pantalon || '',
                         talla_chaleco: emp.chaleco || ''
                     });
+                    if (!emp.activo) {
+                        const { data: rd } = await (supabase as any).from('retiro_personal').select('*').eq('empleado_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+                        if (rd) {
+                            setRetiroData({ motivo: rd.motivo || '', comentarios: rd.comentarios || '', fecha_retiro: rd.fecha_retiro || '' });
+                        }
+                    }
                 }
-            } catch (err) {
-                console.error('Unexpected error fetching employee:', err);
-            } finally {
-                setFetching(false);
-            }
+            } catch (err) { console.error('Unexpected error fetching employee:', err); } finally { setFetching(false); }
         };
-
         fetchEmpleado();
     }, [id, supabase]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.cedula || !formData.nombreCompleto) {
-            toast.error('Cédula y Nombre son obligatorios');
-            return;
-        }
-
         setLoading(true);
         try {
             const dataToSave = {
-                id: formData.cedula ? parseInt(formData.cedula) : 0,
+                id: parseInt(formData.cedula),
                 nombreCompleto: formData.nombreCompleto,
                 foto: formData.foto || null,
                 activo: formData.activo,
@@ -341,18 +325,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 tiene_pareja: formData.tiene_esposo,
                 nombre_pareja: formData.nombre_esposo || null,
                 numero_hijos: parseInt(formData.num_hijos.toString()) || 0,
-                nombre_hijo1: formData.hijo1_nombre || null,
-                fecha_nacimiento_hijo1: formData.hijo1_nacimiento || null,
-                sexo_hijo1: formData.hijo1_sexo || null,
-                nombre_hijo2: formData.hijo2_nombre || null,
-                fecha_nacimiento_hijo2: formData.hijo2_nacimiento || null,
-                sexo_hijo2: formData.hijo2_sexo || null,
-                nombre_hijo3: formData.hijo3_nombre || null,
-                fecha_nacimiento_hijo3: formData.hijo3_nacimiento || null,
-                sexo_hijo3: formData.hijo3_sexo || null,
-                nombre_hijo4: formData.hijo4_nombre || null,
-                fecha_nacimiento_hijo4: formData.hijo4_nacimiento || null,
-                sexo_hijo4: formData.hijo4_sexo || null,
+                nombre_hijo1: formData.hijo1_nombre || null, fecha_nacimiento_hijo1: formData.hijo1_nacimiento || null, sexo_hijo1: formData.hijo1_sexo || null,
+                nombre_hijo2: formData.hijo2_nombre || null, fecha_nacimiento_hijo2: formData.hijo2_nacimiento || null, sexo_hijo2: formData.hijo2_sexo || null,
+                nombre_hijo3: formData.hijo3_nombre || null, fecha_nacimiento_hijo3: formData.hijo3_nacimiento || null, sexo_hijo3: formData.hijo3_sexo || null,
+                nombre_hijo4: formData.hijo4_nombre || null, fecha_nacimiento_hijo4: formData.hijo4_nacimiento || null, sexo_hijo4: formData.hijo4_sexo || null,
                 nivel_educativo: formData.nivel_educativo || null,
                 ultimo_grado_cursado: formData.ultimo_grado || null,
                 estudia_actualmente: formData.actualmente_estudiando,
@@ -374,111 +350,46 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 chaleco: formData.talla_chaleco || null,
                 modified: new Date().toISOString()
             };
-
             if (id) {
-                const { error } = await (supabase as any)
-                    .from('empleados')
-                    .update(dataToSave as any)
-                    .eq('id', id);
-                if (error) throw error;
-
-                // Handle retirement record if status changed to inactive
-                if (!formData.activo && id) {
-                    await (supabase as any)
-                        .from('retiro_personal')
-                        .insert([{
-                            empleado_id: id,
-                            nombre: formData.nombreCompleto,
-                            motivo: retiroData.motivo,
-                            comentarios: retiroData.comentarios,
-                            fecha_retiro: retiroData.fecha_retiro
-                        }]);
-                }
-
-                toast.success('Empleado actualizado correctamente');
+                await (supabase as any).from('empleados').update(dataToSave).eq('id', id);
+                toast.success('Empleado actualizado');
             } else {
-                const { error, data } = await (supabase as any)
-                    .from('empleados')
-                    .insert([{ ...dataToSave, created: new Date().toISOString() }] as any)
-                    .select('id')
-                    .single();
-                
-                if (error) throw error;
-
-                // Handle retirement record if created as inactive
-                if (!formData.activo && data?.id) {
-                    await (supabase as any)
-                        .from('retiro_personal')
-                        .insert([{
-                            empleado_id: data.id,
-                            nombre: formData.nombreCompleto,
-                            motivo: retiroData.motivo,
-                            comentarios: retiroData.comentarios,
-                            fecha_retiro: retiroData.fecha_retiro
-                        }]);
-                }
-                
-                toast.success('Empleado creado correctamente');
+                await (supabase as any).from('empleados').insert([{ ...dataToSave, created: new Date().toISOString() }]);
+                toast.success('Empleado creado');
             }
-
             if (onSuccess) onSuccess();
             else router.push('/gestor-de-personal');
-        } catch (error: any) {
-            console.error('Error completo Supabase:', error);
-            const errorMessage = error.details || error.message || 'Error desconocido';
-            toast.error('Error al guardar: ' + errorMessage);
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { toast.error('Error al guardar'); } finally { setLoading(false); }
     };
 
-    const updateField = (field: string, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-    };
+    const updateField = (field: string, value: any) => setFormData(prev => ({ ...prev, [field]: value }));
 
-    if (fetching) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
-                <p className="text-gray-400 font-medium tracking-tight">Cargando datos del empleado...</p>
-            </div>
-        );
-    }
+    if (fetching) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-8 w-8 text-blue-500" /></div>;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-8">
-            {/* Header - Optimized and Centered */}
-            <div className="flex flex-col items-center justify-center py-8 bg-white/50 backdrop-blur-sm rounded-3xl border border-gray-100 shadow-sm mb-6">
-                <h1 className="text-[#1D3557] font-black text-2xl uppercase tracking-[0.2em] mb-8">
-                    Información Personal
-                </h1>
-
-                {/* Centered Photo */}
+            <div className="flex flex-col items-center py-8 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                <h1 className="text-[#1D3557] font-black text-2xl uppercase tracking-[0.2em] mb-8">Información Personal</h1>
                 <div className="relative group mb-6">
-                    <div className="w-48 h-56 rounded-2xl bg-gray-50 shadow-2xl border-4 border-white overflow-hidden transition-all duration-500 group-hover:shadow-blue-500/10 active:scale-[0.98]">
-                        {formData.foto ? (
-                            <Image
-                                src={formData.foto}
-                                alt="Foto Empleado"
-                                fill
-                                className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                unoptimized // To avoid Next.js optimization issues with external URLs
-                            />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-100 bg-gradient-to-br from-gray-50 to-gray-100">
-                                <User className="h-24 w-24" />
-                            </div>
-                        )}
-
-                        {/* Camera Overlay to Change Photo */}
-                        <div
-                            onClick={() => setShowPhotoEdit(!showPhotoEdit)}
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer"
-                        >
-                            <Camera className="h-8 w-8 text-white animate-pulse" />
-                        </div>
+                    <div className="w-48 h-56 rounded-2xl bg-gray-50 shadow-2xl border-4 border-white overflow-hidden">
+                        {formData.foto ? <Image src={formData.foto} alt="Foto" fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-100"><User className="h-24 w-24" /></div>}
+                        <div onClick={() => setShowPhotoEdit(!showPhotoEdit)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer"><Camera className="h-8 w-8 text-white" /></div>
                     </div>
                 </div>
+                {showPhotoEdit && (
+                    <div className="w-full max-w-md px-6 mb-6">
+                        <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFotoUpload} accept="image/*" disabled={uploadingFoto} />
+                            <div className="text-center space-y-1">
+                                <p className="text-sm font-bold text-gray-700">Actualizar imagen de perfil</p>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Formatos soportados: JPG, PNG</p>
+                            </div>
+                            <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFoto} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-blue-200 transition-all active:scale-95">
+                                {uploadingFoto ? <Loader2 className="animate-spin h-4 w-4" /> : <><Upload className="h-4 w-4 mr-2" /> Seleccionar Archivo</>}
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Quick Navigation Buttons (HILU / DISCIPLINARIOS) */}
                 {id && (
@@ -499,164 +410,45 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </Button>
                     </div>
                 )}
-
-                {/* Photo URL Input - Removed in favor of Upload */}
-                {showPhotoEdit && (
-                    <div className="w-full max-w-md px-6 animate-in slide-in-from-top-2 duration-300 mb-6">
-                        <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                className="hidden"
-                                onChange={handleFotoUpload}
-                                accept="image/*"
-                                disabled={uploadingFoto}
-                            />
-                            <div className="text-center space-y-1">
-                                <p className="text-sm font-bold text-gray-700">Actualizar imagen de perfil</p>
-                                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Formatos soportados: JPG, PNG</p>
-                            </div>
-                            <Button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadingFoto}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
-                            >
-                                {uploadingFoto ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Subiendo...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        Seleccionar Archivo
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* Section 1: Personal Information Fields */}
             <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-                <div className="grid grid-cols-1 gap-6">
-                    <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
-                        <Input
-                            value={formData.nombreCompleto}
-                            onChange={(e) => updateField('nombreCompleto', e.target.value)}
-                            placeholder="Nombre y apellidos"
-                            className={inputClass}
-                            required
-                        />
-                    </FormField>
-
-                    <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
-                        <Input
-                            type="number"
-                            value={formData.cedula}
-                            onChange={(e) => updateField('cedula', e.target.value)}
-                            placeholder="Ingrese número de cédula"
-                            className={inputClass}
-                            required
-                        />
-                    </FormField>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField label="Fecha de Nacimiento" icon={<Calendar className="h-3 w-3" />}>
-                            <Input
-                                type="date"
-                                value={formData.fecha_nacimiento}
-                                onChange={(e) => updateField('fecha_nacimiento', e.target.value)}
-                                className={inputClass}
-                            />
-                        </FormField>
-
-                        <FormField label="Fecha Expedición Cédula" icon={<Calendar className="h-3 w-3" />}>
-                            <Input
-                                type="date"
-                                value={formData.fecha_expedicion_cedula}
-                                onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)}
-                                className={inputClass}
-                            />
-                        </FormField>
-                    </div>
-
-                    <FormField label="Tipo de Sangre">
-                        <select
-                            value={formData.tipo_sangre}
-                            onChange={(e) => updateField('tipo_sangre', e.target.value)}
-                            className={selectClass}
-                        >
-                            <option value="">Seleccione tipo de sangre</option>
-                            {TIPOS_SANGRE.map(tipo => (
-                                <option key={tipo} value={tipo}>{tipo}</option>
-                            ))}
-                        </select>
-                    </FormField>
-                </div>
+                <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
+                    <Input value={formData.nombreCompleto} onChange={(e) => updateField('nombreCompleto', e.target.value)} className={inputClass} required />
+                </FormField>
+                <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
+                    <Input type="number" value={formData.cedula} onChange={(e) => updateField('cedula', e.target.value)} className={inputClass} required />
+                </FormField>
+                <FormField label="Tipo de Sangre">
+                    <select value={formData.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={selectClass}>
+                        <option value="">Seleccione tipo de sangre</option>
+                        {TIPOS_SANGRE.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                    </select>
+                </FormField>
             </div>
 
-            {/* Section 2: Work Information */}
             <FormSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Cargo / Puesto" icon={<Briefcase className="h-3 w-3" />}>
-                        <div className="relative">
-                            <input
-                                list="cargos-list"
-                                value={formData.cargo}
-                                onChange={(e) => updateField('cargo', e.target.value)}
-                                className={selectClass}
-                                placeholder="Seleccione o escriba el cargo"
-                            />
-                            <datalist id="cargos-list">
-                                {existingCargos.map(cargo => <option key={cargo} value={cargo} />)}
-                            </datalist>
-                        </div>
+                        <Input list="cargos-list" value={formData.cargo} onChange={(e) => updateField('cargo', e.target.value)} className={inputClass} />
+                        <datalist id="cargos-list">{existingCargos.map(c => <option key={c} value={c} />)}</datalist>
                     </FormField>
-
-                    <FormField label="Planta / Área" icon={<MapPin className="h-3 w-3" />}>
-                        <select
-                            value={formData.planta}
-                            onChange={(e) => updateField('planta', e.target.value)}
-                            className={selectClass}
-                        >
+                    <FormField label="Planta / Área" icon={<Building2 className="h-3 w-3" />}>
+                        <select value={formData.planta} onChange={(e) => updateField('planta', e.target.value)} className={selectClass}>
                             <option value="">Seleccione planta</option>
-                            {PLANTAS.filter(p => p !== 'Todos').map(planta => (
-                                <option key={planta} value={planta}>{planta}</option>
-                            ))}
+                            {PLANTAS.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                     </FormField>
-
-                    <FormField label="Jefe Directo" icon={<User className="h-3 w-3" />}>
-                        <div className="relative">
-                            <input
-                                list="jefes-list"
-                                value={formData.jefe}
-                                onChange={(e) => updateField('jefe', e.target.value)}
-                                className={selectClass}
-                                placeholder="Seleccione o escriba el jefe"
-                            />
-                            <datalist id="jefes-list">
-                                {existingJefes.map(jefe => <option key={jefe} value={jefe} />)}
-                            </datalist>
-                        </div>
+                    <FormField label="Jefe / Supervisor" icon={<User className="h-3 w-3" />}>
+                        <Input list="jefes-list" value={formData.jefe} onChange={(e) => updateField('jefe', e.target.value)} className={inputClass} />
+                        <datalist id="jefes-list">{existingJefes.map(j => <option key={j} value={j} />)}</datalist>
                     </FormField>
-
-                    <FormField label="Empresa" icon={<Building2 className="h-3 w-3" />}>
-                        <select
-                            value={formData.empresa}
-                            onChange={(e) => updateField('empresa', e.target.value)}
-                            className={selectClass}
-                        >
+                    <FormField label="Empresa Pagadora" icon={<Building2 className="h-3 w-3" />}>
+                        <select value={formData.empresa} onChange={(e) => updateField('empresa', e.target.value)} className={selectClass}>
                             <option value="">Seleccione empresa</option>
-                            {EMPRESAS.map(emp => (
-                                <option key={emp} value={emp}>{emp}</option>
-                            ))}
+                            {EMPRESAS.map(e => <option key={e} value={e}>{e}</option>)}
                         </select>
                     </FormField>
-
                     <FormField label="Primer Ingreso" icon={<Calendar className="h-3 w-3" />}>
                         <Input
                             type="date"
@@ -665,43 +457,66 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             className={inputClass}
                         />
                     </FormField>
-
-                    <FormField label="Nivel del Cargo">
+                    <FormField label="Nivel del Cargo" icon={<Users className="h-3 w-3" />}>
                         <select
+                            className={selectClass}
                             value={formData.nivel_cargo}
                             onChange={(e) => updateField('nivel_cargo', e.target.value)}
-                            className={selectClass}
                         >
                             <option value="">Seleccione nivel</option>
-                            {NIVELES_CARGO.map(nivel => (
-                                <option key={nivel} value={nivel}>{nivel}</option>
-                            ))}
+                            {NIVELES_CARGO.map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                     </FormField>
                 </div>
 
-                {/* Status Toggle */}
-                <div className="mt-6 flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
-                    <Switch
-                        checked={formData.activo}
-                        onCheckedChange={(val) => {
-                            if (!val) {
-                                setShowRetiroModal(true);
-                            } else {
-                                updateField('activo', true);
-                            }
-                        }}
-                    />
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d]">Estado Laboral</span>
-                        <span className={`text-xs font-bold leading-none ${formData.activo ? 'text-green-500' : 'text-red-500'}`}>
-                            {formData.activo ? 'VINCULADO' : 'RETIRADO'}
-                        </span>
+                <div className="mt-8 pt-8 border-t border-gray-100 grid grid-cols-1 gap-6">
+                    <div className="flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                        <Switch
+                            checked={formData.activo}
+                            onCheckedChange={(val) => {
+                                if (!val) {
+                                    setShowRetiroModal(true);
+                                } else {
+                                    updateField('activo', true);
+                                }
+                            }}
+                        />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#1e2f3d]">Estado Laboral</span>
+                            <span className={`text-xs font-bold uppercase ${formData.activo ? 'text-green-500' : 'text-red-500'}`}>
+                                {formData.activo ? 'Vinculado' : 'Retirado'}
+                            </span>
+                        </div>
                     </div>
+
+                    {!formData.activo && (
+                        <div className="bg-red-50/50 rounded-2xl p-6 border border-red-100 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="flex items-center gap-2 mb-2">
+                                <AlertCircle className="h-5 w-5 text-red-500" />
+                                <h4 className="text-sm font-black uppercase tracking-tight text-red-800">Detalles de Retiro</h4>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-600/70">Motivo de Retiro</p>
+                                    <p className="text-sm font-bold text-gray-800 bg-white px-3 py-2 rounded-lg border border-red-100">{retiroData.motivo || 'No registrado'}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-600/70">Fecha de Retiro</p>
+                                    <p className="text-sm font-bold text-gray-800 bg-white px-3 py-2 rounded-lg border border-red-100">{retiroData.fecha_retiro || 'No registrada'}</p>
+                                </div>
+                                <div className="md:col-span-2 space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-600/70">Comentarios Adicionales</p>
+                                    <p className="text-sm font-medium text-gray-700 bg-white px-3 py-2 rounded-lg border border-red-100 min-h-[60px] whitespace-pre-wrap">
+                                        {retiroData.comentarios || 'Sin comentarios adicionales.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </FormSection>
 
-            {/* Section 3: Contact Information */}
             <FormSection title="Información de Contacto" icon={<Phone className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Dirección" icon={<MapPin className="h-3 w-3" />}>
