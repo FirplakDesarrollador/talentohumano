@@ -24,8 +24,31 @@ export default function BuscadorHiluPage() {
     const [plantas, setPlantas] = useState<string[]>([])
     const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
     const [selectedStatus, setSelectedStatus] = useState<string>('activo') // 'all', 'activo', 'inactivo'
+    const [isInitialized, setIsInitialized] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
+
+    // Load filters from localStorage on mount
+    useEffect(() => {
+        const savedPlanta = localStorage.getItem('hilu_selectedPlanta')
+        const savedStatus = localStorage.getItem('hilu_selectedStatus')
+        const savedBusqueda = localStorage.getItem('hilu_busqueda')
+
+        if (savedPlanta) setSelectedPlanta(savedPlanta)
+        if (savedStatus) setSelectedStatus(savedStatus)
+        if (savedBusqueda) setBusqueda(savedBusqueda)
+        
+        setIsInitialized(true)
+    }, [])
+
+    // Save filters to localStorage when they change
+    useEffect(() => {
+        if (isInitialized) {
+            localStorage.setItem('hilu_selectedPlanta', selectedPlanta)
+            localStorage.setItem('hilu_selectedStatus', selectedStatus)
+            localStorage.setItem('hilu_busqueda', busqueda)
+        }
+    }, [selectedPlanta, selectedStatus, busqueda, isInitialized])
 
     const fetchFilters = useCallback(async () => {
         try {
@@ -37,7 +60,12 @@ export default function BuscadorHiluPage() {
 
             if (plantasData) {
                 const uniquePlantas = Array.from(new Set(plantasData.map(p => p.planta).filter(Boolean))) as string[]
-                setPlantas(uniquePlantas.filter(p => !p.toLowerCase().includes('comercial')).sort())
+                // Filter out commercial and also JSON/Object strings from SharePoint
+                setPlantas(uniquePlantas
+                    .filter(p => !p.toLowerCase().includes('comercial'))
+                    .filter(p => !p.startsWith('{'))
+                    .sort()
+                )
             }
         } catch (error) {
             console.error('Error fetching filters:', error)
@@ -45,6 +73,7 @@ export default function BuscadorHiluPage() {
     }, [supabase])
 
     const fetchEmpleados = useCallback(async () => {
+        if (!isInitialized) return;
         setLoading(true)
         try {
             let query = supabase
@@ -85,24 +114,30 @@ export default function BuscadorHiluPage() {
         } finally {
             setLoading(false)
         }
-    }, [busqueda, selectedPlanta, selectedStatus, supabase])
+    }, [busqueda, selectedPlanta, selectedStatus, supabase, isInitialized])
 
     useEffect(() => {
         const handleFocus = () => {
-            fetchFilters()
-            fetchEmpleados()
+            if (isInitialized) {
+                fetchFilters()
+                fetchEmpleados()
+            }
         }
         window.addEventListener('focus', handleFocus)
         return () => window.removeEventListener('focus', handleFocus)
-    }, [fetchFilters, fetchEmpleados])
+    }, [fetchFilters, fetchEmpleados, isInitialized])
 
     useEffect(() => {
-        fetchFilters()
-    }, [fetchFilters])
+        if (isInitialized) {
+            fetchFilters()
+        }
+    }, [fetchFilters, isInitialized])
 
     useEffect(() => {
-        fetchEmpleados()
-    }, [fetchEmpleados])
+        if (isInitialized) {
+            fetchEmpleados()
+        }
+    }, [fetchEmpleados, isInitialized])
 
     const handleEmpleadoClick = (empleado: EmpleadoHILU) => {
         router.push(`/entrenamiento/${empleado.id}`)
