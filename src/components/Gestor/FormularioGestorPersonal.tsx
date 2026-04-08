@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,11 @@ import {
     Stethoscope,
     Car,
     Shirt,
+    ChevronUp,
     Calendar,
     Baby,
-    Users
+    Users,
+    Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
@@ -101,6 +103,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(!!id);
     const [showPhotoEdit, setShowPhotoEdit] = useState(false);
+    const [uploadingFoto, setUploadingFoto] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [showRetiroModal, setShowRetiroModal] = useState(false);
     const [retiroData, setRetiroData] = useState({
         motivo: '',
@@ -167,6 +171,36 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         talla_pantalon: '',
         talla_chaleco: ''
     });
+
+    const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        setUploadingFoto(true);
+
+        try {
+            const fileName = `foto_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+            const filePath = `fotos_perfil/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('evidencias-hilu')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('evidencias-hilu')
+                .getPublicUrl(filePath);
+
+            updateField('foto', publicUrl);
+            setShowPhotoEdit(false);
+            toast.success('Foto actualizada correctamente');
+        } catch (err: any) {
+            console.error('Error al subir foto:', err);
+            toast.error('Error al subir la imagen');
+        } finally {
+            setUploadingFoto(false);
+        }
+    };
 
     // Helper State for Dropdowns
     const [existingJefes, setExistingJefes] = useState<string[]>([]);
@@ -466,17 +500,41 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     </div>
                 )}
 
-                {/* Photo URL Input - Collapsible and discreet */}
+                {/* Photo URL Input - Removed in favor of Upload */}
                 {showPhotoEdit && (
                     <div className="w-full max-w-md px-6 animate-in slide-in-from-top-2 duration-300 mb-6">
-                        <FormField label="Editar URL de Fotografía" icon={<Camera className="h-3 w-3" />}>
-                            <Input
-                                value={formData.foto}
-                                onChange={(e) => updateField('foto', e.target.value)}
-                                placeholder="https://ejemplo.com/foto.jpg"
-                                className={inputClass}
+                        <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                onChange={handleFotoUpload}
+                                accept="image/*"
+                                disabled={uploadingFoto}
                             />
-                        </FormField>
+                            <div className="text-center space-y-1">
+                                <p className="text-sm font-bold text-gray-700">Actualizar imagen de perfil</p>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Formatos soportados: JPG, PNG</p>
+                            </div>
+                            <Button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingFoto}
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
+                            >
+                                {uploadingFoto ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Subiendo...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Seleccionar Archivo
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
