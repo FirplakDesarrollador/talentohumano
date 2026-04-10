@@ -44,9 +44,24 @@ interface FormularioGestorPersonalProps {
     onSuccess?: () => void;
 }
 
-const EMPRESAS = ['FIRPLAK S.A.', 'TÉCNICOS Y SERVICIOS S.A.S', 'JIRO', 'VINCULAMOS', 'VIVENTTA', 'SAITEMP'];
+const EMPRESAS = ['Be Home', 'Firplak', 'Jiro', 'Maquilogis', 'Vinculamos', 'Viventta', 'Saitemp'];
 const TIPOS_SANGRE = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const NIVELES_CARGO = ['Operario', 'Supervisor', 'Coordinador', 'Jefe', 'Gerente', 'Director'];
+const NIVELES_CARGO = [
+    'Operario', 
+    'Supervisor', 
+    'Coordinador', 
+    'Jefe', 
+    'Gerente', 
+    'Director', 
+    'Auxiliar', 
+    'Analista', 
+    'Especialista', 
+    'Practicante', 
+    'Técnico', 
+    'Promotor', 
+    'Administrador', 
+    'Asesor'
+];
 const NIVELES_EDUCATIVOS = ['Primaria', 'Secundaria', 'Técnico', 'Tecnólogo', 'Profesional', 'Especialización', 'Maestría', 'Doctorado'];
 const CONSUMO_OPTIONS = ['Nunca', 'Ocasionalmente', 'Siempre'];
 const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -351,15 +366,41 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 modified: new Date().toISOString()
             };
             if (id) {
-                await (supabase as any).from('empleados').update(dataToSave).eq('id', id);
+                const { error } = await (supabase as any).from('empleados').update(dataToSave).eq('id', id);
+                if (error) throw error;
                 toast.success('Empleado actualizado');
             } else {
-                await (supabase as any).from('empleados').insert([{ ...dataToSave, created: new Date().toISOString() }]);
+                const { error } = await (supabase as any).from('empleados').insert([{ ...dataToSave, created: new Date().toISOString() }]);
+                if (error) throw error;
                 toast.success('Empleado creado');
             }
+
+            // Save retirement data if employee is inactive
+            if (!formData.activo) {
+                const retirementEntry = {
+                    empleado_id: dataToSave.id,
+                    nombre: dataToSave.nombreCompleto,
+                    motivo: retiroData.motivo || 'No registrado',
+                    fecha_retiro: retiroData.fecha_retiro || new Date().toISOString().split('T')[0],
+                    comentarios: retiroData.comentarios || '',
+                    updated_at: new Date().toISOString()
+                };
+
+                const { error: retiroError } = await (supabase as any)
+                    .from('retiro_personal')
+                    .upsert(retirementEntry, { onConflict: 'empleado_id' });
+
+                if (retiroError) {
+                    console.error('Error saving retirement data:', retiroError);
+                }
+            }
+
             if (onSuccess) onSuccess();
             else router.push('/gestor-de-personal');
-        } catch (err) { toast.error('Error al guardar'); } finally { setLoading(false); }
+        } catch (err: any) { 
+            console.error('Error in handleSubmit:', err);
+            toast.error('Error al guardar: ' + (err.message || 'Unknown error')); 
+        } finally { setLoading(false); }
     };
 
     const updateField = (field: string, value: any) => setFormData(prev => ({ ...prev, [field]: value }));
@@ -416,15 +457,24 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
                     <Input value={formData.nombreCompleto} onChange={(e) => updateField('nombreCompleto', e.target.value)} className={inputClass} required />
                 </FormField>
-                <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
-                    <Input type="number" value={formData.cedula} onChange={(e) => updateField('cedula', e.target.value)} className={inputClass} required />
-                </FormField>
-                <FormField label="Tipo de Sangre">
-                    <select value={formData.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={selectClass}>
-                        <option value="">Seleccione tipo de sangre</option>
-                        {TIPOS_SANGRE.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-                    </select>
-                </FormField>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
+                        <Input type="number" value={formData.cedula} onChange={(e) => updateField('cedula', e.target.value)} className={inputClass} required />
+                    </FormField>
+                    <FormField label="Fecha de Expedición Cédula" icon={<Calendar className="h-3 w-3" />}>
+                        <Input type="date" value={formData.fecha_expedicion_cedula} onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)} className={inputClass} />
+                    </FormField>
+                    <FormField label="Fecha de Nacimiento" icon={<Baby className="h-3 w-3" />}>
+                        <Input type="date" value={formData.fecha_nacimiento} onChange={(e) => updateField('fecha_nacimiento', e.target.value)} className={inputClass} />
+                    </FormField>
+                    <FormField label="Tipo de Sangre" icon={<Heart className="h-3 w-3" />}>
+                        <select value={formData.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={selectClass}>
+                            <option value="">Seleccione tipo de sangre</option>
+                            {TIPOS_SANGRE.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                        </select>
+                    </FormField>
+                </div>
             </div>
 
             <FormSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />}>
@@ -443,7 +493,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         <Input list="jefes-list" value={formData.jefe} onChange={(e) => updateField('jefe', e.target.value)} className={inputClass} />
                         <datalist id="jefes-list">{existingJefes.map(j => <option key={j} value={j} />)}</datalist>
                     </FormField>
-                    <FormField label="Empresa Pagadora" icon={<Building2 className="h-3 w-3" />}>
+                    <FormField label="Empresa" icon={<Building2 className="h-3 w-3" />}>
                         <select value={formData.empresa} onChange={(e) => updateField('empresa', e.target.value)} className={selectClass}>
                             <option value="">Seleccione empresa</option>
                             {EMPRESAS.map(e => <option key={e} value={e}>{e}</option>)}
@@ -491,9 +541,20 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
                     {!formData.activo && (
                         <div className="bg-red-50/50 rounded-2xl p-6 border border-red-100 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                            <div className="flex items-center gap-2 mb-2">
-                                <AlertCircle className="h-5 w-5 text-red-500" />
-                                <h4 className="text-sm font-black uppercase tracking-tight text-red-800">Detalles de Retiro</h4>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="h-5 w-5 text-red-500" />
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-red-800">Detalles de Retiro</h4>
+                                </div>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => setShowRetiroModal(true)}
+                                    className="h-8 rounded-lg border-red-200 text-red-600 hover:bg-red-100 font-bold text-[10px] uppercase tracking-widest px-4"
+                                >
+                                    Editar Información
+                                </Button>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -991,7 +1052,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     className="flex-1 h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest"
                                     onClick={() => {
                                         setShowRetiroModal(false);
-                                        updateField('activo', true); // Keep active if cancelled
+                                        // No alteramos el estado 'activo' al cancelar, 
+                                        // se mantiene el que ya tenía.
                                     }}
                                 >
                                     Cancelar

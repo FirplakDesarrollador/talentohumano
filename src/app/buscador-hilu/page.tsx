@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
+import { ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,6 +26,8 @@ export default function BuscadorHiluPage() {
     const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
     const [selectedStatus, setSelectedStatus] = useState<string>('activo') // 'all', 'activo', 'inactivo'
     const [isInitialized, setIsInitialized] = useState(false)
+    const [userLevel, setUserLevel] = useState<string>('')
+    const [userEmail, setUserEmail] = useState<string>('')
 
     const supabase = useMemo(() => createClient(), [])
 
@@ -49,6 +52,45 @@ export default function BuscadorHiluPage() {
             localStorage.setItem('hilu_busqueda', busqueda)
         }
     }, [selectedPlanta, selectedStatus, busqueda, isInitialized])
+
+    // Fetch user context
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                setUserEmail(user.email || '')
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivelCargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if (empleado?.nivelCargo) {
+                    setUserLevel(empleado.nivelCargo)
+                } else {
+                    const { data: profile } = await supabase
+                        .from('usuarios')
+                        .select('rol')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if (profile?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista'
+                        }
+                        setUserLevel(roleMap[profile.rol] || profile.rol)
+                    }
+                }
+            }
+        }
+        fetchUser()
+    }, [supabase])
 
     const fetchFilters = useCallback(async () => {
         try {
@@ -114,7 +156,27 @@ export default function BuscadorHiluPage() {
         } finally {
             setLoading(false)
         }
-    }, [busqueda, selectedPlanta, selectedStatus, supabase, isInitialized])
+    }, [isInitialized, selectedStatus, selectedPlanta, busqueda, supabase])
+
+    const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
+    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista'].includes(userLevel)
+
+    if (isInitialized && !loading && !canSeeHilu) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-md">
+                    <BarChart3 className="h-16 w-16 text-red-500 mx-auto mb-4 opacity-20" />
+                    <h1 className="text-2xl font-bold mb-2">Acceso Restringido</h1>
+                    <p className="text-gray-600 mb-6">
+                        No tienes permisos suficientes para acceder al buscador HILU.
+                    </p>
+                    <Button onClick={() => router.push('/menu')} className="w-full">
+                        Volver al inicio
+                    </Button>
+                </div>
+            </div>
+        )
+    }
 
     useEffect(() => {
         const handleFocus = () => {

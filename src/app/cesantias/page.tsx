@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { SolicitudDetalle } from '@/components/Cesantias/SolicitudDetalle'
 import { formatMotivo } from '@/lib/utils'
@@ -63,21 +63,48 @@ export default function CesantiasPage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
-        const fetchUser = async () => {
+        const fetchUserData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
-                const { data: profile } = await supabase
-                    .from('usuarios')
-                    .select('*')
-                    .eq('correo', user.email!)
-                    .single()
-                setCurrentUser(profile || { correo: user.email })
+                // Prioridad: nivelCargo de la tabla empleados
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivelCargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if (empleado?.nivelCargo) {
+                    setCurrentUser({ correo: user.email, nivelCargo: empleado.nivelCargo })
+                } else {
+                    // Fallback a tabla usuarios para mapeo
+                    const { data: usuario } = await supabase
+                        .from('usuarios')
+                        .select('rol')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if (usuario?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista'
+                        }
+                        setCurrentUser({ correo: user.email, nivelCargo: roleMap[usuario.rol] || usuario.rol })
+                    } else {
+                        setCurrentUser({ correo: user.email })
+                    }
+                }
             }
         }
-        fetchUser()
+        fetchUserData()
     }, [supabase])
 
-    const isAdmin = currentUser?.rol && ADMIN_ROLES.includes(currentUser.rol.toLowerCase() as any)
+    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
+                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)
@@ -94,7 +121,7 @@ export default function CesantiasPage() {
             if (filterTipo) query = query.eq('Tipo de Cesantias', filterTipo)
             if (filterMotivo) query = query.ilike('Motivo', `%${filterMotivo}%`)
 
-            // Access Control: Non-admins can only see their own requests
+            // Access Control: Solo administradores/directivos ven todo, el resto solo lo propio
             if (!isAdmin && currentUser?.correo) {
                 query = query.eq('Correo', currentUser.correo)
             }

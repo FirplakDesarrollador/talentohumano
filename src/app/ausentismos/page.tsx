@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,7 +13,8 @@ import {
     Loader2,
     Search,
     Eraser,
-    FileUp
+    FileUp,
+    ShieldAlert
 } from 'lucide-react'
 import { AusentismoCard, type Ausentismo } from '@/components/Ausentismos/AusentismoCard'
 import { AusentismoRow } from '@/components/Ausentismos/AusentismoRow'
@@ -30,6 +32,8 @@ export default function AusentismosPage() {
     const [ausentismos, setAusentismos] = useState<Ausentismo[]>([])
     const [filteredAusentismos, setFilteredAusentismos] = useState<Ausentismo[]>([])
     const [loading, setLoading] = useState(true)
+    const [currentUser, setCurrentUser] = useState<any>(null)
+    const [userLevel, setUserLevel] = useState<string>('')
 
     // UI State
     const [busqueda, setBusqueda] = useState('')
@@ -43,8 +47,40 @@ export default function AusentismosPage() {
                 // Ensure user is authenticated first
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) {
-                    console.log('No user session found, skipping fetch')
+                    setLoading(false)
                     return
+                }
+
+                setCurrentUser({ correo: user.email })
+
+                // Fetch cargo level
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivelCargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if (empleado?.nivelCargo) {
+                    setUserLevel(empleado.nivelCargo)
+                } else {
+                    const { data: usuario } = await supabase
+                        .from('usuarios')
+                        .select('rol')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if (usuario?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista'
+                        }
+                        setUserLevel(roleMap[usuario.rol] || usuario.rol)
+                    }
                 }
 
                 // Table name with spaces as hinted by Flutter code
@@ -131,6 +167,22 @@ export default function AusentismosPage() {
 
         setFilteredAusentismos(filtered)
     }, [busqueda, ausentismos, filtroReciente])
+
+    const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(userLevel as any)
+    const hasAccess = isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
+
+    if (!loading && !hasAccess) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
+                <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
+                <p className="text-gray-600 mb-6 text-center max-w-md">
+                    No tienes permisos para acceder al módulo de Ausentismos. Contacta al administrador si crees que esto es un error.
+                </p>
+                <Button onClick={() => router.push('/menu')}>Volver al menú</Button>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-[#F1F4F8]">

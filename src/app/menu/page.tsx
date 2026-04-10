@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -16,22 +17,62 @@ import {
     Monitor,
     Component,
     LogOut,
-    Loader2
+    Loader2,
+    BookOpen,
+    UserPlus,
+    Gavel
 } from 'lucide-react'
 
 export default function MenuPage() {
     const [user, setUser] = useState<any>(null)
+    const [userLevel, setUserLevel] = useState<string>('')
+    const [userName, setUserName] = useState<string>('')
     const [loading, setLoading] = useState(true)
     const router = useRouter()
     const supabase = createClient()
 
     useEffect(() => {
-        const getUser = async () => {
+        const fetchUserData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            setUser(user)
+            if (user) {
+                setUser(user)
+                
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivelCargo, nombrecompleto')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if (empleado?.nivelCargo) {
+                    setUserLevel(empleado.nivelCargo)
+                    setUserName(empleado.nombrecompleto || '')
+                } else {
+                    const { data: usuario } = await supabase
+                        .from('usuarios')
+                        .select('rol, nombre')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if (usuario?.rol) {
+                        setUserName(usuario.nombre || '')
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista',
+                            'supervisor': 'Jefe',
+                            'visitante': 'Operativo'
+                        }
+                        setUserLevel(roleMap[usuario.rol] || usuario.rol)
+                    }
+                }
+            }
             setLoading(false)
         }
-        getUser()
+        fetchUserData()
     }, [supabase])
 
     const handleLogout = async () => {
@@ -40,52 +81,63 @@ export default function MenuPage() {
         router.refresh()
     }
 
+    const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)
+
     const menuItems = [
         {
             title: 'Aumentos salariales',
             href: '/aumentossalariales',
             icon: TrendingUp,
+            visible: isSystemAdmin || APPROVER_LEVELS.includes(userLevel as any)
         },
         {
-            title: 'Cesantias',
+            title: 'Cesantías',
             href: '/cesantias',
             icon: PiggyBank,
+            visible: true
         },
         {
             title: 'Vacaciones',
             href: '/vacaciones',
             icon: Umbrella,
+            visible: true
         },
         {
             title: 'NOVEDADES NÓMINA',
             href: '/novedades-nomina',
             icon: Newspaper,
+            visible: isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
         },
         {
             title: 'Gestor de personal',
             href: '/gestor-de-personal',
             icon: Users,
+            visible: isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
         },
         {
             title: 'Ausentismos',
             href: '/ausentismos',
             icon: UserX,
+            visible: isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
         },
         {
-            title: 'Procesos disciplinarios',
+            title: 'Procesos Disciplinarios',
             href: '/procesos-disciplinarios',
-            icon: Handshake,
+            icon: Gavel,
+            visible: true
         },
         {
             title: 'HILU',
             href: '/buscador-hilu',
             icon: Monitor,
+            visible: isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista'].includes(userLevel)
         },
         {
             title: 'Desempeño',
             href: '/desempeno',
             icon: Component,
-        },
+            visible: user?.email && ADMIN_EMAILS.includes(user.email)
+        }
     ]
 
     if (loading) {
@@ -109,8 +161,8 @@ export default function MenuPage() {
                 {/* Welcome Message */}
                 <div className="flex flex-col items-center">
                     <span className="text-sm font-bold text-[#1D3557]">¡Bienvenido!</span>
-                    <span className="text-xs text-gray-600">
-                        Usuario: <span className="font-semibold">{user?.user_metadata?.full_name || user?.email || 'Usuario'}</span>
+                    <span className="text-[14px] text-blue-600 font-bold mt-1">
+                        {userName || user?.user_metadata?.full_name || 'Usuario'}
                     </span>
                 </div>
 
@@ -127,7 +179,7 @@ export default function MenuPage() {
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="flex flex-wrap justify-center gap-6">
-                    {menuItems.map((item) => {
+                    {menuItems.filter(item => item.visible).map((item) => {
                         const Icon = item.icon
                         return (
                             <Link key={item.title} href={item.href}>
