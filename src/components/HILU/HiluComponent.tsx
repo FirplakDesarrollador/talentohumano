@@ -177,7 +177,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         } else {
             // For non-operarios, check if all tools are complete
             const availableTools = role === 'SUPERVISOR_MEDIO'
-                ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+                ? (phase === 'U' ? ['TE-EE'] : TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t)))
                 : TOOLS_LIST
 
             const allToolsDone = availableTools.every(t => isToolComplete(phase as 'I' | 'L' | 'U', t))
@@ -221,23 +221,24 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     const renderToolGrid = (phase: 'I' | 'L' | 'U') => {
         const role = getRoleType(localEmpleado.cargo)
         const availableTools = role === 'SUPERVISOR_MEDIO'
-            ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+            ? (phase === 'U' ? ['TE-EE'] : TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t)))
             : role === 'OPERARIO'
                 ? TOOLS_LIST
                 : TOOLS_LIST.filter(t => ![''].includes(t))
         const checks = phase === 'I' ? PHASE_I_CHECKS : phase === 'L' ? PHASE_L_CHECKS : PHASE_U_CHECKS
         const fieldName: keyof QueryHiluRow = phase === 'I' ? 'fi_detalles' : phase === 'L' ? 'fl_detalles' : 'fu_detalles'
         const details = (localEmpleado[fieldName] as unknown as ToolDetails) || {}
+        const faseHComplete = !!localEmpleado.fh_completado;
 
         return (
             <div className="space-y-4">
                 {availableTools.map(tool => {
                     // Per-tool conditional: L requires same tool complete in I, U requires same tool complete in L
-                    const toolDisabled = phase === 'L'
+                    const toolDisabled = !faseHComplete || (phase === 'L'
                         ? !isToolComplete('I', tool)
                         : phase === 'U'
                             ? !isToolComplete('L', tool)
-                            : false
+                            : false)
 
                     const toolDetails = (details[tool] as Record<string, boolean>) || {}
                     const completedChecks = checks.filter(chk => toolDetails[chk]).length
@@ -504,6 +505,8 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
         }
 
+        const faseHComplete = !!localEmpleado.fh_completado;
+
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
                 <PhaseHeader title="Etapa I" progress={progress} isOpen={openPhase === 'I'} onClick={() => setOpenPhase(openPhase === 'I' ? null : 'I')} />
@@ -514,9 +517,15 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             <div className="relative"><Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">{localEmpleado.fi_created_at ? new Date(localEmpleado.fi_created_at).toLocaleDateString() : 'Null'}</div></div>
                         </div>
 
+                        {!faseHComplete && (
+                            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
+                                ⚠️ Complete la Fase H para habilitar las herramientas de la Fase I
+                            </div>
+                        )}
+
                         {role === 'OPERARIO' ? (
-                            <>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className={!faseHComplete ? "opacity-60 pointer-events-none" : ""}>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                                     <PillCheckbox id="fi_titular" label="Es el Titular del Puesto" checked={localEmpleado.fi_titular || false} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fi_titular: c }))
                                         updatePhase('fase_I', localEmpleado.fi_id!, { titular: c })
@@ -544,7 +553,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         <Input className="h-full pt-4" defaultValue={localEmpleado.fi_entrenado_por || ''} onBlur={(e) => updatePhase('fase_I', localEmpleado.fi_id!, { entrenado_por: e.target.value })} />
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         ) : (
                             <div className="bg-white p-4 rounded-lg border border-gray-200">
                                 <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase I</h4>
@@ -552,7 +561,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
                             <div className="lg:col-span-3 space-y-2">
                                 <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
                                 <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => {
@@ -595,7 +604,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
         }
         // Phase L is disabled until ALL phase I checks are complete (OPERARIO only)
+        const faseHComplete = !!localEmpleado.fh_completado;
         const faseIComplete = !!(localEmpleado.fi_titular && localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
+        const canEditL = faseHComplete && faseIComplete;
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
@@ -607,14 +618,20 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             <div className="relative"><Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">{localEmpleado.fl_created_at ? new Date(localEmpleado.fl_created_at).toLocaleDateString() : 'Null'}</div></div>
                         </div>
 
+                        {!faseHComplete && (
+                            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
+                                ⚠️ Complete la Fase H para habilitar las herramientas de la Fase L
+                            </div>
+                        )}
+
                         {role === 'OPERARIO' ? (
                             <div className="space-y-2">
-                                {!faseIComplete && (
+                                {(faseHComplete && !faseIComplete) && (
                                     <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
                                         ⚠️ Complete todas las habilidades de la Fase I para habilitar la Fase L
                                     </div>
                                 )}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${!canEditL ? 'opacity-60 pointer-events-none' : ''}`}>
                                     <PillCheckbox id="fl_cumple_calidad" label="Cumple Calidad" checked={localEmpleado.fl_cumple_calidad || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_calidad: c }))
                                         updatePhase('fase_L', localEmpleado.fl_id!, { cumple_calidad: c })
@@ -636,7 +653,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
                             <div className="lg:col-span-3 space-y-2">
                                 <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
                                 <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fl_comentario || ''} onBlur={(e) => {
@@ -673,13 +690,15 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             progress = Math.round((completed / 3) * 100)
         } else {
             const availableTools = role === 'SUPERVISOR_MEDIO'
-                ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
+                ? ['TE-EE']
                 : TOOLS_LIST
             const completedTools = availableTools.filter(t => isToolComplete('U', t)).length
             progress = availableTools.length > 0 ? Math.round((completedTools / availableTools.length) * 100) : 0
         }
         // Phase U is disabled until ALL phase L checks are complete (OPERARIO only)
+        const faseHComplete = !!localEmpleado.fh_completado;
         const faseLComplete = !!(localEmpleado.fl_cumple_calidad && localEmpleado.fl_cumple_estandar && localEmpleado.fl_cumple_tiempo)
+        const canEditU = faseHComplete && faseLComplete;
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
@@ -691,14 +710,20 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             <div className="relative"><Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">{localEmpleado.fu_created_at ? new Date(localEmpleado.fu_created_at).toLocaleDateString() : 'Null'}</div></div>
                         </div>
 
+                        {!faseHComplete && (
+                            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
+                                ⚠️ Complete la Fase H para habilitar las herramientas de la Fase U
+                            </div>
+                        )}
+
                         {role === 'OPERARIO' ? (
                             <div className="space-y-2">
-                                {!faseLComplete && (
+                                {(faseHComplete && !faseLComplete) && (
                                     <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
                                         ⚠️ Complete todas las habilidades de la Fase L para habilitar la Fase U
                                     </div>
                                 )}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${!canEditU ? 'opacity-60 pointer-events-none' : ''}`}>
                                     <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para Entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} disabled={!faseLComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
                                         updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
@@ -720,7 +745,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
                             <div className="lg:col-span-3 space-y-2">
                                 <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
                                 <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fu_comentario || ''} onBlur={(e) => {
