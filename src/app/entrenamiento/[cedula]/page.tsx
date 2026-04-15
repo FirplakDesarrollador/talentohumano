@@ -118,7 +118,7 @@ export default function EntrenamientoDetailPage() {
                         .select('id')
                         .eq('correo', user.email)
                         .maybeSingle() as any
-                    if (profile?.id) {
+                    if ((profile as any)?.id) {
                         numericCreatorId = profile.id
                         setCurrentUser({ id: profile.id })
                     }

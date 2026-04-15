@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
+import { ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -36,35 +37,8 @@ export default function BuscadorProcesosDisciplinariosPage() {
     const [busqueda, setBusqueda] = useState('')
     const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
-    // 1. Fetch User and Initial Data
-    useEffect(() => {
-        const fetchUserData = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser()
-                if (!user) {
-                    setLoading(false)
-                    return
-                }
-
-                const { data: profile } = await supabase
-                    .from('usuarios')
-                    .select('*')
-                    .eq('correo', user.email!)
-                    .single()
-
-                setCurrentUser(profile)
-                fetchEmpleados((profile as any)?.plantas || [])
-            } catch (error) {
-                console.error('Error fetching user data:', error)
-                fetchEmpleados([]) // Try fetching all as fallback
-            }
-        }
-        fetchUserData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [supabase])
-
     // 2. Fetch Empleados
-    const fetchEmpleados = async (plantas: string[]) => {
+    const fetchEmpleados = useCallback(async (plantas: string[]) => {
         setLoading(true)
         try {
             let query = supabase
@@ -88,7 +62,64 @@ export default function BuscadorProcesosDisciplinariosPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [supabase])
+
+    // 1. Fetch User and Initial Data
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) {
+                    setLoading(false)
+                    return
+                }
+
+                // Obtener nivel_cargo de la tabla empleados
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivel_cargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                let currentLevel = ''
+                if ((empleado as any)?.nivel_cargo) {
+                    currentLevel = (empleado as any).nivel_cargo
+                    const userObj = { ...(empleado as any), correo: user.email, nivelCargo: currentLevel }
+                    setCurrentUser(userObj)
+                    fetchEmpleados((userObj as any).plantas || [])
+                } else {
+                    // Fallback a tabla usuarios
+                    const { data: profile } = await supabase
+                        .from('usuarios')
+                        .select('*')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if ((profile as any)?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Administrador',
+                            'desarrollador': 'Administrador',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista'
+                        }
+                        currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
+                        const userObj = { ...(profile as any), correo: user.email, nivelCargo: currentLevel }
+                        setCurrentUser(userObj)
+                        fetchEmpleados((userObj as any).plantas || [])
+                    } else {
+                        fetchEmpleados([])
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error)
+                fetchEmpleados([]) 
+            }
+        }
+        fetchUserData()
+    }, [supabase, fetchEmpleados])
 
     // 3. Search Logic
     useEffect(() => {
@@ -106,8 +137,9 @@ export default function BuscadorProcesosDisciplinariosPage() {
         setFilteredEmpleados(filtered)
     }, [busqueda, empleados])
 
-    // Check if user is admin
-    const isAdmin = currentUser?.rol?.toLowerCase() === 'admin' || currentUser?.rol?.toLowerCase() === 'desarrollador'
+    // Check if user is admin based on email or level
+    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
+                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">

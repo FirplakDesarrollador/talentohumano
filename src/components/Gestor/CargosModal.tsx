@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { 
   X, Search, Edit2, Check, Loader2, Award, Briefcase, Plus
 } from 'lucide-react'
@@ -29,7 +29,7 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
   
   const supabase = createClient()
 
-  const fetchCargos = async () => {
+  const fetchCargos = useCallback(async () => {
     setLoading(true)
     try {
       const { data, error } = await (supabase as any)
@@ -44,13 +44,13 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     if (isOpen) {
       fetchCargos()
     }
-  }, [isOpen])
+  }, [isOpen, fetchCargos])
 
   const handleCreateCargo = async () => {
     if (!newCargoName.trim()) return

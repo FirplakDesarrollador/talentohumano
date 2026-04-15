@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { VacacionesDetalle } from '@/components/Vacaciones/VacacionesDetalle'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -67,19 +67,46 @@ export default function VacacionesPage() {
         const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
-                const { data: profile } = await supabase
-                    .from('usuarios')
-                    .select('*')
-                    .eq('correo', user.email!)
-                    .single()
-                console.log('User Profile Loaded:', profile);
-                setCurrentUser(profile || { correo: user.email })
+                // Obtener nivel_cargo de la tabla empleados para autorizar
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivel_cargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if ((empleado as any)?.nivel_cargo) {
+                    setCurrentUser({ correo: user.email, nivelCargo: (empleado as any).nivel_cargo })
+                } else {
+                    // Fallback a tabla usuarios
+                    const { data: profile } = await supabase
+                        .from('usuarios')
+                        .select('*')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if ((profile as any)?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista'
+                        }
+                        const mappedLevel = roleMap[(profile as any).rol] || (profile as any).rol
+                        setCurrentUser({ ...(profile as any), nivelCargo: mappedLevel })
+                    } else {
+                        setCurrentUser({ correo: user.email })
+                    }
+                }
             }
         }
         fetchUser()
     }, [supabase])
 
-    const isAdmin = currentUser?.rol && ADMIN_ROLES.includes(currentUser.rol.toLowerCase() as any)
+    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
+                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)

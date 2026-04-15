@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES, APPROVER_ROLES } from '@/lib/constants/roles'
+import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -55,13 +55,27 @@ export default function AumentosSalarialesPage() {
     useEffect(() => {
         const fetchContext = async () => {
             // Fetch users with roles for approver dropdown
+            // We'll search in employees table first if possible, but the 'usuarios' table contains the app users
+            // For now, we continue using 'usuarios' table for the list of approvers but mapping levels
             const { data: usersData } = await supabase
                 .from('usuarios')
                 .select('*')
-                .in('rol', APPROVER_ROLES)
                 .order('nombre')
 
-            if (usersData) setApprovers(usersData)
+            // Filter users that have an approver level
+            const approverList = (usersData as any[])?.filter((u: any) => {
+                const roleMap: Record<string, string> = {
+                    'admin': 'Jefe',
+                    'jefe': 'Jefe',
+                    'gerente': 'Gerente',
+                    'director': 'Director',
+                    'coordinador': 'Coordinador'
+                }
+                const level = roleMap[u.rol?.toLowerCase()] || u.rol
+                return APPROVER_LEVELS.includes(level)
+            })
+
+            if (approverList) setApprovers(approverList)
 
             // Fetch current app user
             const { data: { user } } = await supabase.auth.getUser()
@@ -72,7 +86,19 @@ export default function AumentosSalarialesPage() {
                     .eq('correo', user.email!)
                     .single()
 
-                if (profile) setCurrentUser(profile)
+                if (profile) {
+                    const roleMap: Record<string, string> = {
+                        'admin': 'Jefe',
+                        'desarrollador': 'Jefe',
+                        'jefe': 'Jefe',
+                        'gerente': 'Gerente',
+                        'director': 'Director',
+                        'coordinador': 'Coordinador',
+                        'analista': 'Analista'
+                    }
+                    const mappedLevel = roleMap[(profile as any).rol?.toLowerCase()] || (profile as any).rol
+                    setCurrentUser({ ...(profile as any), correo: user.email, nivelCargo: mappedLevel })
+                }
             }
         }
         fetchContext()
