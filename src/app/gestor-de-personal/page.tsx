@@ -19,7 +19,7 @@ import {
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
 import { CargosModal } from '@/components/Gestor/CargosModal'
-import { ROLES, ADMIN_ROLES } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, SUPERVISORES_MUEBLES_CEFI, SUPERVISORES_CALIDAD, SUPERVISORES_MARMOL, SUPERVISORES_ALMACEN_CEDI, GESTOR_EXCLUDED_EMAILS } from '@/lib/constants/roles'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/supabase/types'
 
@@ -31,7 +31,7 @@ export default function GestorPersonalPage() {
 
     // Auth State
     const [user, setUser] = useState<any>(null)
-    const [userRole, setUserRole] = useState<string>('')
+    const [userLevel, setUserLevel] = useState<string>('')
 
     // Data State
     const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -45,22 +45,50 @@ export default function GestorPersonalPage() {
     const [statusActivo, setStatusActivo] = useState(true)
     const [orderDate, setOrderDate] = useState(true) // Default to Date Descending
     const [isCargosModalOpen, setIsCargosModalOpen] = useState(false)
+    const [selectedNiveles, setSelectedNiveles] = useState<string[]>([])
 
-    // 1. Fetch User and Roles
+    // 1. Fetch User and Levels
     useEffect(() => {
-        const fetchUser = async () => {
+        const fetchUserData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 setUser(user)
-                const { data: userData } = await supabase
-                    .from('usuarios')
-                    .select('rol')
-                    .eq('correo', user.email!)
-                    .single()
-                setUserRole((userData as any)?.rol || ROLES.VISITANTE)
+                
+                // Intentar obtener nivel_cargo directamente de la tabla empleados por correo
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivel_cargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if ((empleado as any)?.nivel_cargo) {
+                    setUserLevel((empleado as any).nivel_cargo)
+                } else {
+                    // Fallback a tabla usuarios
+                    const { data: usuario } = await supabase
+                        .from('usuarios')
+                        .select('rol')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if ((usuario as any)?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista',
+                            'supervisor': 'Jefe',
+                            'visitante': 'Operario'
+                        }
+                        setUserLevel(roleMap[(usuario as any).rol] || (usuario as any).rol)
+                    }
+                }
             }
         }
-        fetchUser()
+        fetchUserData()
     }, [supabase])
 
     // 2. Fetch Initial Data (Jefes)
@@ -80,50 +108,60 @@ export default function GestorPersonalPage() {
         fetchJefes()
     }, [supabase])
 
-    // 3. Filtering Logic (Replicating Flutter criteria)
+    // 3. Filtering Logic (Based on userLevel)
     const filterByRole = useCallback((empleado: Empleado) => {
-        if (!user || !userRole) return false
+        if (!user || !userLevel) return false
 
-        // Admin / Dev / Special User Case
-        if (userRole === ROLES.ADMIN || userRole === ROLES.DESARROLLADOR || user.email === 'diana.morales@firplak.com') {
+        // NEW: Check if user is explicitly excluded (e.g., Pablo Carrizosa)
+        if (user?.email && GESTOR_EXCLUDED_EMAILS.includes(user.email)) {
+            return false
+        }
+
+        // Admin Power / Diana Morales case: Full list visibility
+        const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)
+        const fullVisibilityEmails = ['diana.morales@firplak.com'] 
+        
+        if (isSystemAdmin || fullVisibilityEmails.includes(user.email)) {
             return true
         }
 
         const area = empleado.planta || ''
 
-        // Jefe Cases
-        if (userRole === ROLES.JEFE) {
-            const jefeAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Mercadeo', 'Muebles', 'Produccion', 'RR Moldes', 'Moldes', 'RTM']
-            return jefeAreas.includes(area)
+        // Jefe / Coordinador / Analista: Broad access to production areas
+        if (['Jefe', 'Coordinador', 'Analista'].includes(userLevel)) {
+            const productionAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Mercadeo', 'Muebles', 'Produccion', 'RR Moldes', 'Moldes', 'RTM']
+            if (productionAreas.includes(area)) return true
         }
 
-        // Supervisor Cases
-        if (userRole === ROLES.SUPERVISOR) {
-            const supervisorAreas = ['Calidad', 'Fibra de vidrio', 'Muebles', 'RR Moldes', 'Produccion', 'Cefi', 'RTM', 'Marmol sintetico', 'Moldes']
-            return supervisorAreas.includes(area)
-        }
-
-        // Special Emails Set 1 (From Flutter)
+        // Special Teams
         const teamA = ['hector.chinchilla@firplak.com', 'juliana.ramirez@firplak.com', 'jakeline.chaverra@firplak.com', 'maria.perez@firplak.com', 'estiven.londono@firplak.com', 'sara.aguilar@firplak.com', 'coordinacioncalidad@firplak.com']
         if (teamA.includes(user.email)) {
             const teamAAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Moldes', 'Muebles', 'Produccion', 'RR Moldes', 'RTM']
             return teamAAreas.includes(area)
         }
 
-        // Team B (Supply/Logistics)
-        const teamB = ['analistaabastecimiento@firplak.com', 'almacen@firplak.com', 'arley.taborda@firplak.com']
-        if (teamB.includes(user.email)) {
+        // Team Almacen / CEDI Supervisors
+        if (user?.email && SUPERVISORES_ALMACEN_CEDI.includes(user.email)) {
             return area === 'Almacen' || area === 'CEDI'
         }
 
-        // Team C (Quality Supervisors)
-        const teamC = ['supervisorcalidad3@firplak.com', 'supervisorcalidad2@firplak.com']
-        if (teamC.includes(user.email)) {
+        // Team Calidad Supervisors
+        if (user?.email && SUPERVISORES_CALIDAD.includes(user.email)) {
             return area === 'Calidad'
         }
 
-        return false // Default access
-    }, [user, userRole])
+        // Team Marmol Sintetico Supervisors
+        if (user?.email && SUPERVISORES_MARMOL.includes(user.email)) {
+            return area === 'Marmol sintetico'
+        }
+
+        // Team Muebles/Cefi Supervisors
+        if (user?.email && SUPERVISORES_MUEBLES_CEFI.includes(user.email)) {
+            return area === 'Muebles' || area === 'Cefi'
+        }
+
+        return false // Default access restricted
+    }, [user, userLevel])
 
     // 4. Update Filter Criteria (Planta drop-down) based on role
     // (Optional enhancement but let's keep the filter list clean for them)
@@ -178,6 +216,11 @@ export default function GestorPersonalPage() {
                 }
             }
 
+            // Apply Niveles Multi-Select Filter
+            if (selectedNiveles.length > 0) {
+                filtered = filtered.filter(e => selectedNiveles.includes((e as any).nivel_cargo || ''))
+            }
+
             setEmpleados(filtered)
         } catch (error: any) {
             console.error('Error fetching data:', error)
@@ -185,19 +228,20 @@ export default function GestorPersonalPage() {
         } finally {
             setLoading(false)
         }
-    }, [supabase, busqueda, selectedJefe, selectedPlanta, statusActivo, orderDate, filterByRole])
+    }, [supabase, busqueda, selectedJefe, selectedPlanta, statusActivo, orderDate, filterByRole, selectedNiveles])
 
     useEffect(() => {
-        if (user && userRole) {
+        if (user && userLevel) {
             fetchEmpleados()
         }
-    }, [fetchEmpleados, user, userRole])
+    }, [fetchEmpleados, user, userLevel])
 
     const handleClearFilters = () => {
         setBusqueda('')
         setSelectedJefe('')
         setSelectedPlanta('Todos')
         setStatusActivo(true)
+        setSelectedNiveles([])
     }
 
     return (
@@ -229,6 +273,8 @@ export default function GestorPersonalPage() {
                     status={statusActivo}
                     onStatusChange={setStatusActivo}
                     onClear={handleClearFilters}
+                    selectedNiveles={selectedNiveles}
+                    onNivelesChange={setSelectedNiveles}
                 />
 
                 {/* Actions Bar */}
@@ -242,7 +288,7 @@ export default function GestorPersonalPage() {
                             Agregar Empleado
                         </Button>
 
-                        {ADMIN_ROLES.includes(userRole as any) && (
+                        {((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)) && (
                             <Button
                                 variant="outline"
                                 onClick={() => setIsCargosModalOpen(true)}
@@ -298,7 +344,7 @@ export default function GestorPersonalPage() {
                                         key={empleado.id}
                                         empleado={empleado as any}
                                         onEdit={() => router.push(`/gestor-de-personal/editar/${empleado.id}`)}
-                                        canEdit={userRole !== ROLES.VISITANTE && userRole !== ROLES.SUPERVISOR} // Adjusted based on profile
+                                        canEdit={((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any) || APPROVER_LEVELS.includes(userLevel as any)) && !['diana.morales@firplak.com'].includes(user.email)}
                                     />
                                 ))
                             )}

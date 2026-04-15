@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CompetenciaCard } from '@/components/Desempeno/CompetenciaCard'
@@ -14,7 +15,8 @@ import {
     Filter,
     Users,
     Building2,
-    UserCircle
+    UserCircle,
+    ShieldAlert
 } from 'lucide-react'
 import {
     Select,
@@ -34,6 +36,9 @@ export default function DesempenoBuscadorPage() {
     const [loading, setLoading] = useState(true)
     const [areas, setAreas] = useState<string[]>([])
     const [jefes, setJefes] = useState<string[]>([])
+    const [userLevel, setUserLevel] = useState<string>('')
+    const [userEmail, setUserEmail] = useState<string>('')
+    const [authLoading, setAuthLoading] = useState(true)
 
     // Filter State
     const [busqueda, setBusqueda] = useState('')
@@ -71,7 +76,45 @@ export default function DesempenoBuscadorPage() {
 
     useEffect(() => {
         fetchInitialData()
-    }, [fetchInitialData])
+
+        const fetchUser = async () => {
+            setAuthLoading(true)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                setUserEmail(user.email || '')
+                const { data: empleado } = await supabase
+                    .from('empleados')
+                    .select('nivel_cargo')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
+                if ((empleado as any)?.nivel_cargo) {
+                    setUserLevel((empleado as any).nivel_cargo)
+                } else {
+                    const { data: profile } = await supabase
+                        .from('usuarios')
+                        .select('rol')
+                        .eq('correo', user.email!)
+                        .maybeSingle()
+                    
+                    if ((profile as any)?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Jefe',
+                            'desarrollador': 'Jefe',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista'
+                        }
+                        setUserLevel(roleMap[(profile as any).rol] || (profile as any).rol)
+                    }
+                }
+            }
+            setAuthLoading(false)
+        }
+        fetchUser()
+    }, [fetchInitialData, supabase])
 
     // 2. Filter Logic
     useEffect(() => {
@@ -104,6 +147,25 @@ export default function DesempenoBuscadorPage() {
         setBusqueda('')
         setSelectedArea('all')
         setSelectedJefe('all')
+    }
+
+    const isSuperAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail))
+
+    if (!authLoading && !isSuperAdmin) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-md">
+                    <ShieldAlert className="h-16 w-16 text-red-500 mx-auto mb-4 opacity-20" />
+                    <h1 className="text-2xl font-bold mb-2">Acceso Restringido</h1>
+                    <p className="text-gray-600 mb-6">
+                        No tienes permisos para acceder al módulo de Desempeño. Solo los super administradores pueden ingresar.
+                    </p>
+                    <Button onClick={() => router.push('/menu')} className="w-full">
+                        Volver al inicio
+                    </Button>
+                </div>
+            </div>
+        )
     }
 
     return (
