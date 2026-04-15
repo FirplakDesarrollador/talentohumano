@@ -43,9 +43,9 @@ export default function MenuPage() {
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if (empleado?.nivelCargo) {
-                    setUserLevel(empleado.nivelCargo)
-                    setUserName(empleado.nombrecompleto || '')
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
+                    setUserName((empleado as any).nombrecompleto || '')
                 } else {
                     const { data: usuario } = await supabase
                         .from('usuarios')
@@ -53,8 +53,8 @@ export default function MenuPage() {
                         .eq('correo', user.email!)
                         .maybeSingle()
                     
-                    if (usuario?.rol) {
-                        setUserName(usuario.nombre || '')
+                    if ((usuario as any)?.rol) {
+                        setUserName((usuario as any).nombre || '')
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',
@@ -66,7 +66,7 @@ export default function MenuPage() {
                             'supervisor': 'Jefe',
                             'visitante': 'Operario'
                         }
-                        setUserLevel(roleMap[usuario.rol] || usuario.rol)
+                        setUserLevel(roleMap[(usuario as any).rol] || (usuario as any).rol)
                     }
                 }
             }

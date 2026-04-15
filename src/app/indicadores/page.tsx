@@ -63,8 +63,8 @@ export default function IndicadoresPage() {
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if (empleado?.nivelCargo) {
-                    setUserLevel(empleado.nivelCargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                 } else {
                     const { data: profile } = await supabase
                         .from('usuarios')
@@ -72,7 +72,7 @@ export default function IndicadoresPage() {
                         .eq('correo', user.email!)
                         .maybeSingle()
                     
-                    if (profile?.rol) {
+                    if ((profile as any)?.rol) {
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',
@@ -82,7 +82,7 @@ export default function IndicadoresPage() {
                             'coordinador': 'Coordinador',
                             'analista': 'Analista'
                         }
-                        setUserLevel(roleMap[profile.rol] || profile.rol)
+                        setUserLevel(roleMap[(profile as any).rol] || (profile as any).rol)
                     }
                 }
             }

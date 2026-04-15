@@ -55,11 +55,11 @@ export default function BuscadorProcesosDisciplinariosPage() {
                     .maybeSingle()
 
                 let currentLevel = ''
-                if (empleado?.nivelCargo) {
-                    currentLevel = empleado.nivelCargo
-                    const userObj = { ...empleado, correo: user.email, nivelCargo: currentLevel }
+                if ((empleado as any)?.nivelCargo) {
+                    currentLevel = (empleado as any).nivelCargo
+                    const userObj = { ...(empleado as any), correo: user.email, nivelCargo: currentLevel }
                     setCurrentUser(userObj)
-                    fetchEmpleados(userObj.plantas || [])
+                    fetchEmpleados((userObj as any).plantas || [])
                 } else {
                     // Fallback a tabla usuarios
                     const { data: profile } = await supabase
@@ -68,7 +68,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         .eq('correo', user.email!)
                         .maybeSingle()
                     
-                    if (profile?.rol) {
+                    if ((profile as any)?.rol) {
                         const roleMap: Record<string, string> = {
                             'admin': 'Administrador',
                             'desarrollador': 'Administrador',
@@ -78,10 +78,10 @@ export default function BuscadorProcesosDisciplinariosPage() {
                             'coordinador': 'Coordinador',
                             'analista': 'Analista'
                         }
-                        currentLevel = roleMap[profile.rol] || profile.rol
-                        const userObj = { ...profile, correo: user.email, nivelCargo: currentLevel }
+                        currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
+                        const userObj = { ...(profile as any), correo: user.email, nivelCargo: currentLevel }
                         setCurrentUser(userObj)
-                        fetchEmpleados(userObj.plantas || [])
+                        fetchEmpleados((userObj as any).plantas || [])
                     } else {
                         fetchEmpleados([])
                     }

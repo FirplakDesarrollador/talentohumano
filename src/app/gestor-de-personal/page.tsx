@@ -61,8 +61,8 @@ export default function GestorPersonalPage() {
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if (empleado?.nivelCargo) {
-                    setUserLevel(empleado.nivelCargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                 } else {
                     // Fallback a tabla usuarios
                     const { data: usuario } = await supabase
@@ -71,7 +71,7 @@ export default function GestorPersonalPage() {
                         .eq('correo', user.email!)
                         .maybeSingle()
                     
-                    if (usuario?.rol) {
+                    if ((usuario as any)?.rol) {
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',
@@ -83,7 +83,7 @@ export default function GestorPersonalPage() {
                             'supervisor': 'Jefe',
                             'visitante': 'Operario'
                         }
-                        setUserLevel(roleMap[usuario.rol] || usuario.rol)
+                        setUserLevel(roleMap[(usuario as any).rol] || (usuario as any).rol)
                     }
                 }
             }

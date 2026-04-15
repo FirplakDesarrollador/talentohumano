@@ -74,8 +74,8 @@ export default function VacacionesPage() {
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if (empleado?.nivelCargo) {
-                    setCurrentUser({ correo: user.email, nivelCargo: empleado.nivelCargo })
+                if ((empleado as any)?.nivelCargo) {
+                    setCurrentUser({ correo: user.email, nivelCargo: (empleado as any).nivelCargo })
                 } else {
                     // Fallback a tabla usuarios
                     const { data: profile } = await supabase
@@ -94,7 +94,7 @@ export default function VacacionesPage() {
                             'coordinador': 'Coordinador',
                             'analista': 'Analista'
                         }
-                        const mappedLevel = roleMap[profile.rol] || profile.rol
+                        const mappedLevel = roleMap[(profile as any).rol] || (profile as any).rol
                         setCurrentUser({ ...profile, nivelCargo: mappedLevel })
                     } else {
                         setCurrentUser({ correo: user.email })

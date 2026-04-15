@@ -73,8 +73,8 @@ export default function CesantiasPage() {
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if (empleado?.nivelCargo) {
-                    setCurrentUser({ correo: user.email, nivelCargo: empleado.nivelCargo })
+                if ((empleado as any)?.nivelCargo) {
+                    setCurrentUser({ correo: user.email, nivelCargo: (empleado as any).nivelCargo })
                 } else {
                     // Fallback a tabla usuarios para mapeo
                     const { data: usuario } = await supabase
@@ -93,7 +93,7 @@ export default function CesantiasPage() {
                             'coordinador': 'Coordinador',
                             'analista': 'Analista'
                         }
-                        setCurrentUser({ correo: user.email, nivelCargo: roleMap[usuario.rol] || usuario.rol })
+                        setCurrentUser({ correo: user.email, nivelCargo: roleMap[(usuario as any).rol] || (usuario as any).rol })
                     } else {
                         setCurrentUser({ correo: user.email })
                     }
