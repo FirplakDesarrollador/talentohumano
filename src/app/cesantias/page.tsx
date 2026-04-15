@@ -83,7 +83,7 @@ export default function CesantiasPage() {
                         .eq('correo', user.email!)
                         .maybeSingle()
                     
-                    if (usuario?.rol) {
+                    if ((usuario as any)?.rol) {
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',

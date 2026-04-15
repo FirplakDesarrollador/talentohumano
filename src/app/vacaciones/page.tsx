@@ -84,7 +84,7 @@ export default function VacacionesPage() {
                         .eq('correo', user.email!)
                         .maybeSingle()
                     
-                    if (profile?.rol) {
+                    if ((profile as any)?.rol) {
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',
