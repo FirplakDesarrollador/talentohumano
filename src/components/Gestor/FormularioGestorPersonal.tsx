@@ -346,7 +346,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 jefe: formData.jefe || null,
                 empresa: formData.empresa || null,
                 primer_ingreso: formData.primer_ingreso || null,
-                nivel_cargo: formData.nivel_cargo || null,
+                nivelCargo: formData.nivel_cargo || null,
                 direccion: formData.direccion || null,
                 ciudad: formData.ciudad || null,
                 telefono: formData.telefono || null,
