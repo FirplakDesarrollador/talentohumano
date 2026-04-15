@@ -15,7 +15,8 @@ import {
     Filter,
     Users,
     Building2,
-    UserCircle
+    UserCircle,
+    ShieldAlert
 } from 'lucide-react'
 import {
     Select,

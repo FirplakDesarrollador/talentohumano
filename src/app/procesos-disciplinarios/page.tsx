@@ -57,7 +57,9 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 let currentLevel = ''
                 if (empleado?.nivelCargo) {
                     currentLevel = empleado.nivelCargo
-                    setCurrentUser({ ...empleado, correo: user.email, nivelCargo: currentLevel })
+                    const userObj = { ...empleado, correo: user.email, nivelCargo: currentLevel }
+                    setCurrentUser(userObj)
+                    fetchEmpleados(userObj.plantas || [])
                 } else {
                     // Fallback a tabla usuarios
                     const { data: profile } = await supabase
@@ -77,21 +79,23 @@ export default function BuscadorProcesosDisciplinariosPage() {
                             'analista': 'Analista'
                         }
                         currentLevel = roleMap[profile.rol] || profile.rol
-                        setCurrentUser({ ...profile, correo: user.email, nivelCargo: currentLevel })
+                        const userObj = { ...profile, correo: user.email, nivelCargo: currentLevel }
+                        setCurrentUser(userObj)
+                        fetchEmpleados(userObj.plantas || [])
+                    } else {
+                        fetchEmpleados([])
                     }
                 }
-                
-                fetchEmpleados((currentUser as any)?.plantas || [])
             } catch (error) {
                 console.error('Error fetching user data:', error)
                 fetchEmpleados([]) 
             }
         }
         fetchUserData()
-    }, [supabase])
+    }, [supabase, fetchEmpleados])
 
     // 2. Fetch Empleados
-    const fetchEmpleados = async (plantas: string[]) => {
+    const fetchEmpleados = useCallback(async (plantas: string[]) => {
         setLoading(true)
         try {
             let query = supabase
@@ -115,7 +119,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [supabase])
 
     // 3. Search Logic
     useEffect(() => {
