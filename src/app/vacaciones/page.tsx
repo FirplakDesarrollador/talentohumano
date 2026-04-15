@@ -95,7 +95,7 @@ export default function VacacionesPage() {
                             'analista': 'Analista'
                         }
                         const mappedLevel = roleMap[(profile as any).rol] || (profile as any).rol
-                        setCurrentUser({ ...profile, nivelCargo: mappedLevel })
+                        setCurrentUser({ ...(profile as any), nivelCargo: mappedLevel })
                     } else {
                         setCurrentUser({ correo: user.email })
                     }
