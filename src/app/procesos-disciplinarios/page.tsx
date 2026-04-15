@@ -37,6 +37,33 @@ export default function BuscadorProcesosDisciplinariosPage() {
     const [busqueda, setBusqueda] = useState('')
     const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
+    // 2. Fetch Empleados
+    const fetchEmpleados = useCallback(async (plantas: string[]) => {
+        setLoading(true)
+        try {
+            let query = supabase
+                .from('empleados')
+                .select('*')
+                .eq('activo', true)
+
+            if (plantas && plantas.length > 0) {
+                query = query.in('planta', plantas)
+            }
+
+            const { data, error } = await query
+                .order('nombreCompleto', { ascending: true })
+
+            if (error) throw error
+            setEmpleados(data || [])
+            setFilteredEmpleados(data || [])
+        } catch (err: any) {
+            console.error('Error fetching empleados:', err)
+            toast.error('No se pudieron cargar los empleados')
+        } finally {
+            setLoading(false)
+        }
+    }, [supabase])
+
     // 1. Fetch User and Initial Data
     useEffect(() => {
         const fetchUserData = async () => {
@@ -93,33 +120,6 @@ export default function BuscadorProcesosDisciplinariosPage() {
         }
         fetchUserData()
     }, [supabase, fetchEmpleados])
-
-    // 2. Fetch Empleados
-    const fetchEmpleados = useCallback(async (plantas: string[]) => {
-        setLoading(true)
-        try {
-            let query = supabase
-                .from('empleados')
-                .select('*')
-                .eq('activo', true)
-
-            if (plantas && plantas.length > 0) {
-                query = query.in('planta', plantas)
-            }
-
-            const { data, error } = await query
-                .order('nombreCompleto', { ascending: true })
-
-            if (error) throw error
-            setEmpleados(data || [])
-            setFilteredEmpleados(data || [])
-        } catch (err: any) {
-            console.error('Error fetching empleados:', err)
-            toast.error('No se pudieron cargar los empleados')
-        } finally {
-            setLoading(false)
-        }
-    }, [supabase])
 
     // 3. Search Logic
     useEffect(() => {
