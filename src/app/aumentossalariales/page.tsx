@@ -97,7 +97,7 @@ export default function AumentosSalarialesPage() {
                         'analista': 'Analista'
                     }
                     const mappedLevel = roleMap[(profile as any).rol?.toLowerCase()] || (profile as any).rol
-                    setCurrentUser({ ...profile, correo: user.email, nivelCargo: mappedLevel })
+                    setCurrentUser({ ...(profile as any), correo: user.email, nivelCargo: mappedLevel })
                 }
             }
         }
