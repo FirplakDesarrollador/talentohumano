@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
-import { ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, getPlantasPermitidas } from '@/lib/constants/roles'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -77,16 +77,20 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 // Obtener nivel_cargo de la tabla empleados
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivel_cargo')
+                    .select('nivelCargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
                 let currentLevel = ''
-                if ((empleado as any)?.nivel_cargo) {
-                    currentLevel = (empleado as any).nivel_cargo
+                if ((empleado as any)?.nivelCargo) {
+                    currentLevel = (empleado as any).nivelCargo
                     const userObj = { ...(empleado as any), correo: user.email, nivelCargo: currentLevel }
                     setCurrentUser(userObj)
-                    fetchEmpleados((userObj as any).plantas || [])
+                    
+                    // Check for restricted supervisor plants
+                    const permittedPlants = getPlantasPermitidas(user.email!)
+                    const userPlants = permittedPlants || (userObj as any).plantas || []
+                    fetchEmpleados(userPlants)
                 } else {
                     // Fallback a tabla usuarios
                     const { data: profile } = await supabase
@@ -108,9 +112,15 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
                         const userObj = { ...(profile as any), correo: user.email, nivelCargo: currentLevel }
                         setCurrentUser(userObj)
-                        fetchEmpleados((userObj as any).plantas || [])
+                        
+                        // Check for restricted supervisor plants
+                        const permittedPlants = getPlantasPermitidas(user.email!)
+                        const userPlants = permittedPlants || (userObj as any).plantas || []
+                        fetchEmpleados(userPlants)
                     } else {
-                        fetchEmpleados([])
+                        // Check for restricted supervisor plants even if no profile found
+                        const permittedPlants = getPlantasPermitidas(user.email!)
+                        fetchEmpleados(permittedPlants || [])
                     }
                 }
             } catch (error) {

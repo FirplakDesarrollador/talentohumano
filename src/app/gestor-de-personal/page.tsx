@@ -19,7 +19,7 @@ import {
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
 import { CargosModal } from '@/components/Gestor/CargosModal'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, SUPERVISORES_MUEBLES_CEFI, SUPERVISORES_CALIDAD, SUPERVISORES_MARMOL, SUPERVISORES_ALMACEN_CEDI, GESTOR_EXCLUDED_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, RESTRICTED_SUPERVISORS, GESTOR_EXCLUDED_EMAILS, getPlantasPermitidas } from '@/lib/constants/roles'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/supabase/types'
 
@@ -57,12 +57,12 @@ export default function GestorPersonalPage() {
                 // Intentar obtener nivel_cargo directamente de la tabla empleados por correo
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivel_cargo')
+                    .select('nivelCargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivel_cargo) {
-                    setUserLevel((empleado as any).nivel_cargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                 } else {
                     // Fallback a tabla usuarios
                     const { data: usuario } = await supabase
@@ -140,24 +140,12 @@ export default function GestorPersonalPage() {
             return teamAAreas.includes(area)
         }
 
-        // Team Almacen / CEDI Supervisors
-        if (user?.email && SUPERVISORES_ALMACEN_CEDI.includes(user.email)) {
-            return area === 'Almacen' || area === 'CEDI'
-        }
-
-        // Team Calidad Supervisors
-        if (user?.email && SUPERVISORES_CALIDAD.includes(user.email)) {
-            return area === 'Calidad'
-        }
-
-        // Team Marmol Sintetico Supervisors
-        if (user?.email && SUPERVISORES_MARMOL.includes(user.email)) {
-            return area === 'Marmol sintetico'
-        }
-
-        // Team Muebles/Cefi Supervisors
-        if (user?.email && SUPERVISORES_MUEBLES_CEFI.includes(user.email)) {
-            return area === 'Muebles' || area === 'Cefi'
+        // General Restricted Supervisors (Refactored to centralized helper)
+        if (user?.email) {
+            const permittedPlants = getPlantasPermitidas(user.email)
+            if (permittedPlants) {
+                return permittedPlants.includes(area)
+            }
         }
 
         return false // Default access restricted
@@ -218,7 +206,7 @@ export default function GestorPersonalPage() {
 
             // Apply Niveles Multi-Select Filter
             if (selectedNiveles.length > 0) {
-                filtered = filtered.filter(e => selectedNiveles.includes((e as any).nivel_cargo || ''))
+                filtered = filtered.filter(e => selectedNiveles.includes((e as any).nivelCargo || ''))
             }
 
             setEmpleados(filtered)
@@ -280,13 +268,15 @@ export default function GestorPersonalPage() {
                 {/* Actions Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <Button
-                            onClick={() => router.push('/gestor-de-personal/nuevo')}
-                            className="bg-[#1e2f3d] hover:bg-[#2d4356] text-white flex items-center gap-2 px-6 rounded-xl shadow-md h-11"
-                        >
-                            <Plus className="h-5 w-5" />
-                            Agregar Empleado
-                        </Button>
+                        {!((user?.email && RESTRICTED_SUPERVISORS.includes(user.email))) && (
+                            <Button
+                                onClick={() => router.push('/gestor-de-personal/nuevo')}
+                                className="bg-[#1e2f3d] hover:bg-[#2d4356] text-white flex items-center gap-2 px-6 rounded-xl shadow-md h-11"
+                            >
+                                <Plus className="h-5 w-5" />
+                                Agregar Empleado
+                            </Button>
+                        )}
 
                         {((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)) && (
                             <Button
