@@ -70,12 +70,12 @@ export default function VacacionesPage() {
                 // Obtener nivel_cargo de la tabla empleados para autorizar
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivel_cargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivelCargo) {
-                    setCurrentUser({ correo: user.email, nivelCargo: (empleado as any).nivelCargo })
+                if ((empleado as any)?.nivel_cargo) {
+                    setCurrentUser({ correo: user.email, nivelCargo: (empleado as any).nivel_cargo })
                 } else {
                     // Fallback a tabla usuarios
                     const { data: profile } = await supabase

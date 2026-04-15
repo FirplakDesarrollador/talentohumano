@@ -39,13 +39,13 @@ export default function MenuPage() {
                 
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo, nombrecompleto')
+                    .select('nivel_cargo, nombreCompleto')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivelCargo) {
-                    setUserLevel((empleado as any).nivelCargo)
-                    setUserName((empleado as any).nombrecompleto || '')
+                if ((empleado as any)?.nivel_cargo) {
+                    setUserLevel((empleado as any).nivel_cargo)
+                    setUserName((empleado as any).nombreCompleto || '')
                 } else {
                     const { data: usuario } = await supabase
                         .from('usuarios')

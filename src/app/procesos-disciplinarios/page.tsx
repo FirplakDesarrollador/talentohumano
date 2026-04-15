@@ -50,13 +50,13 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 // Obtener nivel_cargo de la tabla empleados
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivel_cargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
                 let currentLevel = ''
-                if ((empleado as any)?.nivelCargo) {
-                    currentLevel = (empleado as any).nivelCargo
+                if ((empleado as any)?.nivel_cargo) {
+                    currentLevel = (empleado as any).nivel_cargo
                     const userObj = { ...(empleado as any), correo: user.email, nivelCargo: currentLevel }
                     setCurrentUser(userObj)
                     fetchEmpleados((userObj as any).plantas || [])

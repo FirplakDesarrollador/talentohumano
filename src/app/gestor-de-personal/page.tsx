@@ -57,12 +57,12 @@ export default function GestorPersonalPage() {
                 // Intentar obtener nivel_cargo directamente de la tabla empleados por correo
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivel_cargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivelCargo) {
-                    setUserLevel((empleado as any).nivelCargo)
+                if ((empleado as any)?.nivel_cargo) {
+                    setUserLevel((empleado as any).nivel_cargo)
                 } else {
                     // Fallback a tabla usuarios
                     const { data: usuario } = await supabase
@@ -218,7 +218,7 @@ export default function GestorPersonalPage() {
 
             // Apply Niveles Multi-Select Filter
             if (selectedNiveles.length > 0) {
-                filtered = filtered.filter(e => selectedNiveles.includes(e.nivelCargo || ''))
+                filtered = filtered.filter(e => selectedNiveles.includes((e as any).nivel_cargo || ''))
             }
 
             setEmpleados(filtered)

@@ -56,12 +56,12 @@ export default function AusentismosPage() {
                 // Fetch cargo level
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivel_cargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivelCargo) {
-                    setUserLevel((empleado as any).nivelCargo)
+                if ((empleado as any)?.nivel_cargo) {
+                    setUserLevel((empleado as any).nivel_cargo)
                 } else {
                     const { data: usuario } = await supabase
                         .from('usuarios')
