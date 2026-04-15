@@ -100,6 +100,13 @@ export const SUPERVISORES_ALMACEN_CEDI = [
 ];
 
 /**
+ * Group of supervisors that can only see and partially edit employees from RTM and Fibra de vidrio.
+ */
+export const SUPERVISORES_RTM_FIBRA = [
+    'david.ramirez@firplak.com',
+];
+
+/**
  * Combined list of supervisors with restricted editing permissions (only Laboral & Dotación).
  */
 export const RESTRICTED_SUPERVISORS = [
@@ -107,6 +114,7 @@ export const RESTRICTED_SUPERVISORS = [
     ...SUPERVISORES_CALIDAD,
     ...SUPERVISORES_MARMOL,
     ...SUPERVISORES_ALMACEN_CEDI,
+    ...SUPERVISORES_RTM_FIBRA,
 ];
 
 /**
@@ -129,3 +137,16 @@ export const ADMIN_EMAILS = [
 export const ROLES = NIVELES_CARGO;
 export const ADMIN_ROLES = ADMIN_LEVELS;
 export const APPROVER_ROLES = APPROVER_LEVELS;
+
+/**
+ * Gets the list of plants a supervisor is allowed to see/edit.
+ * Returns null if the user has no plant-based restrictions.
+ */
+export function getPlantasPermitidas(email: string): string[] | null {
+    if (SUPERVISORES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
+    if (SUPERVISORES_CALIDAD.includes(email)) return ['Calidad'];
+    if (SUPERVISORES_MARMOL.includes(email)) return ['Marmol sintetico'];
+    if (SUPERVISORES_ALMACEN_CEDI.includes(email)) return ['Almacen', 'CEDI'];
+    if (SUPERVISORES_RTM_FIBRA.includes(email)) return ['RTM', 'Fibra de vidrio'];
+    return null;
+}
