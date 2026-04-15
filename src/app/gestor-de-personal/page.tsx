@@ -19,7 +19,7 @@ import {
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
 import { CargosModal } from '@/components/Gestor/CargosModal'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, SUPERVISORES_MUEBLES_CEFI, SUPERVISORES_CALIDAD, SUPERVISORES_MARMOL, SUPERVISORES_ALMACEN_CEDI, GESTOR_EXCLUDED_EMAILS } from '@/lib/constants/roles'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/supabase/types'
 
@@ -81,7 +81,7 @@ export default function GestorPersonalPage() {
                             'coordinador': 'Coordinador',
                             'analista': 'Analista',
                             'supervisor': 'Jefe',
-                            'visitante': 'Operativo'
+                            'visitante': 'Operario'
                         }
                         setUserLevel(roleMap[usuario.rol] || usuario.rol)
                     }
@@ -112,6 +112,11 @@ export default function GestorPersonalPage() {
     const filterByRole = useCallback((empleado: Empleado) => {
         if (!user || !userLevel) return false
 
+        // NEW: Check if user is explicitly excluded (e.g., Pablo Carrizosa)
+        if (user?.email && GESTOR_EXCLUDED_EMAILS.includes(user.email)) {
+            return false
+        }
+
         // Admin Power / Diana Morales case: Full list visibility
         const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)
         const fullVisibilityEmails = ['diana.morales@firplak.com'] 
@@ -135,16 +140,24 @@ export default function GestorPersonalPage() {
             return teamAAreas.includes(area)
         }
 
-        // Team B (Supply/Logistics)
-        const teamB = ['analistaabastecimiento@firplak.com', 'almacen@firplak.com', 'arley.taborda@firplak.com']
-        if (teamB.includes(user.email)) {
+        // Team Almacen / CEDI Supervisors
+        if (user?.email && SUPERVISORES_ALMACEN_CEDI.includes(user.email)) {
             return area === 'Almacen' || area === 'CEDI'
         }
 
-        // Team C (Quality Supervisors)
-        const teamC = ['supervisorcalidad3@firplak.com', 'supervisorcalidad2@firplak.com']
-        if (teamC.includes(user.email)) {
+        // Team Calidad Supervisors
+        if (user?.email && SUPERVISORES_CALIDAD.includes(user.email)) {
             return area === 'Calidad'
+        }
+
+        // Team Marmol Sintetico Supervisors
+        if (user?.email && SUPERVISORES_MARMOL.includes(user.email)) {
+            return area === 'Marmol sintetico'
+        }
+
+        // Team Muebles/Cefi Supervisors
+        if (user?.email && SUPERVISORES_MUEBLES_CEFI.includes(user.email)) {
+            return area === 'Muebles' || area === 'Cefi'
         }
 
         return false // Default access restricted

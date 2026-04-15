@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -64,7 +64,7 @@ export default function MenuPage() {
                             'coordinador': 'Coordinador',
                             'analista': 'Analista',
                             'supervisor': 'Jefe',
-                            'visitante': 'Operativo'
+                            'visitante': 'Operario'
                         }
                         setUserLevel(roleMap[usuario.rol] || usuario.rol)
                     }
@@ -112,7 +112,7 @@ export default function MenuPage() {
             title: 'Gestor de personal',
             href: '/gestor-de-personal',
             icon: Users,
-            visible: isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
+            visible: !GESTOR_EXCLUDED_EMAILS.includes(user?.email) && (isSystemAdmin || GESTOR_LEVELS.includes(userLevel as any))
         },
         {
             title: 'Ausentismos',
