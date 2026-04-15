@@ -63,7 +63,7 @@ export default function AumentosSalarialesPage() {
                 .order('nombre')
 
             // Filter users that have an approver level
-            const approverList = usersData?.filter(u => {
+            const approverList = (usersData as any[])?.filter((u: any) => {
                 const roleMap: Record<string, string> = {
                     'admin': 'Jefe',
                     'jefe': 'Jefe',
@@ -96,7 +96,7 @@ export default function AumentosSalarialesPage() {
                         'coordinador': 'Coordinador',
                         'analista': 'Analista'
                     }
-                    const mappedLevel = roleMap[profile.rol?.toLowerCase()] || profile.rol
+                    const mappedLevel = roleMap[(profile as any).rol?.toLowerCase()] || (profile as any).rol
                     setCurrentUser({ ...profile, correo: user.email, nivelCargo: mappedLevel })
                 }
             }
