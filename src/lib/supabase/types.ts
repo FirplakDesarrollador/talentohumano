@@ -458,7 +458,7 @@ export interface Database {
                     nombre: string
                     correo: string
                     rol: string
-                    empleadoId: number | null
+                    empleado_id: number | null
                     plantas: string[] | null
                 }
                 Insert: {
@@ -466,7 +466,7 @@ export interface Database {
                     nombre: string
                     correo: string
                     rol: string
-                    empleadoId?: number | null
+                    empleado_id?: number | null
                     plantas?: string[] | null
                 }
                 Update: {
@@ -474,11 +474,11 @@ export interface Database {
                     nombre?: string
                     correo?: string
                     rol?: string
-                    empleadoId?: number | null
+                    empleado_id?: number | null
                     plantas?: string[] | null
                 }
             }
-            aumentos_salariales: {
+            aumentosSalariales: {
                 Row: {
                     id: number
                     created_at: string

@@ -73,7 +73,7 @@ export async function cargarEmpleadoPorCedula(cedula: string) {
     try {
         const { data, error } = await (supabase as any)
             .from('query_empleados_vacaciones')
-            .select('id, nombrecompleto, area, jefe, Dias_Pendientes, CorreoJefe')
+            .select('id, nombrecompleto, area, jefe, Dias_Pendientes, CorreoJefe, cargo, empresa, planta')
             .eq('id', cedula)
             .limit(1)
             .maybeSingle()
@@ -119,6 +119,8 @@ export function descargarQueryVacaciones(registros: any[]) {
         'DiasEnDinero',
         'TipoDePAgo',
         'PersonaEncargada',
+        'Empresa',
+        'Cargo',
         'ausentismo_registrado',
         'id'
     ];
@@ -141,6 +143,8 @@ export function descargarQueryVacaciones(registros: any[]) {
             safeValue(row.DiasEnDinero),
             safeValue(row.TipoDePAgo),
             safeValue(row.PersonaEncargada),
+            safeValue(row.Empresa),
+            safeValue(row.Cargo),
             safeValue(row.ausentismo_registrado ? 'true' : 'false'), // Booleans to string
             safeValue(row.id)
         ];

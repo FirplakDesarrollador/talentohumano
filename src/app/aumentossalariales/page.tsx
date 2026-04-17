@@ -59,7 +59,7 @@ export default function AumentosSalarialesPage() {
             // For now, we continue using 'usuarios' table for the list of approvers but mapping levels
             const { data: usersData } = await supabase
                 .from('usuarios')
-                .select('*')
+                .select('id, nombre, rol, empleado_id')
                 .order('nombre')
 
             // Filter users that have an approver level
@@ -108,11 +108,11 @@ export default function AumentosSalarialesPage() {
         setHistoryLoading(true)
         try {
             const { data, error } = await (supabase
-                .from('aumentos_salariales') as any)
+                .from('aumentosSalariales') as any)
                 .select(`
                     *,
-                    solicitante_info:usuarios!aumentos_salariales_solicitante_fkey(nombre),
-                    aprobador_info:usuarios!aumentos_salariales_aprobador_fkey(nombre)
+                    solicitante_info:usuarios!aumentosSalariales_solicitante_fkey(nombre),
+                    aprobador_info:empleados!aumentosSalariales_aprobador_fkey(nombreCompleto)
                 `)
                 .eq('empleado_id', empleadoId)
                 .order('created_at', { ascending: false })
@@ -239,7 +239,7 @@ export default function AumentosSalarialesPage() {
         try {
             // Check for pending requests
             const { data: pending } = await (supabase
-                .from('aumentos_salariales') as any)
+                .from('aumentosSalariales') as any)
                 .select('id')
                 .eq('empleado_id', emp.id)
                 .eq('estado', 'Pendiente')
@@ -283,14 +283,22 @@ export default function AumentosSalarialesPage() {
 
         setLoading(true)
         try {
+            // Find the approver's employee_id
+            const selectedApprover = approvers.find(a => a.id === parseInt(formData.aprobador));
+            if (!selectedApprover || !selectedApprover.empleado_id) {
+                setError('El aprobador seleccionado no tiene un registro de empleado válido.');
+                setLoading(false);
+                return;
+            }
+
             const { error: insertError } = await (supabase
-                .from('aumentos_salariales') as any)
+                .from('aumentosSalariales') as any)
                 .insert([{
                     empleado_id: empleado.id,
                     cargoAnterior: empleado.cargo,
                     cargoPropuesto: formData.cargoPropuesto,
                     solicitante: currentUser.id,
-                    aprobador: parseInt(formData.aprobador),
+                    aprobador: selectedApprover.empleado_id,
                     comentariosSolicitante: formData.comentarios,
                     fechaAplicacion: formData.fechaAplicacion,
                     salarioActual: parseFloat(formData.salarioActual),
@@ -426,7 +434,7 @@ export default function AumentosSalarialesPage() {
                             <div className="flex border-b border-gray-100">
                                 <button
                                     onClick={() => setActiveTab('create')}
-                                    className={`flex-1 py-4 text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'create'
+                                    className={`relative flex-1 py-4 text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'create'
                                         ? 'text-blue-600 bg-blue-50/30'
                                         : 'text-gray-500 hover:bg-gray-50'
                                         }`}
@@ -437,7 +445,7 @@ export default function AumentosSalarialesPage() {
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('history')}
-                                    className={`flex-1 py-4 text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'history'
+                                    className={`relative flex-1 py-4 text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'history'
                                         ? 'text-blue-600 bg-blue-50/30'
                                         : 'text-gray-500 hover:bg-gray-50'
                                         }`}
@@ -663,7 +671,7 @@ export default function AumentosSalarialesPage() {
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <p className="text-[10px] font-bold text-gray-400 uppercase">Aprobador</p>
-                                                                <p className="text-sm font-bold text-[#45433F]">{item.aprobador_info?.nombre || 'N/A'}</p>
+                                                                <p className="text-sm font-bold text-[#45433F]">{item.aprobador_info?.nombreCompleto || 'N/A'}</p>
                                                                 <p className="text-[10px] text-gray-400 uppercase mt-2">Solicitante</p>
                                                                 <p className="text-xs text-gray-600">{item.solicitante_info?.nombre || 'N/A'}</p>
                                                             </div>

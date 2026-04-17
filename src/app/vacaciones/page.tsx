@@ -9,6 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
     Umbrella,
     ArrowLeft,
     Search,
@@ -49,7 +56,8 @@ export default function VacacionesPage() {
         fechaInicio: '',
         fechaFin: '',
         fechaRegreso: '',
-        personaEncargada: ''
+        personaEncargada: '',
+        tipoPago: ''
     })
 
     const [error, setError] = useState<string | null>(null)
@@ -203,7 +211,9 @@ export default function VacacionesPage() {
                 cedula: rawData.id,
                 nombreCompleto: rawData.nombrecompleto,
                 nombre_completo: rawData.nombrecompleto, // Aliasing for compatibility
-                planta: rawData.area, // Mapping area to planta concept
+                cargo: rawData.cargo,
+                empresa: rawData.empresa,
+                planta: rawData.planta || rawData.area, 
                 area: rawData.area,
                 jefe: rawData.jefe,
                 dias_pendientes: rawData.Dias_Pendientes || 0,
@@ -243,11 +253,15 @@ export default function VacacionesPage() {
                     FechaIngreso: formData.fechaRegreso,
                     Departamento: empleado.planta || '',
                     "Nombre del Jefe": empleado.jefe || '',
+                    CorreoJefe: empleado.correo_jefe || '',
                     Aprobacion_Jefe: 'Pendiente',
                     DiasEnTiempo: formData.diasTiempo.toString(),
                     DiasEnDinero: formData.diasDinero.toString(),
                     PersonaEncargada: formData.personaEncargada,
+                    TipoDePAgo: formData.tipoPago,
                     correo: currentUser?.correo || '',
+                    Empresa: empleado.empresa || '',
+                    Cargo: empleado.cargo || '',
                 })
 
             if (insertError) throw insertError
@@ -263,7 +277,8 @@ export default function VacacionesPage() {
                     fechaInicio: '',
                     fechaFin: '',
                     fechaRegreso: '',
-                    personaEncargada: ''
+                    personaEncargada: '',
+                    tipoPago: ''
                 })
             }, 3000)
         } catch (err: any) {
@@ -534,6 +549,24 @@ export default function VacacionesPage() {
                                                         onChange={(e) => setFormData({ ...formData, personaEncargada: e.target.value })}
                                                         className="h-12 bg-gray-50 font-medium"
                                                     />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-500 uppercase">Tipo de Pago *</label>
+                                                    <Select
+                                                        required
+                                                        value={formData.tipoPago}
+                                                        onValueChange={(value) => setFormData({ ...formData, tipoPago: value })}
+                                                    >
+                                                        <SelectTrigger className="h-12 bg-gray-50 font-medium border-gray-200">
+                                                            <SelectValue placeholder="Seleccione tipo de pago" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Pago Anticipado">Pago Anticipado</SelectItem>
+                                                            <SelectItem value="Pago en quincena">Pago en quincena</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                             </div>
                                         </CardContent>

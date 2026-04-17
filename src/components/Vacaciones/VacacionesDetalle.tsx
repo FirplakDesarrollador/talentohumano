@@ -14,7 +14,9 @@ import {
     Loader2,
     Clock,
     UserCheck,
-    MapPin
+    MapPin,
+    Briefcase,
+    Building2
 } from 'lucide-react'
 
 interface VacacionesDetalleProps {
@@ -88,6 +90,20 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Info General */}
                         <div className="space-y-6">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cargo</p>
+                                <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                    <Briefcase className="h-4 w-4 text-gray-400" />
+                                    {solicitud.Cargo || 'N/A'}
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Empresa</p>
+                                <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                    <Building2 className="h-4 w-4 text-gray-400" />
+                                    {solicitud.Empresa || 'N/A'}
+                                </div>
+                            </div>
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Departamento / Planta</p>
                                 <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
