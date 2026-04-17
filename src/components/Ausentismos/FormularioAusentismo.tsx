@@ -81,16 +81,29 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
 
             setFetchingEmployees(true);
             try {
-                const { data, error } = await supabase
-                    .from('empleados')
-                    .select('*')
-                    .or(`nombreCompleto.ilike.%${searchQuery}%,cedula.cast.text.ilike.%${searchQuery}%`)
-                    .eq('activo', true)
-                    .limit(5);
+                let query = supabase
+                    .from('query_empleados_vacaciones')
+                    .select('id, cedula, nombrecompleto, cargo, planta, jefe, empresa');
 
-                if (error) throw error;
-                setEmployees(data || []);
-            } catch (err) {
+                const isNumeric = /^\d+$/.test(searchQuery);
+                if (isNumeric) {
+                    // If numeric, try exact match on cedula OR partial on name
+                    query = query.or(`nombrecompleto.ilike.%${searchQuery}%,cedula.eq.${searchQuery}`);
+                } else {
+                    // If text, partial match on name
+                    query = query.ilike('nombrecompleto', `%${searchQuery}%`);
+                }
+
+                const { data, error } = await query.limit(10);
+
+                if (error) {
+                    console.error('Supabase query error:', error);
+                    throw error;
+                }
+                
+                const uniqueEmployees = data ? Array.from(new Map((data as any[]).map(emp => [emp.cedula, emp])).values()) : [];
+                setEmployees(uniqueEmployees.slice(0, 5));
+            } catch (err: any) {
                 console.error('Error searching employees:', err);
             } finally {
                 setFetchingEmployees(false);
@@ -104,13 +117,13 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
         setFormData({
             ...formData,
             cedula: emp.cedula?.toString() || '',
-            nombreCompleto: emp.nombreCompleto || '',
+            nombreCompleto: emp.nombrecompleto || '',
             planta: emp.planta || '',
             jefe: emp.jefe || '',
-            contrato: emp.empresa || '', // In Flutter code 'Contrato' seems to map to Empresa
+            contrato: emp.empresa || '', 
             cargo: emp.cargo || ''
         });
-        setSearchQuery(emp.nombreCompleto);
+        setSearchQuery(emp.nombrecompleto || '');
         setShowResults(false);
     };
 
@@ -137,19 +150,13 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 'Jefe': formData.jefe,
                 'Contrato': formData.contrato,
                 'Cargo': formData.cargo,
-                'Descontar nomina': formData.descontarNomina ? 'Si' : 'No',
+                'Descontar nomina': formData.descontarNomina,
                 'Creado por': userData.user?.email || 'Sistema',
                 'Creado': new Date().toISOString()
             };
 
-            // Attempt upper case first
-            const { error } = await supabase.from('Ausentismos' as any).insert(dataToSave as any);
-
-            if (error) {
-                // Try lower case if upper fails
-                const { error: errorLow } = await supabase.from('ausentismos' as any).insert(dataToSave as any);
-                if (errorLow) throw errorLow;
-            }
+            const { error } = await (supabase.from('ausentismos') as any).insert(dataToSave);
+            if (error) throw error;
 
             toast.success('Ausentismo registrado correctamente');
             if (onSuccess) onSuccess();
@@ -206,11 +213,11 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                                         onClick={() => selectEmployee(emp)}
                                         className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3 transition-colors"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
-                                            {emp.nombreCompleto?.charAt(0)}
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                                            {emp.nombrecompleto?.charAt(0)}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-gray-900 leading-none mb-1">{emp.nombreCompleto}</p>
+                                            <p className="text-sm font-bold text-gray-900 leading-none mb-1">{emp.nombrecompleto}</p>
                                             <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{emp.cargo} • {emp.cedula}</p>
                                         </div>
                                     </button>
