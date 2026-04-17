@@ -101,7 +101,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                     throw error;
                 }
                 
-                const uniqueEmployees = data ? Array.from(new Map(data.map(emp => [emp.cedula, emp])).values()) : [];
+                const uniqueEmployees = data ? Array.from(new Map((data as any[]).map(emp => [emp.cedula, emp])).values()) : [];
                 setEmployees(uniqueEmployees.slice(0, 5));
             } catch (err: any) {
                 console.error('Error searching employees:', err);
@@ -155,7 +155,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 'Creado': new Date().toISOString()
             };
 
-            const { error } = await supabase.from('ausentismos').insert(dataToSave);
+            const { error } = await (supabase.from('ausentismos') as any).insert(dataToSave);
             if (error) throw error;
 
             toast.success('Ausentismo registrado correctamente');

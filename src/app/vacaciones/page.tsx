@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, type NivelCargo } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { VacacionesDetalle } from '@/components/Vacaciones/VacacionesDetalle'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -38,16 +38,53 @@ import {
 import { useRouter } from 'next/navigation'
 import { cargarEmpleadoPorCedula, vacacionesValidarCalcular, descargarQueryVacaciones } from '@/lib/vacation-utils'
 
+export interface Empleado {
+    id: number;
+    cedula: number;
+    nombreCompleto: string;
+    nombre_completo: string;
+    cargo: string | null;
+    empresa: string | null;
+    planta: string | null;
+    area: string | null;
+    jefe: string | null;
+    dias_pendientes: number;
+    correo_jefe: string | null;
+    foto: string | null;
+}
+
+export interface Solicitud {
+    id: number;
+    Cedula: number;
+    Empleado_Que_Disfruta: string;
+    'Creado por': string;
+    'Fecha Solicitud': string;
+    FechaInicial: string;
+    FechaFinal: string;
+    FechaIngreso: string;
+    Departamento: string;
+    'Nombre del Jefe': string;
+    Aprobacion_Jefe: string;
+    DiasEnTiempo: string;
+    DiasEnDinero: string;
+    PersonaEncargada: string;
+    TipoDePAgo: string;
+    correo: string;
+    CorreoJefe: string;
+    Empresa: string;
+    Cargo: string;
+}
+
 export default function VacacionesPage() {
     const [view, setView] = useState<'welcome' | 'process' | 'history'>('welcome')
     const [cedula, setCedula] = useState('')
-    const [empleado, setEmpleado] = useState<any>(null)
+    const [empleado, setEmpleado] = useState<Empleado | null>(null)
     const [loading, setLoading] = useState(false)
-    const [history, setHistory] = useState<any[]>([])
+    const [history, setHistory] = useState<Solicitud[]>([])
     const [historyLoading, setHistoryLoading] = useState(false)
-    const [currentUser, setCurrentUser] = useState<any>(null)
+    const [currentUser, setCurrentUser] = useState<{correo?: string; nombre?: string; nivelCargo?: string} | null>(null)
     const [showInstructions, setShowInstructions] = useState(false)
-    const [selectedSolicitud, setSelectedSolicitud] = useState<any>(null)
+    const [selectedSolicitud, setSelectedSolicitud] = useState<Solicitud | null>(null)
 
     // Form state for new request
     const [formData, setFormData] = useState({
@@ -114,12 +151,11 @@ export default function VacacionesPage() {
     }, [supabase])
 
     const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
-                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
+                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo as NivelCargo))
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)
         try {
-            // Updated to match the actual table columns
             let query = (supabase as any).from('Vacaciones').select('*').order('id', { ascending: false })
 
             if (filterCedula) {
@@ -132,10 +168,9 @@ export default function VacacionesPage() {
 
             const { data, error } = await query
             if (error) throw error
-            setHistory(data || [])
+            setHistory((data as unknown as Solicitud[]) || [])
         } catch (err: any) {
             console.error('Error fetching history:', err)
-            // Error handling - gracefully handle missing table during initial setup
             if (err.message?.includes('does not exist')) {
                 setHistory([])
             } else {
@@ -197,31 +232,43 @@ export default function VacacionesPage() {
         setSuccess(null)
 
         try {
-            console.log('Searching for cedula using FF-Ported logic:', cedula);
-
             const rawData = await cargarEmpleadoPorCedula(cedula);
 
             if (!rawData || Object.keys(rawData).length === 0) {
                 throw new Error('Empleado no encontrado. Verifica la cédula.')
             }
 
-            // Normalize
-            const normalizedEmpleado = {
+            // Normalización defensiva para el correo del jefe
+            let correoJefe = rawData.CorreoJefe;
+            if (!correoJefe && rawData.jefe) {
+                const { data: bossData } = await (supabase
+                    .from('empleados')
+                    .select('correo_electronico')
+                    .ilike('nombreCompleto', rawData.jefe.trim())
+                    .eq('activo', true)
+                    .maybeSingle() as any);
+                
+                if (bossData?.correo_electronico) {
+                    correoJefe = bossData.correo_electronico;
+                }
+            }
+
+            const normalizedEmpleado: Empleado = {
                 id: rawData.id,
                 cedula: rawData.id,
-                nombreCompleto: rawData.nombrecompleto,
-                nombre_completo: rawData.nombrecompleto, // Aliasing for compatibility
-                cargo: rawData.cargo,
-                empresa: rawData.empresa,
-                planta: rawData.planta || rawData.area, 
-                area: rawData.area,
-                jefe: rawData.jefe,
+                nombreCompleto: rawData.nombrecompleto || '',
+                nombre_completo: rawData.nombrecompleto || '',
+                cargo: rawData.cargo || 'N/A',
+                empresa: rawData.empresa || 'N/A',
+                planta: rawData.planta || rawData.area || 'N/A', 
+                area: rawData.area || 'N/A',
+                jefe: rawData.jefe || 'No asignado',
                 dias_pendientes: rawData.Dias_Pendientes || 0,
-                correo_jefe: rawData.CorreoJefe
+                correo_jefe: correoJefe,
+                foto: rawData.foto || null
             }
 
             setEmpleado(normalizedEmpleado)
-            console.log('Combined Unified Empleado:', normalizedEmpleado);
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -557,7 +604,7 @@ export default function VacacionesPage() {
                                                     <Select
                                                         required
                                                         value={formData.tipoPago}
-                                                        onValueChange={(value) => setFormData({ ...formData, tipoPago: value })}
+                                                        onValueChange={(value: string) => setFormData({ ...formData, tipoPago: value })}
                                                     >
                                                         <SelectTrigger className="h-12 bg-gray-50 font-medium border-gray-200">
                                                             <SelectValue placeholder="Seleccione tipo de pago" />
@@ -660,7 +707,7 @@ export default function VacacionesPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
-                                                {history.map((solicitud) => (
+                                                {history.map((solicitud: Solicitud) => (
                                                     <tr key={solicitud.id} className="hover:bg-blue-50/50 transition-colors group">
                                                         <td className="px-6 py-4">
                                                             <div className="flex flex-col">
