@@ -14,7 +14,9 @@ import { CrearFirma, VerFirma } from './FirmaComponents'
 import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
 import { toast } from 'sonner'
 
-type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
+type QueryHiluRow = Database['public']['Views']['query_hilu']['Row'] & {
+    fi_promedio?: number | null;
+}
 
 interface HiluComponentProps {
     empleado: QueryHiluRow
