@@ -11,10 +11,12 @@ import { ROLES } from '@/lib/constants/roles'
 import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
-import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Image as ImageIcon } from 'lucide-react'
+import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
 import { toast } from 'sonner'
 
-type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
+type QueryHiluRow = Database['public']['Views']['query_hilu']['Row'] & {
+    fi_promedio?: number | null;
+}
 
 interface HiluComponentProps {
     empleado: QueryHiluRow
@@ -60,6 +62,69 @@ const PillCheckbox = ({ id, checked, onChange, label, disabled }: { id: string, 
         ) : (
             <Circle className="h-6 w-6 text-gray-300" />
         )}
+    </div>
+)
+
+const StarRating = ({ value, onChange, label, disabled }: { value: number, onChange?: (v: number) => void, label: string, disabled?: boolean }) => {
+    const stars = [1, 2, 3]
+    return (
+        <div className="flex flex-col gap-1 p-2 bg-white rounded-lg border border-gray-100 shadow-sm h-full">
+            <span className="text-[10px] font-bold text-gray-500 uppercase flex justify-between">
+                {label}
+                <span className="text-blue-600 font-bold">{value === 1 ? 'Bajo' : value === 2 ? 'Regular' : value === 3 ? 'Bueno' : ''}</span>
+            </span>
+            <div className="flex gap-1 justify-center mt-auto">
+                {stars.map((s) => (
+                    <button
+                        key={s}
+                        disabled={disabled}
+                        type="button"
+                        onClick={() => onChange?.(s)}
+                        className={`focus:outline-none transition-all ${!disabled && onChange ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'}`}
+                    >
+                        <Star 
+                            className={`h-6 w-6 ${s <= value ? 'text-blue-600 fill-blue-600' : 'text-gray-300'}`} 
+                        />
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+const SignatureWidget = ({ 
+    label, 
+    value, 
+    onSave, 
+    date 
+}: { 
+    label: string, 
+    value?: string | null, 
+    onSave: (firma: string) => void,
+    date?: string | null
+}) => (
+    <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[220px] transition-all hover:border-blue-200 hover:shadow-md">
+        <div className="bg-gray-50/80 border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${value ? 'bg-green-500' : 'bg-blue-400 animate-pulse'}`}></div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+            </div>
+            {value && (
+                <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
+                    {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+                </div>
+            )}
+        </div>
+        <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
+            <div className="w-full">
+                {value ? (
+                    <VerFirma firmaUrl={value} />
+                ) : (
+                    <CrearFirma onFirmaGuardada={onSave} />
+                )}
+            </div>
+        </div>
     </div>
 )
 
@@ -168,7 +233,17 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 currentData.fh_firma_supervisor)
         } else if (role === 'OPERARIO') {
             if (phase === 'I') {
-                isDone = !!(currentData.fi_titular && currentData.fi_estandar_hdt && currentData.fi_entrenamiento_calidad && currentData.fi_hace_acompanado && currentData.fi_hace_solo && currentData.fi_firma_empleado && currentData.fi_firma_supervisor)
+                isDone = !!(currentData.fi_estandar_hdt && 
+                           currentData.fi_entrenamiento_calidad && 
+                           currentData.fi_hace_acompanado && 
+                           currentData.fi_hace_solo && 
+                           currentData.fi_curso_5s &&
+                           currentData.fi_actitud &&
+                           currentData.fi_aprendizaje &&
+                           currentData.fi_destreza &&
+                           currentData.fi_conocimiento &&
+                           currentData.fi_firma_empleado && 
+                           currentData.fi_firma_supervisor)
             } else if (phase === 'L') {
                 isDone = !!(currentData.fl_cumple_calidad && currentData.fl_cumple_estandar && currentData.fl_cumple_tiempo && currentData.fl_firma_empleado && currentData.fl_firma_supervisor)
             } else if (phase === 'U') {
@@ -422,57 +497,50 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 />
                             </div>
 
-                            {/* Signatures */}
-                            <div className="lg:col-span-4 grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label>
-                                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50">
-                                        {localEmpleado.fh_firma_empleado ? (
-                                            <VerFirma firmaUrl={localEmpleado.fh_firma_empleado} />
-                                        ) : (
-                                            <CrearFirma onFirmaGuardada={(firma) => {
-                                                const next = { ...localEmpleado, fh_firma_empleado: firma }
-                                                setLocalEmpleado(next)
-                                                updatePhase('fase_H', localEmpleado.fh_id!, { firma_empleado: firma })
-                                                    .then(() => checkPhaseCompletion('H', next))
-                                            }} />
-                                        )}
-                                    </div>
+                            {/* Signatures & Save */}
+                            <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100">
+                                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <SignatureWidget 
+                                        label="Firma Empleado" 
+                                        value={localEmpleado.fh_firma_empleado} 
+                                        date={localEmpleado.fh_fecha_finalizacion_fase}
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fh_firma_empleado: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_H', localEmpleado.fh_id!, { firma_empleado: firma })
+                                                .then(() => checkPhaseCompletion('H', next))
+                                        }}
+                                    />
+                                    <SignatureWidget 
+                                        label="Firma Supervisor" 
+                                        value={localEmpleado.fh_firma_supervisor} 
+                                        date={localEmpleado.fh_fecha_finalizacion_fase}
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fh_firma_supervisor: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_H', localEmpleado.fh_id!, { firma_supervisor: firma })
+                                                .then(() => checkPhaseCompletion('H', next))
+                                        }}
+                                    />
                                 </div>
-                                <div>
-                                    <Label className="text-gray-500 font-normal mb-2 block text-center">Firma Supervisor</Label>
-                                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50">
-                                        {localEmpleado.fh_firma_supervisor ? (
-                                            <VerFirma firmaUrl={localEmpleado.fh_firma_supervisor} />
-                                        ) : (
-                                            <CrearFirma onFirmaGuardada={(firma) => {
-                                                const next = { ...localEmpleado, fh_firma_supervisor: firma }
-                                                setLocalEmpleado(next)
-                                                updatePhase('fase_H', localEmpleado.fh_id!, { firma_supervisor: firma })
-                                                    .then(() => checkPhaseCompletion('H', next))
-                                            }} />
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Save & Finish Area */}
-                            <div className="lg:col-span-2 flex flex-col justify-between h-full py-2">
-                                <Button
-                                    className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2"
-                                    onClick={async () => {
-                                        await checkPhaseCompletion('H', localEmpleado);
-                                        alert('Información sincronizada correctamente');
-                                    }}
-                                >
-                                    <Save className="h-4 w-15" />
-                                    Actualizar Estatus
-                                </Button>
+                                <div className="md:col-span-4 flex flex-col justify-end gap-6 h-full min-h-[220px]">
+                                    <Button
+                                        className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg"
+                                        onClick={async () => {
+                                            await checkPhaseCompletion('H', localEmpleado);
+                                            alert('Información sincronizada correctamente');
+                                        }}
+                                    >
+                                        <Save className="h-5 w-5" />
+                                        Sincronizar Estatus
+                                    </Button>
 
-                                <div className="mt-auto pt-4">
-                                    <Label className="text-xs text-gray-500 block mb-1">Fecha de finalización</Label>
-                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm w-full">
-                                        {localEmpleado.fh_fecha_finalizacion_fase ? new Date(localEmpleado.fh_fecha_finalizacion_fase).toLocaleDateString() : 'Null'}
+                                    <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
+                                        <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-2 tracking-widest text-center">Fecha de finalización</Label>
+                                        <div className="h-10 flex items-center justify-center text-gray-600 font-bold text-sm bg-white rounded-lg border border-gray-200">
+                                            {localEmpleado.fh_fecha_finalizacion_fase ? new Date(localEmpleado.fh_fecha_finalizacion_fase).toLocaleDateString() : 'Pendiente'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -489,14 +557,18 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         let progress = 0
         if (role === 'OPERARIO') {
             const checks = [
-                localEmpleado.fi_titular,
                 localEmpleado.fi_estandar_hdt,
                 localEmpleado.fi_entrenamiento_calidad,
                 localEmpleado.fi_hace_acompanado,
-                localEmpleado.fi_hace_solo
+                localEmpleado.fi_hace_solo,
+                localEmpleado.fi_curso_5s,
+                (localEmpleado.fi_actitud || 0) > 0,
+                (localEmpleado.fi_aprendizaje || 0) > 0,
+                (localEmpleado.fi_destreza || 0) > 0,
+                (localEmpleado.fi_conocimiento || 0) > 0
             ]
             const completed = checks.filter(Boolean).length
-            progress = Math.round((completed / 5) * 100)
+            progress = Math.round((completed / 9) * 100)
         } else {
             const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
@@ -507,76 +579,162 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
         const faseHComplete = !!localEmpleado.fh_completado;
 
+        // Calculate average for stars
+        const ratings = [
+            localEmpleado.fi_actitud || 0,
+            localEmpleado.fi_aprendizaje || 0,
+            localEmpleado.fi_destreza || 0,
+            localEmpleado.fi_conocimiento || 0
+        ].filter(v => v > 0)
+        const avgRating = ratings.length > 0 ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0
+
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
                 <PhaseHeader title="Etapa I" progress={progress} isOpen={openPhase === 'I'} onClick={() => setOpenPhase(openPhase === 'I' ? null : 'I')} />
                 {openPhase === 'I' && (
                     <CardContent className="p-6 space-y-6 bg-[#f8f9fa]">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                            <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap"><Calendar className="h-5 w-5" /><span>{localEmpleado.fi_dias_transcurridos || 0} días en esta fase</span></div>
-                            <div className="relative"><Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">{localEmpleado.fi_created_at ? new Date(localEmpleado.fi_created_at).toLocaleDateString() : 'Null'}</div></div>
-                        </div>
-
-                        {!faseHComplete && (
-                            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
-                                ⚠️ Complete la Fase H para habilitar las herramientas de la Fase I
-                            </div>
-                        )}
-
-                        {role === 'OPERARIO' ? (
-                            <div className={!faseHComplete ? "opacity-60 pointer-events-none" : ""}>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                                    <PillCheckbox id="fi_titular" label="Es el Titular del Puesto" checked={localEmpleado.fi_titular || false} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_titular: c }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { titular: c })
-                                    }} />
-                                    <PillCheckbox id="fi_estandar_hdt" label="Estándar HDT" checked={localEmpleado.fi_estandar_hdt || false} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_estandar_hdt: c }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { estandar_hdt: c })
-                                    }} />
+                        <div className={!faseHComplete ? "opacity-60 pointer-events-none" : ""}>
+                            {/* Row 1: Primary Checks */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
+                                    <Calendar className="h-5 w-5" />
+                                    <span>{localEmpleado.fi_dias_transcurridos || 0} días en esta fase</span>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <PillCheckbox id="fi_entrenamiento_calidad" label="Entrenamiento Calidad" checked={localEmpleado.fi_entrenamiento_calidad || false} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_entrenamiento_calidad: c }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { entrenamiento_calidad: c })
-                                    }} />
-                                    <PillCheckbox id="fi_hace_acompanado" label="Hace Acompañado" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { hace_acompanado: c })
-                                    }} />
-                                    <PillCheckbox id="fi_hace_solo" label="Hace Solo" checked={localEmpleado.fi_hace_solo || false} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_hace_solo: c }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { hace_solo: c })
-                                    }} />
-                                    <div className="relative">
-                                        <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10">Entrenado por</Label>
-                                        <Input className="h-full pt-4" defaultValue={localEmpleado.fi_entrenado_por || ''} onBlur={(e) => updatePhase('fase_I', localEmpleado.fi_id!, { entrenado_por: e.target.value })} />
+                                <div className="relative">
+                                    <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                        {localEmpleado.fi_created_at ? new Date(localEmpleado.fi_created_at).toLocaleDateString() : 'Null'}
                                     </div>
                                 </div>
+                                <PillCheckbox id="fi_estandar_hdt" label="Estándar del puesto (HDT)" checked={localEmpleado.fi_estandar_hdt || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fi_estandar_hdt: c }))
+                                    updatePhase('fase_I', localEmpleado.fi_id!, { estandar_hdt: c })
+                                }} />
+                                <PillCheckbox id="fi_entrenamiento_calidad" label="Entrenamiento de calidad" checked={localEmpleado.fi_entrenamiento_calidad || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fi_entrenamiento_calidad: c }))
+                                    updatePhase('fase_I', localEmpleado.fi_id!, { entrenamiento_calidad: c })
+                                }} />
                             </div>
-                        ) : (
-                            <div className="bg-white p-4 rounded-lg border border-gray-200">
+
+                            {/* Row 2: Secondary Checks */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <PillCheckbox id="fi_hace_acompanado" label="¿Hace Acompañado?" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
+                                    updatePhase('fase_I', localEmpleado.fi_id!, { hace_acompanado: c })
+                                }} />
+                                <PillCheckbox id="fi_hace_solo" label="¿Hace Solo?" checked={localEmpleado.fi_hace_solo || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fi_hace_solo: c }))
+                                    updatePhase('fase_I', localEmpleado.fi_id!, { hace_solo: c })
+                                }} />
+                                <PillCheckbox id="fi_curso_5s" label="5S" checked={localEmpleado.fi_curso_5s || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fi_curso_5s: c }))
+                                    updatePhase('fase_I', localEmpleado.fi_id!, { curso_5s: c })
+                                }} />
+                                <div className="relative h-[46px]">
+                                    <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10 bg-[#f8f9fa]">Entrenado por</Label>
+                                    <Input className="h-full pt-4 focus-visible:ring-[#1e2f3d]" defaultValue={localEmpleado.fi_entrenado_por || ''} onBlur={(e) => updatePhase('fase_I', localEmpleado.fi_id!, { entrenado_por: e.target.value })} />
+                                </div>
+                            </div>
+
+                            {/* Row 3: Ratings (Stars) */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <StarRating 
+                                    label="Actitud" 
+                                    value={localEmpleado.fi_actitud || 0} 
+                                    onChange={(v) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fi_actitud: v }))
+                                        updatePhase('fase_I', localEmpleado.fi_id!, { actitud: v })
+                                    }} 
+                                />
+                                <StarRating 
+                                    label="Aprendizaje" 
+                                    value={localEmpleado.fi_aprendizaje || 0} 
+                                    onChange={(v) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fi_aprendizaje: v }))
+                                        updatePhase('fase_I', localEmpleado.fi_id!, { aprendizaje: v })
+                                    }} 
+                                />
+                                <StarRating 
+                                    label="Destreza" 
+                                    value={localEmpleado.fi_destreza || 0} 
+                                    onChange={(v) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fi_destreza: v }))
+                                        updatePhase('fase_I', localEmpleado.fi_id!, { destreza: v })
+                                    }} 
+                                />
+                                <StarRating 
+                                    label="Conocimiento" 
+                                    value={localEmpleado.fi_conocimiento || 0} 
+                                    onChange={(v) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fi_conocimiento: v }))
+                                        updatePhase('fase_I', localEmpleado.fi_id!, { conocimiento: v })
+                                    }} 
+                                />
+                            </div>
+                        </div>
+
+                        {role !== 'OPERARIO' && (
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
                                 <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase I</h4>
                                 {renderToolGrid('I')}
                             </div>
                         )}
 
-                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
-                            <div className="lg:col-span-3 space-y-2">
-                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
-                                <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => {
-                                    const next = { ...localEmpleado, fi_comentario: e.target.value }
-                                    setLocalEmpleado(next)
-                                    updatePhase('fase_I', localEmpleado.fi_id!, { comentario: e.target.value })
-                                        .then(() => checkPhaseCompletion('I', next))
-                                }} />
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
+                            <div className="lg:col-span-3 space-y-4">
+                                <StarRating 
+                                    label="Promedio Final" 
+                                    value={localEmpleado.fi_promedio || avgRating} 
+                                    onChange={(v) => {
+                                        // @ts-ignore
+                                        setLocalEmpleado(prev => ({ ...prev, fi_promedio: v }))
+                                        updatePhase('fase_I', localEmpleado.fi_id!, { promedio: v })
+                                    }}
+                                />
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                    <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
+                                    <textarea className="w-full h-[120px] p-4 rounded-lg bg-gray-50/50 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => {
+                                        const next = { ...localEmpleado, fi_comentario: e.target.value }
+                                        setLocalEmpleado(next)
+                                        updatePhase('fase_I', localEmpleado.fi_id!, { comentario: e.target.value })
+                                            .then(() => checkPhaseCompletion('I', next))
+                                    }} />
+                                </div>
                             </div>
-                            <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal text-center block">Evidencias</Label><EvidenciasComponent evidencias={localEmpleado.fi_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_I', localEmpleado.fi_id!, { evidencias: evs })} path="fase-i" /></div>
-                            <div className="lg:col-span-4 grid grid-cols-2 gap-4">
-                                <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fi_firma_empleado ? <VerFirma firmaUrl={localEmpleado.fi_firma_empleado} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_I', localEmpleado.fi_id!, { firma_empleado: f })} />}</div></div>
-                                <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Supervisor</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fi_firma_supervisor ? <VerFirma firmaUrl={localEmpleado.fi_firma_supervisor} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_I', localEmpleado.fi_id!, { firma_supervisor: f })} />}</div></div>
+
+                            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
+                                <div className="sm:col-span-4">
+                                    <SignatureWidget 
+                                        label="Empleado" 
+                                        value={localEmpleado.fi_firma_empleado} 
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fi_firma_empleado: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { firma_empleado: firma })
+                                                .then(() => checkPhaseCompletion('I', next))
+                                        }}
+                                    />
+                                </div>
+                                <div className="sm:col-span-4">
+                                    <SignatureWidget 
+                                        label="Supervisor" 
+                                        value={localEmpleado.fi_firma_supervisor} 
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fi_firma_supervisor: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { firma_supervisor: firma })
+                                                .then(() => checkPhaseCompletion('I', next))
+                                        }}
+                                    />
+                                </div>
+                                <div className="sm:col-span-4 flex flex-col justify-between gap-4 h-full min-h-[220px]">
+                                    <div className="bg-white rounded-xl border border-gray-200 p-2 h-full">
+                                        <Label className="text-[9px] font-bold text-gray-400 uppercase block mb-1 text-center">Evidencias Adjuntas</Label>
+                                        <EvidenciasComponent evidencias={localEmpleado.fi_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_I', localEmpleado.fi_id!, { evidencias: evs })} path="fase-i" />
+                                    </div>
+                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('I', localEmpleado)}><Save className="h-5 w-5" /> Sincronizar Fase I</Button>
+                                </div>
                             </div>
-                            <div className="lg:col-span-2 flex flex-col justify-between h-full py-2"><Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2"><Save className="h-4 w-4" /> Guardar</Button><div className="mt-auto pt-4"><Label className="text-xs text-gray-500 block mb-1">Fecha de finalización</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm w-full">{localEmpleado.fi_fecha_finalizacion_fase ? new Date(localEmpleado.fi_fecha_finalizacion_fase).toLocaleDateString() : 'Null'}</div></div></div>
                         </div>
                     </CardContent>
                 )}
@@ -605,7 +763,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         }
         // Phase L is disabled until ALL phase I checks are complete (OPERARIO only)
         const faseHComplete = !!localEmpleado.fh_completado;
-        const faseIComplete = !!(localEmpleado.fi_titular && localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
+        const faseIComplete = !!(localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
         const canEditL = faseHComplete && faseIComplete;
 
         return (
@@ -653,22 +811,52 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
-                            <div className="lg:col-span-3 space-y-2">
-                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
-                                <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fl_comentario || ''} onBlur={(e) => {
-                                    const next = { ...localEmpleado, fl_comentario: e.target.value }
-                                    setLocalEmpleado(next)
-                                    updatePhase('fase_L', localEmpleado.fl_id!, { comentario: e.target.value })
-                                        .then(() => checkPhaseCompletion('L', next))
-                                }} />
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
+                            <div className="lg:col-span-3">
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-full">
+                                    <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">Comentarios de Entrenamiento <span className="text-red-500 font-bold">*</span></Label>
+                                    <textarea className="w-full h-[154px] p-4 rounded-lg bg-gray-50/10 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium" defaultValue={localEmpleado.fl_comentario || ''} onBlur={(e) => {
+                                        const next = { ...localEmpleado, fl_comentario: e.target.value }
+                                        setLocalEmpleado(next)
+                                        updatePhase('fase_L', localEmpleado.fl_id!, { comentario: e.target.value })
+                                            .then(() => checkPhaseCompletion('L', next))
+                                    }} />
+                                </div>
                             </div>
-                            <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal text-center block">Evidencias</Label><EvidenciasComponent evidencias={localEmpleado.fl_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_L', localEmpleado.fl_id!, { evidencias: evs })} path="fase-l" /></div>
-                            <div className="lg:col-span-4 grid grid-cols-2 gap-4">
-                                <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fl_firma_empleado ? <VerFirma firmaUrl={localEmpleado.fl_firma_empleado} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_L', localEmpleado.fl_id!, { firma_empleado: f })} />}</div></div>
-                                <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Supervisor</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fl_firma_supervisor ? <VerFirma firmaUrl={localEmpleado.fl_firma_supervisor} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_L', localEmpleado.fl_id!, { firma_supervisor: f })} />}</div></div>
+
+                            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
+                                <div className="sm:col-span-4">
+                                    <SignatureWidget 
+                                        label="Empleado" 
+                                        value={localEmpleado.fl_firma_empleado} 
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fl_firma_empleado: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_L', localEmpleado.fl_id!, { firma_empleado: firma })
+                                                .then(() => checkPhaseCompletion('L', next))
+                                        }}
+                                    />
+                                </div>
+                                <div className="sm:col-span-4">
+                                    <SignatureWidget 
+                                        label="Supervisor" 
+                                        value={localEmpleado.fl_firma_supervisor} 
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fl_firma_supervisor: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_L', localEmpleado.fl_id!, { firma_supervisor: firma })
+                                                .then(() => checkPhaseCompletion('L', next))
+                                        }}
+                                    />
+                                </div>
+                                <div className="sm:col-span-4 flex flex-col justify-between gap-4 h-full min-h-[220px]">
+                                    <div className="bg-white rounded-xl border border-gray-200 p-2 h-full">
+                                        <Label className="text-[9px] font-bold text-gray-400 uppercase block mb-1 text-center">Evidencias de L</Label>
+                                        <EvidenciasComponent evidencias={localEmpleado.fl_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_L', localEmpleado.fl_id!, { evidencias: evs })} path="fase-l" />
+                                    </div>
+                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('L', localEmpleado)}><Save className="h-5 w-5" /> Sincronizar Fase L</Button>
+                                </div>
                             </div>
-                            <div className="lg:col-span-2 flex flex-col justify-between h-full py-2"><Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2"><Save className="h-4 w-4" /> Guardar</Button><div className="mt-auto pt-4"><Label className="text-xs text-gray-500 block mb-1">Fecha de finalización</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm w-full">{localEmpleado.fl_fecha_finalizacion_fase ? new Date(localEmpleado.fl_fecha_finalizacion_fase).toLocaleDateString() : 'Null'}</div></div></div>
                         </div>
                     </CardContent>
                 )}
@@ -705,62 +893,102 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 <PhaseHeader title="Etapa U" progress={progress} isOpen={openPhase === 'U'} onClick={() => setOpenPhase(openPhase === 'U' ? null : 'U')} />
                 {openPhase === 'U' && (
                     <CardContent className="p-6 space-y-6 bg-[#f8f9fa]">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                            <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap"><Calendar className="h-5 w-5" /><span>{localEmpleado.fu_dias_transcurridos || 0} días en esta fase</span></div>
-                            <div className="relative"><Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">{localEmpleado.fu_created_at ? new Date(localEmpleado.fu_created_at).toLocaleDateString() : 'Null'}</div></div>
-                        </div>
-
-                        {!faseHComplete && (
-                            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
-                                ⚠️ Complete la Fase H para habilitar las herramientas de la Fase U
-                            </div>
-                        )}
-
-                        {role === 'OPERARIO' ? (
-                            <div className="space-y-2">
-                                {(faseHComplete && !faseLComplete) && (
-                                    <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
-                                        ⚠️ Complete todas las habilidades de la Fase L para habilitar la Fase U
+                        <div className={!canEditU ? "opacity-60 pointer-events-none" : ""}>
+                            {/* Row 1: Days, Date, and first 2 checkboxes */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap overflow-hidden">
+                                    <Calendar className="h-5 w-5 flex-shrink-0" />
+                                    <span className="text-sm truncate">{localEmpleado.fu_dias_transcurridos || 0} dias en esta fase</span>
+                                </div>
+                                <div className="relative">
+                                    <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                        {localEmpleado.fu_created_at ? new Date(localEmpleado.fu_created_at).toLocaleDateString() : 'Null'}
                                     </div>
-                                )}
-                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${!canEditU ? 'opacity-60 pointer-events-none' : ''}`}>
-                                    <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para Entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} disabled={!faseLComplete} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
-                                        updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
-                                    }} />
-                                    <PillCheckbox id="fu_entrena_solo" label="Entrena Solo" checked={localEmpleado.fu_entrena_solo || false} disabled={!faseLComplete} onChange={(c) => {
+                                </div>
+                                <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
+                                    updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
+                                }} />
+                                <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} onChange={(c) => {
+                                    setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
+                                    updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
+                                }} />
+                            </div>
+
+                            {/* Row 2: Sabe entrenar solo, Comentarios, Evidencias */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                <div className="lg:col-span-3">
+                                    <PillCheckbox id="fu_entrena_solo" label="Sabe entrenar solo" checked={localEmpleado.fu_entrena_solo || false} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fu_entrena_solo: c }))
                                         updatePhase('fase_U', localEmpleado.fu_id!, { entrena_solo: c })
                                     }} />
-                                    <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña Entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} disabled={!faseLComplete} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
-                                        updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
-                                    }} />
+                                </div>
+                                <div className="lg:col-span-6 space-y-2 relative">
+                                    <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10 bg-[#f8f9fa]">Comentarios <span className="text-red-500 font-bold">*</span></Label>
+                                    <textarea 
+                                        className="w-full h-[120px] p-3 pt-4 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" 
+                                        defaultValue={localEmpleado.fu_comentario || ''} 
+                                        onBlur={(e) => {
+                                            const next = { ...localEmpleado, fu_comentario: e.target.value }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_U', localEmpleado.fu_id!, { comentario: e.target.value })
+                                                .then(() => checkPhaseCompletion('U', next))
+                                        }} 
+                                    />
+                                </div>
+                                <div className="lg:col-span-3 space-y-2 relative">
+                                    <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10 bg-[#f8f9fa]">Evidencias</Label>
+                                    <div className="bg-white p-2 rounded-md border border-gray-200 min-h-[120px]">
+                                        <EvidenciasComponent evidencias={localEmpleado.fu_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_U', localEmpleado.fu_id!, { evidencias: evs })} path="fase-u" />
+                                    </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        </div>
+
+                        {role !== 'OPERARIO' && (
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
                                 <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase U</h4>
                                 {renderToolGrid('U')}
                             </div>
                         )}
 
-                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
-                            <div className="lg:col-span-3 space-y-2">
-                                <Label className="text-gray-500 font-normal flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
-                                <textarea className="w-full h-[140px] p-3 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" defaultValue={localEmpleado.fu_comentario || ''} onBlur={(e) => {
-                                    const next = { ...localEmpleado, fu_comentario: e.target.value }
-                                    setLocalEmpleado(next)
-                                    updatePhase('fase_U', localEmpleado.fu_id!, { comentario: e.target.value })
-                                        .then(() => checkPhaseCompletion('U', next))
-                                }} />
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-end pt-4 border-t border-gray-100`}>
+                            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
+                                <div className="sm:col-span-4">
+                                    <SignatureWidget 
+                                        label="Firma Empleado" 
+                                        value={localEmpleado.fu_firma_empleado} 
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fu_firma_empleado: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_U', localEmpleado.fu_id!, { firma_empleado: firma })
+                                                .then(() => checkPhaseCompletion('U', next))
+                                        }}
+                                    />
+                                </div>
+                                <div className="sm:col-span-4">
+                                    <SignatureWidget 
+                                        label="Firma Supervisor" 
+                                        value={localEmpleado.fu_firma_supervisor} 
+                                        onSave={(firma) => {
+                                            const next = { ...localEmpleado, fu_firma_supervisor: firma }
+                                            setLocalEmpleado(next)
+                                            updatePhase('fase_U', localEmpleado.fu_id!, { firma_supervisor: firma })
+                                                .then(() => checkPhaseCompletion('U', next))
+                                        }}
+                                    />
+                                </div>
+                                <div className="sm:col-span-4 flex flex-col justify-end gap-6 h-full min-h-[220px]">
+                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('U', localEmpleado)}><Save className="h-5 w-5" /> Guardar Todo</Button>
+                                    <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
+                                        <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-2 tracking-widest text-center">Fecha Finalización</Label>
+                                        <div className="h-10 flex items-center justify-center text-gray-600 font-bold text-sm bg-white rounded-lg border border-gray-200">
+                                            {localEmpleado.fu_fecha_finalizacion_fase ? new Date(localEmpleado.fu_fecha_finalizacion_fase).toLocaleDateString() : 'Pendiente'}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="lg:col-span-3 space-y-2"><Label className="text-gray-500 font-normal text-center block">Evidencias</Label><EvidenciasComponent evidencias={localEmpleado.fu_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_U', localEmpleado.fu_id!, { evidencias: evs })} path="fase-u" /></div>
-                            <div className="lg:col-span-4 grid grid-cols-2 gap-4">
-                                <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Empleado</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fu_firma_empleado ? <VerFirma firmaUrl={localEmpleado.fu_firma_empleado} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_U', localEmpleado.fu_id!, { firma_empleado: f })} />}</div></div>
-                                <div><Label className="text-gray-500 font-normal mb-2 block text-center">Firma Supervisor</Label><div className="border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[120px] flex flex-col items-center justify-center relative bg-blue-50/50 text-center">{localEmpleado.fu_firma_supervisor ? <VerFirma firmaUrl={localEmpleado.fu_firma_supervisor} /> : <CrearFirma onFirmaGuardada={(f) => updatePhase('fase_U', localEmpleado.fu_id!, { firma_supervisor: f })} />}</div></div>
-                            </div>
-                            <div className="lg:col-span-2 flex flex-col justify-between h-full py-2"><Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2"><Save className="h-4 w-4" /> Guardar</Button><div className="mt-auto pt-4"><Label className="text-xs text-gray-500 block mb-1">Fecha de finalización</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm w-full">{localEmpleado.fu_fecha_finalizacion_fase ? new Date(localEmpleado.fu_fecha_finalizacion_fase).toLocaleDateString() : 'Null'}</div></div></div>
                         </div>
                     </CardContent>
                 )}
