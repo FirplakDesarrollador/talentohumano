@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
-import { ADMIN_LEVELS, ADMIN_EMAILS, getPlantasPermitidas } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -32,6 +32,9 @@ export default function BuscadorProcesosDisciplinariosPage() {
     const [filteredEmpleados, setFilteredEmpleados] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [currentUser, setCurrentUser] = useState<any>(null)
+    const [isRestricted, setIsRestricted] = useState(false)
+    const [isAnalista, setIsAnalista] = useState(false)
+    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
 
     // UI State
     const [busqueda, setBusqueda] = useState('')
@@ -74,29 +77,47 @@ export default function BuscadorProcesosDisciplinariosPage() {
                     return
                 }
 
+                // Check Authorization
+                const email = user.email!
+                const restrictedSupervisor = RESTRICTED_SUPERVISORS.includes(email)
+                const restrictedCoordinator = COORDINADORES_CON_ACCESO.includes(email)
+                const restrictedJefe = JEFES_CON_ACCESO.includes(email) || JEFES_MUEBLES_CEFI.includes(email) || JEFES_ALMACEN_CEDI.includes(email) || JEFES_INGENIERIA_MOLDES.includes(email)
+                const restrictedDirector = DIRECTORES_CON_ACCESO.includes(email)
+                const analistaAcceso = ANALISTAS_CON_ACCESO.includes(email)
+                const systemAdmin = ADMIN_EMAILS.includes(email)
+
+                // Only Supervisor, Director, Jefe, Coordinator and Admins have access to Disciplinarios
+                const authorized = systemAdmin || restrictedSupervisor || restrictedCoordinator || restrictedJefe || restrictedDirector
+                setIsAuthorized(authorized)
+
+                if (!authorized) {
+                    setLoading(false)
+                    return
+                }
+
+                setIsRestricted(restrictedSupervisor || restrictedCoordinator || restrictedJefe || restrictedDirector)
+                setIsAnalista(analistaAcceso)
+
                 // Obtener nivel_cargo de la tabla empleados
                 const { data: empleado } = await supabase
                     .from('empleados')
                     .select('nivelCargo')
-                    .eq('correo_electronico', user.email!)
+                    .eq('correo_electronico', email)
                     .maybeSingle()
 
                 let currentLevel = ''
                 if ((empleado as any)?.nivelCargo) {
                     currentLevel = (empleado as any).nivelCargo
-                    const userObj = { ...(empleado as any), correo: user.email, nivelCargo: currentLevel }
+                    const userObj = { ...(empleado as any), correo: email, nivelCargo: currentLevel }
                     setCurrentUser(userObj)
                     
-                    // Check for restricted supervisor plants
-                    const permittedPlants = getPlantasPermitidas(user.email!)
-                    const userPlants = permittedPlants || (userObj as any).plantas || []
-                    fetchEmpleados(userPlants)
+                    const userPlants = getPlantasPermitidas(email)
+                    fetchEmpleados(userPlants || [])
                 } else {
-                    // Fallback a tabla usuarios
                     const { data: profile } = await supabase
                         .from('usuarios')
                         .select('*')
-                        .eq('correo', user.email!)
+                        .eq('correo', email)
                         .maybeSingle()
                     
                     if ((profile as any)?.rol) {
@@ -110,17 +131,14 @@ export default function BuscadorProcesosDisciplinariosPage() {
                             'analista': 'Analista'
                         }
                         currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
-                        const userObj = { ...(profile as any), correo: user.email, nivelCargo: currentLevel }
+                        const userObj = { ...(profile as any), correo: email, nivelCargo: currentLevel }
                         setCurrentUser(userObj)
                         
-                        // Check for restricted supervisor plants
-                        const permittedPlants = getPlantasPermitidas(user.email!)
-                        const userPlants = permittedPlants || (userObj as any).plantas || []
-                        fetchEmpleados(userPlants)
+                        const userPlants = getPlantasPermitidas(email)
+                        fetchEmpleados(userPlants || [])
                     } else {
-                        // Check for restricted supervisor plants even if no profile found
-                        const permittedPlants = getPlantasPermitidas(user.email!)
-                        fetchEmpleados(permittedPlants || [])
+                        const userPlants = getPlantasPermitidas(email)
+                        fetchEmpleados(userPlants || [])
                     }
                 }
             } catch (error) {
@@ -147,9 +165,24 @@ export default function BuscadorProcesosDisciplinariosPage() {
         setFilteredEmpleados(filtered)
     }, [busqueda, empleados])
 
-    // Check if user is admin based on email or level
     const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
                     (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
+
+    if (isAuthorized === false) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+                <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
+                <h1 className="text-2xl font-black text-[#1D3557] uppercase tracking-tighter mb-2">Acceso No Autorizado</h1>
+                <p className="text-gray-500 text-center max-w-md mb-8">
+                    Tu cuenta no tiene permisos para acceder al módulo de Procesos Disciplinarios. 
+                    Si crees que esto es un error, contacta al administrador.
+                </p>
+                <Button onClick={() => router.push('/menu')} className="bg-[#1D3557] text-white rounded-xl px-8">
+                    Volver al Menú
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -210,7 +243,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         variant="ghost"
                         onClick={() => {
                             setBusqueda('')
-                            fetchEmpleados(currentUser?.plantas || [])
+                            fetchEmpleados(getPlantasPermitidas(currentUser?.correo || '') || [])
                         }}
                         className="h-[42px] px-4 rounded-lg text-gray-500 hover:text-[#1D3557] hover:bg-white border border-gray-200 shadow-sm"
                         title="Refrescar datos"
@@ -230,19 +263,21 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         {filteredEmpleados.map((empleado) => (
                             <div
                                 key={empleado.id}
-                                className="group cursor-pointer transform transition-all duration-200 hover:-translate-y-1 active:scale-[0.98]"
-                                onClick={() => router.push(`/procesos-disciplinarios/${empleado.id}`)}
+                                className={`group transform transition-all duration-200 ${isAnalista ? 'cursor-default opacity-80' : 'cursor-pointer hover:-translate-y-1 active:scale-[0.98]'}`}
+                                onClick={() => !isAnalista && router.push(`/procesos-disciplinarios/${empleado.id}`)}
                             >
                                 <div className="relative">
                                     <EmpleadoCard empleado={{
                                         ...empleado,
                                         cedula: empleado.id
                                     }} />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                        <div className="bg-[#1D3557] p-2 rounded-full text-white shadow-lg">
-                                            <ChevronRight className="h-5 w-5" />
+                                    {!isAnalista && (
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                            <div className="bg-[#1D3557] p-2 rounded-full text-white shadow-lg">
+                                                <ChevronRight className="h-5 w-5" />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

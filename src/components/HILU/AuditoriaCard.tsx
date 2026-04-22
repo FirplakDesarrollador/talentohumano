@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 import { Plus, Calendar, User, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
 
 type Auditoria = Database['public']['Tables']['auditorias']['Row']
 
@@ -16,12 +17,37 @@ interface AuditoriaCardProps {
     cargo: string
     auditorias: Auditoria[]
     onUpdate: () => void
+    currentUser?: { id: number; email: string; nivelCargo?: string } | null
 }
 
-export function AuditoriaCard({ empleadoId, cargo, auditorias, onUpdate }: AuditoriaCardProps) {
+export function AuditoriaCard({ empleadoId, cargo, auditorias, onUpdate, currentUser }: AuditoriaCardProps) {
     const [isAdding, setIsAdding] = useState(false)
     const [loading, setLoading] = useState(false)
     const supabase = createClient()
+
+    const canEdit = () => {
+        if (!currentUser) return false
+        const email = currentUser.email || ''
+        
+        // Estiven Londono and Coordinacion Calidad have full permissions
+        if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
+        
+        // Restricted users cannot edit audits
+        if (
+            email === 'david.ramirez@firplak.com' || 
+            SUPERVISORES_MARMOL.includes(email) || 
+            SUPERVISORES_CALIDAD.includes(email) ||
+            SUPERVISORES_MUEBLES_CEFI.includes(email) ||
+            email === 'jakeline.chaverra@firplak.com' ||
+            email === 'maria.perez@firplak.com' ||
+            email === 'juliana.ramirez@firplak.com' ||
+            email === 'sara.aguilar@firplak.com' ||
+            email === 'analistaabastecimiento@firplak.com' ||
+            email === 'hector.chinchilla@firplak.com'
+        ) return false
+        
+        return true
+    }
 
     // Form states
     const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
@@ -76,17 +102,19 @@ export function AuditoriaCard({ empleadoId, cargo, auditorias, onUpdate }: Audit
                     <CheckCircle2 className="h-5 w-5 text-blue-600" />
                     Auditorías de Estándar
                 </CardTitle>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAdding(!isAdding)}
-                    className={isAdding ? 'bg-red-50 text-red-600 border-red-200' : ''}
-                >
-                    {isAdding ? 'Cancelar' : <><Plus className="h-4 w-4 mr-2" /> Nueva Auditoría</>}
-                </Button>
+                {canEdit() && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAdding(!isAdding)}
+                        className={isAdding ? 'bg-red-50 text-red-600 border-red-200' : ''}
+                    >
+                        {isAdding ? 'Cancelar' : <><Plus className="h-4 w-4 mr-2" /> Nueva Auditoría</>}
+                    </Button>
+                )}
             </CardHeader>
             <CardContent className="p-6">
-                {isAdding && (
+                {(isAdding && canEdit()) && (
                     <form onSubmit={handleAddAuditoria} className="mb-8 p-4 border rounded-lg bg-blue-50/50 space-y-4">
                         <h4 className="font-semibold text-blue-900 mb-2">Registrar Nueva Auditoría</h4>
 

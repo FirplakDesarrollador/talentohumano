@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES } from '@/lib/constants/roles'
+import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS, SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_ALMACEN_CEDI, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
 import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
@@ -161,10 +161,40 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     // localEmpleado allows for optimistic UI updates without waiting for DB/Parent re-fetch
     const [localEmpleado, setLocalEmpleado] = useState<QueryHiluRow>(empleado)
 
-    // Sync local state when parent data refreshes
+    const canEditPhase = (phase: 'H' | 'I' | 'L' | 'U') => {
+        if (!currentUser) return false
+        const email = currentUser.email || ''
+        
+        // Estiven Londono and Coordinacion Calidad have full permissions
+        if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
+        const isAdmin = ADMIN_EMAILS.includes(email) || ADMIN_LEVELS.includes(currentUser.nivelCargo || '')
+        
+        if (isAdmin) return true
+        
+        if (
+            email === 'david.ramirez@firplak.com' || 
+            SUPERVISORES_MARMOL.includes(email) || 
+            SUPERVISORES_CALIDAD.includes(email) || 
+            SUPERVISORES_ALMACEN_CEDI.includes(email) ||
+            SUPERVISORES_MUEBLES_CEFI.includes(email) ||
+            email === 'jakeline.chaverra@firplak.com' ||
+            email === 'maria.perez@firplak.com' ||
+            email === 'juliana.ramirez@firplak.com' ||
+            email === 'sara.aguilar@firplak.com' ||
+            email === 'analistaabastecimiento@firplak.com' ||
+            email === 'hector.chinchilla@firplak.com'
+        ) {
+            if (phase === 'U') return false
+            return true
+        }
+        
+        return true 
+    }
+
+    // Sync local state when parent data refreshes (Only if it's a different employee)
     useEffect(() => {
         setLocalEmpleado(empleado)
-    }, [empleado])
+    }, [empleado.cedula])
 
     // Generic update function (Internal sync)
     const updatePhase = async (table: 'fase_H' | 'fase_I' | 'fase_L' | 'fase_U', id: number, data: any) => {
@@ -377,7 +407,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 />
 
                 {openPhase === 'H' && (
-                    <CardContent className="p-6 space-y-6 bg-[#f8f9fa]">
+                    <CardContent className={`p-6 space-y-6 bg-[#f8f9fa] ${!canEditPhase('H') ? 'opacity-70 pointer-events-none' : ''}`}>
                         {/* Top Row: Info & Primary Checks */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                             <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
@@ -579,118 +609,103 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
         const faseHComplete = !!localEmpleado.fh_completado;
 
-        // Calculate average for stars
-        const ratings = [
-            localEmpleado.fi_actitud || 0,
-            localEmpleado.fi_aprendizaje || 0,
-            localEmpleado.fi_destreza || 0,
-            localEmpleado.fi_conocimiento || 0
-        ].filter(v => v > 0)
-        const avgRating = ratings.length > 0 ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0
-
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
                 <PhaseHeader title="Etapa I" progress={progress} isOpen={openPhase === 'I'} onClick={() => setOpenPhase(openPhase === 'I' ? null : 'I')} />
                 {openPhase === 'I' && (
                     <CardContent className="p-6 space-y-6 bg-[#f8f9fa]">
-                        <div className={!faseHComplete ? "opacity-60 pointer-events-none" : ""}>
-                            {/* Row 1: Primary Checks */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
-                                    <Calendar className="h-5 w-5" />
-                                    <span>{localEmpleado.fi_dias_transcurridos || 0} días en esta fase</span>
-                                </div>
-                                <div className="relative">
-                                    <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
-                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
-                                        {localEmpleado.fi_created_at ? new Date(localEmpleado.fi_created_at).toLocaleDateString() : 'Null'}
+                        <div className={(!faseHComplete || !canEditPhase('I')) ? "opacity-60 pointer-events-none" : ""}>
+                            {role === 'OPERARIO' ? (
+                                <>
+                                    {/* Row 1: Primary Checks */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
+                                            <Calendar className="h-5 w-5" />
+                                            <span>{localEmpleado.fi_dias_transcurridos || 0} días en esta fase</span>
+                                        </div>
+                                        <div className="relative">
+                                            <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                            <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                                {localEmpleado.fi_created_at ? new Date(localEmpleado.fi_created_at).toLocaleDateString() : 'Null'}
+                                            </div>
+                                        </div>
+                                        <PillCheckbox id="fi_estandar_hdt" label="Estándar del puesto (HDT)" checked={localEmpleado.fi_estandar_hdt || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fi_estandar_hdt: c }))
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { estandar_hdt: c })
+                                        }} />
+                                        <PillCheckbox id="fi_entrenamiento_calidad" label="Entrenamiento de calidad" checked={localEmpleado.fi_entrenamiento_calidad || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fi_entrenamiento_calidad: c }))
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { entrenamiento_calidad: c })
+                                        }} />
                                     </div>
-                                </div>
-                                <PillCheckbox id="fi_estandar_hdt" label="Estándar del puesto (HDT)" checked={localEmpleado.fi_estandar_hdt || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fi_estandar_hdt: c }))
-                                    updatePhase('fase_I', localEmpleado.fi_id!, { estandar_hdt: c })
-                                }} />
-                                <PillCheckbox id="fi_entrenamiento_calidad" label="Entrenamiento de calidad" checked={localEmpleado.fi_entrenamiento_calidad || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fi_entrenamiento_calidad: c }))
-                                    updatePhase('fase_I', localEmpleado.fi_id!, { entrenamiento_calidad: c })
-                                }} />
-                            </div>
 
-                            {/* Row 2: Secondary Checks */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <PillCheckbox id="fi_hace_acompanado" label="¿Hace Acompañado?" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
-                                    updatePhase('fase_I', localEmpleado.fi_id!, { hace_acompanado: c })
-                                }} />
-                                <PillCheckbox id="fi_hace_solo" label="¿Hace Solo?" checked={localEmpleado.fi_hace_solo || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fi_hace_solo: c }))
-                                    updatePhase('fase_I', localEmpleado.fi_id!, { hace_solo: c })
-                                }} />
-                                <PillCheckbox id="fi_curso_5s" label="5S" checked={localEmpleado.fi_curso_5s || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fi_curso_5s: c }))
-                                    updatePhase('fase_I', localEmpleado.fi_id!, { curso_5s: c })
-                                }} />
-                                <div className="relative h-[46px]">
-                                    <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10 bg-[#f8f9fa]">Entrenado por</Label>
-                                    <Input className="h-full pt-4 focus-visible:ring-[#1e2f3d]" defaultValue={localEmpleado.fi_entrenado_por || ''} onBlur={(e) => updatePhase('fase_I', localEmpleado.fi_id!, { entrenado_por: e.target.value })} />
-                                </div>
-                            </div>
+                                    {/* Row 2: Performance Checks */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <PillCheckbox id="fi_hace_acompanado" label="Hace acompañado" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { hace_acompanado: c })
+                                        }} />
+                                        <PillCheckbox id="fi_hace_solo" label="Hace solo" checked={localEmpleado.fi_hace_solo || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fi_hace_solo: c }))
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { hace_solo: c })
+                                        }} />
+                                        <PillCheckbox id="fi_curso_5s" label="Curso de 5S" checked={localEmpleado.fi_curso_5s || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fi_curso_5s: c }))
+                                            updatePhase('fase_I', localEmpleado.fi_id!, { curso_5s: c })
+                                        }} />
+                                    </div>
 
-                            {/* Row 3: Ratings (Stars) */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <StarRating 
-                                    label="Actitud" 
-                                    value={localEmpleado.fi_actitud || 0} 
-                                    onChange={(v) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_actitud: v }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { actitud: v })
-                                    }} 
-                                />
-                                <StarRating 
-                                    label="Aprendizaje" 
-                                    value={localEmpleado.fi_aprendizaje || 0} 
-                                    onChange={(v) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_aprendizaje: v }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { aprendizaje: v })
-                                    }} 
-                                />
-                                <StarRating 
-                                    label="Destreza" 
-                                    value={localEmpleado.fi_destreza || 0} 
-                                    onChange={(v) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_destreza: v }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { destreza: v })
-                                    }} 
-                                />
-                                <StarRating 
-                                    label="Conocimiento" 
-                                    value={localEmpleado.fi_conocimiento || 0} 
-                                    onChange={(v) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fi_conocimiento: v }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { conocimiento: v })
-                                    }} 
-                                />
-                            </div>
+                                    {/* Row 3: Ratings */}
+                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-100">
+                                        <StarRating 
+                                            label="Actitud" 
+                                            value={localEmpleado.fi_actitud || 0} 
+                                            onChange={(v) => {
+                                                setLocalEmpleado(prev => ({ ...prev, fi_actitud: v }))
+                                                updatePhase('fase_I', localEmpleado.fi_id!, { actitud: v })
+                                            }} 
+                                        />
+                                        <StarRating 
+                                            label="Aprendizaje" 
+                                            value={localEmpleado.fi_aprendizaje || 0} 
+                                            onChange={(v) => {
+                                                setLocalEmpleado(prev => ({ ...prev, fi_aprendizaje: v }))
+                                                updatePhase('fase_I', localEmpleado.fi_id!, { aprendizaje: v })
+                                            }} 
+                                        />
+                                        <StarRating 
+                                            label="Destreza" 
+                                            value={localEmpleado.fi_destreza || 0} 
+                                            onChange={(v) => {
+                                                setLocalEmpleado(prev => ({ ...prev, fi_destreza: v }))
+                                                updatePhase('fase_I', localEmpleado.fi_id!, { destreza: v })
+                                            }} 
+                                        />
+                                        <StarRating 
+                                            label="Conocimiento" 
+                                            value={localEmpleado.fi_conocimiento || 0} 
+                                            onChange={(v) => {
+                                                setLocalEmpleado(prev => ({ ...prev, fi_conocimiento: v }))
+                                                updatePhase('fase_I', localEmpleado.fi_id!, { conocimiento: v })
+                                            }} 
+                                        />
+                                        <StarRating 
+                                            label="Promedio" 
+                                            value={localEmpleado.fi_promedio || Math.round(((localEmpleado.fi_actitud || 0) + (localEmpleado.fi_aprendizaje || 0) + (localEmpleado.fi_destreza || 0) + (localEmpleado.fi_conocimiento || 0)) / 4) || 0} 
+                                            disabled
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
+                                    <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase I</h4>
+                                    {renderToolGrid('I')}
+                                </div>
+                            )}
                         </div>
-
-                        {role !== 'OPERARIO' && (
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                                <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase I</h4>
-                                {renderToolGrid('I')}
-                            </div>
-                        )}
 
                         <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
                             <div className="lg:col-span-3 space-y-4">
-                                <StarRating 
-                                    label="Promedio Final" 
-                                    value={localEmpleado.fi_promedio || avgRating} 
-                                    onChange={(v) => {
-                                        // @ts-ignore
-                                        setLocalEmpleado(prev => ({ ...prev, fi_promedio: v }))
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { promedio: v })
-                                    }}
-                                />
                                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
                                     <textarea className="w-full h-[120px] p-4 rounded-lg bg-gray-50/50 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => {
@@ -771,10 +786,33 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 <PhaseHeader title="Etapa L" progress={progress} isOpen={openPhase === 'L'} onClick={() => setOpenPhase(openPhase === 'L' ? null : 'L')} />
                 {openPhase === 'L' && (
                     <CardContent className="p-6 space-y-6 bg-[#f8f9fa]">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                            <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap"><Calendar className="h-5 w-5" /><span>{localEmpleado.fl_dias_transcurridos || 0} días en esta fase</span></div>
-                            <div className="relative"><Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label><div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">{localEmpleado.fl_created_at ? new Date(localEmpleado.fl_created_at).toLocaleDateString() : 'Null'}</div></div>
-                        </div>
+                        {role === 'OPERARIO' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
+                                    <Calendar className="h-5 w-5" />
+                                    <span>{localEmpleado.fl_dias_transcurridos || 0} días en esta fase</span>
+                                </div>
+                                <div className="relative">
+                                    <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                        {localEmpleado.fl_created_at ? new Date(localEmpleado.fl_created_at).toLocaleDateString() : 'Null'}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
+                                    <Calendar className="h-5 w-5" />
+                                    <span>{localEmpleado.fl_dias_transcurridos || 0} días en esta fase</span>
+                                </div>
+                                <div className="relative">
+                                    <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                        {localEmpleado.fl_created_at ? new Date(localEmpleado.fl_created_at).toLocaleDateString() : 'Null'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {!faseHComplete && (
                             <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
@@ -789,7 +827,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         ⚠️ Complete todas las habilidades de la Fase I para habilitar la Fase L
                                     </div>
                                 )}
-                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${!canEditL ? 'opacity-60 pointer-events-none' : ''}`}>
+                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${(!faseIComplete || !canEditPhase('L')) ? 'opacity-60 pointer-events-none' : ''}`}>
                                     <PillCheckbox id="fl_cumple_calidad" label="Cumple Calidad" checked={localEmpleado.fl_cumple_calidad || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_calidad: c }))
                                         updatePhase('fase_L', localEmpleado.fl_id!, { cumple_calidad: c })
@@ -811,7 +849,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             </div>
                         )}
 
-                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100 ${!faseHComplete ? 'opacity-60 pointer-events-none' : ''}`}>
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100 ${(!faseHComplete || !canEditPhase('L')) ? 'opacity-60 pointer-events-none' : ''}`}>
                             <div className="lg:col-span-3">
                                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-full">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">Comentarios de Entrenamiento <span className="text-red-500 font-bold">*</span></Label>
@@ -886,7 +924,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         // Phase U is disabled until ALL phase L checks are complete (OPERARIO only)
         const faseHComplete = !!localEmpleado.fh_completado;
         const faseLComplete = !!(localEmpleado.fl_cumple_calidad && localEmpleado.fl_cumple_estandar && localEmpleado.fl_cumple_tiempo)
-        const canEditU = faseHComplete && faseLComplete;
+        const canEditU = faseHComplete && faseLComplete && canEditPhase('U');
 
         return (
             <Card className="border-none shadow-none bg-[#f8f9fa] mt-4">
@@ -894,40 +932,63 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 {openPhase === 'U' && (
                     <CardContent className="p-6 space-y-6 bg-[#f8f9fa]">
                         <div className={!canEditU ? "opacity-60 pointer-events-none" : ""}>
-                            {/* Row 1: Days, Date, and first 2 checkboxes */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap overflow-hidden">
-                                    <Calendar className="h-5 w-5 flex-shrink-0" />
-                                    <span className="text-sm truncate">{localEmpleado.fu_dias_transcurridos || 0} dias en esta fase</span>
-                                </div>
-                                <div className="relative">
-                                    <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
-                                    <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
-                                        {localEmpleado.fu_created_at ? new Date(localEmpleado.fu_created_at).toLocaleDateString() : 'Null'}
+                            {role === 'OPERARIO' ? (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap overflow-hidden">
+                                            <Calendar className="h-5 w-5 flex-shrink-0" />
+                                            <span className="text-sm truncate">{localEmpleado.fu_dias_transcurridos || 0} dias en esta fase</span>
+                                        </div>
+                                        <div className="relative">
+                                            <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                            <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                                {localEmpleado.fu_created_at ? new Date(localEmpleado.fu_created_at).toLocaleDateString() : 'Null'}
+                                            </div>
+                                        </div>
+                                        <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
+                                            updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
+                                        }} />
+                                        <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
+                                            updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
+                                        }} />
                                     </div>
-                                </div>
-                                <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
-                                    updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
-                                }} />
-                                <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} onChange={(c) => {
-                                    setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
-                                    updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
-                                }} />
-                            </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        <PillCheckbox id="fu_entrena_solo" label="Sabe entrenar solo" checked={localEmpleado.fu_entrena_solo || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fu_entrena_solo: c }))
+                                            updatePhase('fase_U', localEmpleado.fu_id!, { entrena_solo: c })
+                                        }} />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap overflow-hidden">
+                                            <Calendar className="h-5 w-5 flex-shrink-0" />
+                                            <span className="text-sm truncate">{localEmpleado.fu_dias_transcurridos || 0} dias en esta fase</span>
+                                        </div>
+                                        <div className="relative">
+                                            <Label className="absolute -top-2 left-2 bg-[#f8f9fa] px-1 text-xs text-gray-500">Fecha de inicio</Label>
+                                            <div className="bg-gray-200 rounded-md h-10 flex items-center px-3 text-gray-600 text-sm">
+                                                {localEmpleado.fu_created_at ? new Date(localEmpleado.fu_created_at).toLocaleDateString() : 'Null'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
+                                        <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase U</h4>
+                                        {renderToolGrid('U')}
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
-                            {/* Row 2: Sabe entrenar solo, Comentarios, Evidencias */}
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                <div className="lg:col-span-3">
-                                    <PillCheckbox id="fu_entrena_solo" label="Sabe entrenar solo" checked={localEmpleado.fu_entrena_solo || false} onChange={(c) => {
-                                        setLocalEmpleado(prev => ({ ...prev, fu_entrena_solo: c }))
-                                        updatePhase('fase_U', localEmpleado.fu_id!, { entrena_solo: c })
-                                    }} />
-                                </div>
-                                <div className="lg:col-span-6 space-y-2 relative">
-                                    <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10 bg-[#f8f9fa]">Comentarios <span className="text-red-500 font-bold">*</span></Label>
+                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100`}>
+                            <div className="lg:col-span-3 space-y-4">
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                    <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
                                     <textarea 
-                                        className="w-full h-[120px] p-3 pt-4 rounded-md border border-gray-200 resize-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" 
+                                        className="w-full h-[120px] p-4 rounded-lg bg-gray-50/50 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
                                         defaultValue={localEmpleado.fu_comentario || ''} 
                                         onBlur={(e) => {
                                             const next = { ...localEmpleado, fu_comentario: e.target.value }
@@ -937,23 +998,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         }} 
                                     />
                                 </div>
-                                <div className="lg:col-span-3 space-y-2 relative">
-                                    <Label className="absolute -top-2 left-2 px-1 text-xs text-gray-500 z-10 bg-[#f8f9fa]">Evidencias</Label>
-                                    <div className="bg-white p-2 rounded-md border border-gray-200 min-h-[120px]">
-                                        <EvidenciasComponent evidencias={localEmpleado.fu_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_U', localEmpleado.fu_id!, { evidencias: evs })} path="fase-u" />
-                                    </div>
-                                </div>
                             </div>
-                        </div>
-
-                        {role !== 'OPERARIO' && (
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                                <h4 className="font-semibold text-gray-800 mb-4 bg-gray-50 p-2 rounded">Evaluación por Herramienta - Fase U</h4>
-                                {renderToolGrid('U')}
-                            </div>
-                        )}
-
-                        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-end pt-4 border-t border-gray-100`}>
                             <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
                                 <div className="sm:col-span-4">
                                     <SignatureWidget 
@@ -979,14 +1024,12 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         }}
                                     />
                                 </div>
-                                <div className="sm:col-span-4 flex flex-col justify-end gap-6 h-full min-h-[220px]">
-                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('U', localEmpleado)}><Save className="h-5 w-5" /> Guardar Todo</Button>
-                                    <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
-                                        <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-2 tracking-widest text-center">Fecha Finalización</Label>
-                                        <div className="h-10 flex items-center justify-center text-gray-600 font-bold text-sm bg-white rounded-lg border border-gray-200">
-                                            {localEmpleado.fu_fecha_finalizacion_fase ? new Date(localEmpleado.fu_fecha_finalizacion_fase).toLocaleDateString() : 'Pendiente'}
-                                        </div>
+                                <div className="sm:col-span-4 flex flex-col justify-between gap-4 h-full min-h-[220px]">
+                                    <div className="bg-white rounded-xl border border-gray-200 p-2 h-full">
+                                        <Label className="text-[9px] font-bold text-gray-400 uppercase block mb-1 text-center">Evidencias Adjuntas</Label>
+                                        <EvidenciasComponent evidencias={localEmpleado.fu_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_U', localEmpleado.fu_id!, { evidencias: evs })} path="fase-u" />
                                     </div>
+                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('U', localEmpleado)}><Save className="h-5 w-5" /> Guardar Todo</Button>
                                 </div>
                             </div>
                         </div>

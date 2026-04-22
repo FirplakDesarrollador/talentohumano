@@ -1,5 +1,6 @@
 'use client'
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -34,7 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
-import { ADMIN_EMAILS, RESTRICTED_SUPERVISORS } from '@/lib/constants/roles';
+import { ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO } from '@/lib/constants/roles';
 import Image from 'next/image';
 import type { Database } from '@/lib/supabase/types';
 
@@ -124,6 +125,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isRestrictedSupervisor, setIsRestrictedSupervisor] = useState(false);
+    const [isRestrictedCoordinator, setIsRestrictedCoordinator] = useState(false);
+    const [isRestrictedJefe, setIsRestrictedJefe] = useState(false);
+    const [isRestrictedDirector, setIsRestrictedDirector] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
@@ -132,6 +136,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             if (user) {
                 setCurrentUser(user);
                 setIsRestrictedSupervisor(RESTRICTED_SUPERVISORS.includes(user.email || ''));
+                setIsRestrictedCoordinator(COORDINADORES_CON_ACCESO.includes(user.email || ''));
+                setIsRestrictedJefe(JEFES_CON_ACCESO.includes(user.email || '') || JEFES_MUEBLES_CEFI.includes(user.email || '') || JEFES_ALMACEN_CEDI.includes(user.email || '') || JEFES_INGENIERIA_MOLDES.includes(user.email || ''));
+                setIsRestrictedDirector(DIRECTORES_CON_ACCESO.includes(user.email || ''));
                 setIsAdmin(ADMIN_EMAILS.includes(user.email || ''));
             }
         };
@@ -431,7 +438,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 <div className="relative group mb-6">
                     <div className="w-48 h-56 rounded-2xl bg-gray-50 shadow-2xl border-4 border-white overflow-hidden">
                         {formData.foto ? <Image src={formData.foto} alt="Foto" fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-100"><User className="h-24 w-24" /></div>}
-                        {!isRestrictedSupervisor && (
+                        {!isRestrictedSupervisor && !isRestrictedCoordinator && !isRestrictedJefe && !isRestrictedDirector && (
                             <div onClick={() => setShowPhotoEdit(!showPhotoEdit)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer"><Camera className="h-8 w-8 text-white" /></div>
                         )}
                     </div>
@@ -474,21 +481,21 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
             <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
                 <FormField label="Nombre Completo" icon={<User className="h-3 w-3" />} required>
-                    <Input value={formData.nombreCompleto} onChange={(e) => updateField('nombreCompleto', e.target.value)} className={inputClass} required disabled={isRestrictedSupervisor} />
+                    <Input value={formData.nombreCompleto} onChange={(e) => updateField('nombreCompleto', e.target.value)} className={inputClass} required disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector} />
                 </FormField>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Cédula de Identidad" icon={<IdCard className="h-3 w-3" />} required>
-                        <Input type="number" value={formData.cedula} onChange={(e) => updateField('cedula', e.target.value)} className={inputClass} required disabled={isRestrictedSupervisor} />
+                        <Input type="number" value={formData.cedula} onChange={(e) => updateField('cedula', e.target.value)} className={inputClass} required disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector} />
                     </FormField>
                     <FormField label="Fecha de Expedición Cédula" icon={<Calendar className="h-3 w-3" />}>
-                        <Input type="date" value={formData.fecha_expedicion_cedula} onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)} className={inputClass} disabled={isRestrictedSupervisor} />
+                        <Input type="date" value={formData.fecha_expedicion_cedula} onChange={(e) => updateField('fecha_expedicion_cedula', e.target.value)} className={inputClass} disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector} />
                     </FormField>
                     <FormField label="Fecha de Nacimiento" icon={<Baby className="h-3 w-3" />}>
-                        <Input type="date" value={formData.fecha_nacimiento} onChange={(e) => updateField('fecha_nacimiento', e.target.value)} className={inputClass} disabled={isRestrictedSupervisor} />
+                        <Input type="date" value={formData.fecha_nacimiento} onChange={(e) => updateField('fecha_nacimiento', e.target.value)} className={inputClass} disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector} />
                     </FormField>
                     <FormField label="Tipo de Sangre" icon={<Heart className="h-3 w-3" />}>
-                        <select value={formData.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={selectClass} disabled={isRestrictedSupervisor}>
+                        <select value={formData.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={selectClass} disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}>
                             <option value="">Seleccione tipo de sangre</option>
                             {TIPOS_SANGRE.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
                         </select>
@@ -605,7 +612,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('direccion', e.target.value)}
                             placeholder="Dirección de residencia"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -615,7 +622,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('ciudad', e.target.value)}
                             placeholder="Ciudad"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -626,7 +633,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('telefono', e.target.value)}
                             placeholder="Teléfono fijo"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -637,7 +644,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('celular', e.target.value)}
                             placeholder="Número celular"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -648,7 +655,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('correo', e.target.value)}
                             placeholder="correo@ejemplo.com"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -661,7 +668,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     onChange={(e) => updateField('contacto_emergencia', e.target.value)}
                                     placeholder="Nombre del contacto de emergencia"
                                     className={inputClass}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 />
                             </FormField>
                             <FormField label="Teléfono de Emergencia">
@@ -671,7 +678,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     onChange={(e) => updateField('telefono_emergencia', e.target.value)}
                                     placeholder="Teléfono del contacto"
                                     className={inputClass}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 />
                             </FormField>
                         </div>
@@ -687,7 +694,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         <Switch
                             checked={formData.tiene_esposo}
                             onCheckedChange={(val) => updateField('tiene_esposo', val)}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                         <span className="text-sm font-medium text-[#1e2f3d]">¿Tiene esposo/a o compañero/a?</span>
                     </div>
@@ -699,7 +706,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                 onChange={(e) => updateField('nombre_esposo', e.target.value)}
                                 placeholder="Nombre completo"
                                 className={inputClass}
-                                disabled={isRestrictedSupervisor}
+                                disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                             />
                         </FormField>
                     )}
@@ -710,7 +717,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             value={formData.num_hijos}
                             onChange={(e) => updateField('num_hijos', parseInt(e.target.value))}
                             className={selectClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         >
                             {[0, 1, 2, 3, 4].map(n => (
                                 <option key={n} value={n}>{n}</option>
@@ -731,7 +738,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                             onChange={(e) => updateField(`hijo${n}_nombre`, e.target.value)}
                                             placeholder="Nombre del hijo/a"
                                             className={inputClass}
-                                            disabled={isRestrictedSupervisor}
+                                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                         />
                                     </FormField>
                                     <FormField label="Fecha de Nacimiento">
@@ -740,7 +747,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                             value={(formData as any)[`hijo${n}_nacimiento`]}
                                             onChange={(e) => updateField(`hijo${n}_nacimiento`, e.target.value)}
                                             className={inputClass}
-                                            disabled={isRestrictedSupervisor}
+                                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                         />
                                     </FormField>
                                     <FormField label="Sexo">
@@ -748,7 +755,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                             value={(formData as any)[`hijo${n}_sexo`]}
                                             onChange={(e) => updateField(`hijo${n}_sexo`, e.target.value)}
                                             className={selectClass}
-                                            disabled={isRestrictedSupervisor}
+                                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                         >
                                             <option value="">Seleccione</option>
                                             {SEXOS.map(s => (
@@ -771,7 +778,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             value={formData.nivel_educativo}
                             onChange={(e) => updateField('nivel_educativo', e.target.value)}
                             className={selectClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         >
                             <option value="">Seleccione nivel</option>
                             {NIVELES_EDUCATIVOS.map(nivel => (
@@ -786,7 +793,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('ultimo_grado', e.target.value)}
                             placeholder="Ej: 11°, Semestre 5"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
                 </div>
@@ -795,7 +802,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     <Switch
                         checked={formData.actualmente_estudiando}
                         onCheckedChange={(val) => updateField('actualmente_estudiando', val)}
-                        disabled={isRestrictedSupervisor}
+                        disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                     />
                     <span className="text-sm font-medium text-[#1e2f3d]">¿Actualmente estudiando?</span>
                 </div>
@@ -808,7 +815,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                 onChange={(e) => updateField('que_estudia', e.target.value)}
                                 placeholder="Carrera o programa de estudios"
                                 className={inputClass}
-                                disabled={isRestrictedSupervisor}
+                                disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                             />
                         </FormField>
                     </div>
@@ -823,7 +830,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             <Switch
                                 checked={formData.tiene_recomendaciones_medicas}
                                 onCheckedChange={(val) => updateField('tiene_recomendaciones_medicas', val)}
-                                disabled={isRestrictedSupervisor}
+                                disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                             />
                             <span className="text-sm font-medium text-[#1e2f3d]">¿Tiene recomendaciones médicas?</span>
                         </div>
@@ -835,7 +842,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     onChange={(e) => updateField('recomendaciones_medicas', e.target.value)}
                                     placeholder="Describa las recomendaciones médicas"
                                     className={`${selectClass} min-h-[80px] resize-none`}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 />
                             </FormField>
                         )}
@@ -846,7 +853,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                 onChange={(e) => updateField('enfermedades', e.target.value)}
                                 placeholder="Describa enfermedades o condiciones médicas"
                                 className={`${selectClass} min-h-[80px] resize-none`}
-                                disabled={isRestrictedSupervisor}
+                                disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                             />
                         </FormField>
 
@@ -856,7 +863,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     value={formData.consume_psicoactivas}
                                     onChange={(e) => updateField('consume_psicoactivas', e.target.value)}
                                     className={selectClass}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 >
                                     {CONSUMO_OPTIONS.map(opt => (
                                         <option key={opt} value={opt}>{opt}</option>
@@ -869,7 +876,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     value={formData.consume_tabaco}
                                     onChange={(e) => updateField('consume_tabaco', e.target.value)}
                                     className={selectClass}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 >
                                     {CONSUMO_OPTIONS.map(opt => (
                                         <option key={opt} value={opt}>{opt}</option>
@@ -882,7 +889,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     value={formData.consume_alcohol}
                                     onChange={(e) => updateField('consume_alcohol', e.target.value)}
                                     className={selectClass}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 >
                                     {CONSUMO_OPTIONS.map(opt => (
                                         <option key={opt} value={opt}>{opt}</option>
@@ -895,7 +902,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     value={formData.realiza_deporte}
                                     onChange={(e) => updateField('realiza_deporte', e.target.value)}
                                     className={selectClass}
-                                    disabled={isRestrictedSupervisor}
+                                    disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                                 >
                                     {CONSUMO_OPTIONS.map(opt => (
                                         <option key={opt} value={opt}>{opt}</option>
@@ -916,7 +923,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('frecuencia_visita', e.target.value)}
                             placeholder="Ej: Diario, 3 veces por semana"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -926,7 +933,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('medio_transporte', e.target.value)}
                             placeholder="Ej: Bus, Moto, Carro, Bicicleta"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -936,7 +943,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('tipo_combustible', e.target.value)}
                             placeholder="Ej: Gasolina, Eléctrico, Gas"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
 
@@ -946,7 +953,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             onChange={(e) => updateField('modelo_vehiculo', e.target.value)}
                             placeholder="Ej: 2020, 2018"
                             className={inputClass}
-                            disabled={isRestrictedSupervisor}
+                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
                         />
                     </FormField>
                 </div>

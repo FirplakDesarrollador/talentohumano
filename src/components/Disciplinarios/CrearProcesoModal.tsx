@@ -19,9 +19,15 @@ interface CrearProcesoModalProps {
     onClose: () => void
     empleadoId: string | number
     onSuccess: () => void
+    proceso?: {
+        id: number | string
+        tipo: string
+        motivo_id?: number
+        comentario: string
+    }
 }
 
-export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: CrearProcesoModalProps) {
+export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proceso }: CrearProcesoModalProps) {
     const supabase = createClient()
     const [loading, setLoading] = useState(false)
     const [motivos, setMotivos] = useState<MotivoSancion[]>([])
@@ -34,9 +40,18 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: Cr
     useEffect(() => {
         if (isOpen) {
             fetchMotivos()
+            if (proceso) {
+                setTipo(proceso.tipo)
+                setMotivoId(proceso.motivo_id?.toString() || '')
+                setComentario(proceso.comentario)
+            } else {
+                setTipo('')
+                setMotivoId('')
+                setComentario('')
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen])
+    }, [isOpen, proceso])
 
     const fetchMotivos = async () => {
         setFetchingMotivos(true)
@@ -66,22 +81,39 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: Cr
         try {
             const { data: { user } } = await supabase.auth.getUser()
 
-            const dataToSave = {
-                tipo,
-                comentario,
-                created_by: user?.user_metadata?.nombre || user?.email || 'Sistema',
-                created_at: new Date().toISOString(),
-                motivo_id: tipo === 'Compromiso' ? 19 : parseInt(motivoId),
-                empleado_id: empleadoId
+            if (proceso) {
+                // Update
+                const { error } = await (supabase as any)
+                    .from('procesos_disciplinarios')
+                    .update({
+                        tipo,
+                        comentario,
+                        motivo_id: tipo === 'Compromiso' ? 19 : parseInt(motivoId),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', proceso.id)
+
+                if (error) throw error
+                toast.success('Proceso disciplinario actualizado correctamente')
+            } else {
+                // Create
+                const dataToSave = {
+                    tipo,
+                    comentario,
+                    created_by: user?.user_metadata?.nombre || user?.email || 'Sistema',
+                    created_at: new Date().toISOString(),
+                    motivo_id: tipo === 'Compromiso' ? 19 : parseInt(motivoId),
+                    empleado_id: empleadoId
+                }
+
+                const { error } = await (supabase as any)
+                    .from('procesos_disciplinarios')
+                    .insert([dataToSave])
+
+                if (error) throw error
+                toast.success('Proceso disciplinario creado correctamente')
             }
 
-            const { error } = await (supabase as any)
-                .from('procesos_disciplinarios')
-                .insert([dataToSave])
-
-            if (error) throw error
-
-            toast.success('Proceso disciplinario creado correctamente')
             onSuccess()
             onClose()
             // Reset form
@@ -89,8 +121,8 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: Cr
             setMotivoId('')
             setComentario('')
         } catch (error: any) {
-            console.error('Error creating process:', error)
-            toast.error('Error al crear el registro: ' + (error.message || 'Error desconocido'))
+            console.error('Error saving process:', error)
+            toast.error('Error al guardar el registro: ' + (error.message || 'Error desconocido'))
         } finally {
             setLoading(false)
         }
@@ -114,7 +146,9 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: Cr
                             <ShieldAlert className="h-7 w-7 text-white" />
                         </div>
                         <div>
-                            <h3 className="text-xl font-black uppercase tracking-tight">Crear proceso</h3>
+                            <h3 className="text-xl font-black uppercase tracking-tight">
+                                {proceso ? 'Editar proceso' : 'Crear proceso'}
+                            </h3>
                             <p className="text-blue-200/70 text-xs font-bold uppercase tracking-widest mt-0.5">
                                 Registro Disciplinario
                             </p>
@@ -195,7 +229,7 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess }: Cr
                             ) : (
                                 <PlusCircle className="h-5 w-5" />
                             )}
-                            Crear registro
+                            {proceso ? 'Guardar cambios' : 'Crear registro'}
                         </Button>
                     </div>
                 </form>

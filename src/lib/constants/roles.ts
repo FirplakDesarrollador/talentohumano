@@ -118,6 +118,81 @@ export const RESTRICTED_SUPERVISORS = [
 ];
 
 /**
+ * Coordinators explicitly permitted to access the Gestor de Personal module.
+ * These three emails can only see employees from the listed plants.
+ * All other Coordinators are blocked from the module by default.
+ */
+export const COORDINADORES_CON_ACCESO = [
+    'jakeline.chaverra@firplak.com',
+    'estiven.londono@firplak.com',
+    'maria.perez@firplak.com',
+];
+
+export const PLANTAS_COORDINADORES_PERMITIDAS = [
+    'Calidad',
+    'Moldes',
+    'RTM',
+    'RR Moldes',
+    'Muebles',
+    'Marmol sintetico',
+    'Fibra de vidrio',
+    'Cefi',
+];
+
+/**
+ * Jefes explicitly permitted to access the Gestor de Personal module.
+ * All other Jefes are blocked by default.
+ * These users have the same plant access as coordinacioncalidad.
+ */
+export const JEFES_CON_ACCESO = [
+    'coordinacioncalidad@firplak.com',
+];
+
+/**
+ * Jefes with access restricted to Muebles and Cefi only.
+ */
+export const JEFES_MUEBLES_CEFI = [
+    'juliana.ramirez@firplak.com',
+];
+
+/**
+ * Jefes with access restricted to Almacen and CEDI only.
+ */
+export const JEFES_ALMACEN_CEDI = [
+    'analistaabastecimiento@firplak.com',
+];
+
+/**
+ * Jefes with access restricted to Ingenieria and Moldes only.
+ */
+export const JEFES_INGENIERIA_MOLDES = [
+    'sara.aguilar@firplak.com',
+];
+
+/**
+ * Directors explicitly permitted to access the Gestor de Personal module.
+ * All other Directors are blocked by default.
+ */
+export const DIRECTORES_CON_ACCESO = [
+    'hector.chinchilla@firplak.com',
+];
+
+export const PLANTAS_DIRECTORES_PERMITIDAS = [
+    'Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura',
+    'Marmol sintetico', 'Moldes', 'Muebles', 'Produccion', 'RR Moldes', 'RTM',
+];
+
+/**
+ * Analistas explicitly permitted to access the Gestor de Personal module.
+ * These can only VIEW the employee list — they cannot open individual records.
+ * All other Analistas are blocked by default.
+ */
+export const ANALISTAS_CON_ACCESO = [
+    'diana.morales@firplak.com',
+    'marcela.gomez@firplak.com',
+];
+
+/**
  * Emails of users with full administrative privileges.
  * These emails override the 'nivelCargo' logic.
  */
@@ -143,10 +218,20 @@ export const APPROVER_ROLES = APPROVER_LEVELS;
  * Returns null if the user has no plant-based restrictions.
  */
 export function getPlantasPermitidas(email: string): string[] | null {
+    if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com' || email === 'hector.chinchilla@firplak.com') return null;
     if (SUPERVISORES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
     if (SUPERVISORES_CALIDAD.includes(email)) return ['Calidad'];
     if (SUPERVISORES_MARMOL.includes(email)) return ['Marmol sintetico'];
     if (SUPERVISORES_ALMACEN_CEDI.includes(email)) return ['Almacen', 'CEDI'];
-    if (SUPERVISORES_RTM_FIBRA.includes(email)) return ['RTM', 'Fibra de vidrio'];
+    if (SUPERVISORES_RTM_FIBRA.includes(email)) {
+        if (email === 'david.ramirez@firplak.com') return ['RTM', 'Fibra de vidrio', 'Marmol sintetico'];
+        return ['RTM', 'Fibra de vidrio'];
+    }
+    if (COORDINADORES_CON_ACCESO.includes(email)) return PLANTAS_COORDINADORES_PERMITIDAS;
+    if (JEFES_CON_ACCESO.includes(email)) return PLANTAS_COORDINADORES_PERMITIDAS;
+    if (JEFES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
+    if (JEFES_ALMACEN_CEDI.includes(email)) return ['Almacen', 'CEDI'];
+    if (JEFES_INGENIERIA_MOLDES.includes(email)) return ['Ingenieria', 'Moldes'];
+    if (DIRECTORES_CON_ACCESO.includes(email)) return PLANTAS_DIRECTORES_PERMITIDAS;
     return null;
 }
