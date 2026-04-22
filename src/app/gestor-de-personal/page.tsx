@@ -19,7 +19,7 @@ import {
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
 import { CargosModal } from '@/components/Gestor/CargosModal'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, RESTRICTED_SUPERVISORS, GESTOR_EXCLUDED_EMAILS, getPlantasPermitidas } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, RESTRICTED_SUPERVISORS, GESTOR_EXCLUDED_EMAILS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/supabase/types'
 
@@ -117,30 +117,40 @@ export default function GestorPersonalPage() {
             return false
         }
 
-        // Admin Power / Diana Morales case: Full list visibility
+        // Admin Power: Full list visibility
         const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)
-        const fullVisibilityEmails = ['diana.morales@firplak.com'] 
         
-        if (isSystemAdmin || fullVisibilityEmails.includes(user.email)) {
+        if (isSystemAdmin) {
+            return true
+        }
+
+        // Analistas con acceso: can see ALL employees (list only, no edit)
+        if (user?.email && ANALISTAS_CON_ACCESO.includes(user.email)) {
             return true
         }
 
         const area = empleado.planta || ''
 
-        // Jefe / Coordinador / Analista: Broad access to production areas
-        if (['Jefe', 'Coordinador', 'Analista'].includes(userLevel)) {
+        // Jefe / Analista: Broad access to production areas
+        // NOTE: Coordinador, JEFES_*, and DIRECTORES_CON_ACCESO are excluded — access is email-based only (see getPlantasPermitidas below)
+        const isRestrictedJefe = user?.email && (JEFES_CON_ACCESO.includes(user.email) || JEFES_MUEBLES_CEFI.includes(user.email) || JEFES_ALMACEN_CEDI.includes(user.email) || JEFES_INGENIERIA_MOLDES.includes(user.email))
+        const isRestrictedDirector = user?.email && DIRECTORES_CON_ACCESO.includes(user.email)
+        if (['Jefe', 'Analista'].includes(userLevel) && !isRestrictedJefe) {
             const productionAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Mercadeo', 'Muebles', 'Produccion', 'RR Moldes', 'Moldes', 'RTM']
             if (productionAreas.includes(area)) return true
         }
 
-        // Special Teams
-        const teamA = ['hector.chinchilla@firplak.com', 'juliana.ramirez@firplak.com', 'jakeline.chaverra@firplak.com', 'maria.perez@firplak.com', 'estiven.londono@firplak.com', 'sara.aguilar@firplak.com', 'coordinacioncalidad@firplak.com']
+        // Director: broad access unless restricted
+        if (userLevel === 'Director' && !isRestrictedDirector) return true
+
+        // Special Teams (limited access by plant list)
+        const teamA = ['hector.chinchilla@firplak.com']
         if (teamA.includes(user.email)) {
             const teamAAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Moldes', 'Muebles', 'Produccion', 'RR Moldes', 'RTM']
             return teamAAreas.includes(area)
         }
 
-        // General Restricted Supervisors (Refactored to centralized helper)
+        // General Restricted Supervisors + Coordinadores + Jefes con acceso (centralized helper)
         if (user?.email) {
             const permittedPlants = getPlantasPermitidas(user.email)
             if (permittedPlants) {
@@ -268,7 +278,7 @@ export default function GestorPersonalPage() {
                 {/* Actions Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        {!((user?.email && RESTRICTED_SUPERVISORS.includes(user.email))) && (
+                        {!((user?.email && (RESTRICTED_SUPERVISORS.includes(user.email) || COORDINADORES_CON_ACCESO.includes(user.email) || JEFES_CON_ACCESO.includes(user.email) || JEFES_MUEBLES_CEFI.includes(user.email) || JEFES_ALMACEN_CEDI.includes(user.email) || JEFES_INGENIERIA_MOLDES.includes(user.email) || DIRECTORES_CON_ACCESO.includes(user.email) || ANALISTAS_CON_ACCESO.includes(user.email)))) && (
                             <Button
                                 onClick={() => router.push('/gestor-de-personal/nuevo')}
                                 className="bg-[#1e2f3d] hover:bg-[#2d4356] text-white flex items-center gap-2 px-6 rounded-xl shadow-md h-11"
@@ -334,7 +344,7 @@ export default function GestorPersonalPage() {
                                         key={empleado.id}
                                         empleado={empleado as any}
                                         onEdit={() => router.push(`/gestor-de-personal/editar/${empleado.id}`)}
-                                        canEdit={((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any) || APPROVER_LEVELS.includes(userLevel as any)) && !['diana.morales@firplak.com'].includes(user.email)}
+                                        canEdit={((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any) || APPROVER_LEVELS.includes(userLevel as any)) && !(user?.email && ANALISTAS_CON_ACCESO.includes(user.email))}
                                     />
                                 ))
                             )}
