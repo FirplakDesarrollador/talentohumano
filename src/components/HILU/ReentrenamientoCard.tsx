@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 import { Plus, RotateCcw, Calendar, CheckCircle, Clock } from 'lucide-react'
+import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
 
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
 
@@ -30,6 +31,32 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     const [motivo, setMotivo] = useState('')
     const [completado, setCompletado] = useState(false)
     const [comentarios, setComentarios] = useState('')
+
+    const canEdit = () => {
+        if (!currentUser) return false
+        const email = currentUser.email || ''
+        
+        // Estiven Londono and Coordinacion Calidad have full permissions
+        if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
+        
+        // Hector specifically CAN edit reentrenamientos
+        if (email === 'hector.chinchilla@firplak.com') return true
+
+        // Restricted users cannot edit reentrenamientos
+        if (
+            email === 'david.ramirez@firplak.com' || 
+            SUPERVISORES_MARMOL.includes(email) || 
+            SUPERVISORES_CALIDAD.includes(email) ||
+            SUPERVISORES_MUEBLES_CEFI.includes(email) ||
+            email === 'jakeline.chaverra@firplak.com' ||
+            email === 'maria.perez@firplak.com' ||
+            email === 'juliana.ramirez@firplak.com' ||
+            email === 'sara.aguilar@firplak.com' ||
+            email === 'analistaabastecimiento@firplak.com'
+        ) return false
+        
+        return true
+    }
 
     const handleAddReentrenamiento = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -77,14 +104,16 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                     <RotateCcw className="h-5 w-5 text-orange-600" />
                     Reentrenamientos
                 </CardTitle>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAdding(!isAdding)}
-                    className={isAdding ? 'bg-red-50 text-red-600 border-red-200' : ''}
-                >
-                    {isAdding ? 'Cancelar' : <><Plus className="h-4 w-4 mr-2" /> Nuevo Registro</>}
-                </Button>
+                {canEdit() && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAdding(!isAdding)}
+                        className={isAdding ? 'bg-red-50 text-red-600 border-red-200' : ''}
+                    >
+                        {isAdding ? 'Cancelar' : <><Plus className="h-4 w-4 mr-2" /> Nuevo Registro</>}
+                    </Button>
+                )}
             </CardHeader>
             <CardContent className="p-6">
                 {isAdding && (
