@@ -37,7 +37,7 @@ export default function CesantiasPage() {
     const [loading, setLoading] = useState(false)
     const [history, setHistory] = useState<any[]>([])
     const [historyLoading, setHistoryLoading] = useState(false)
-    const [currentUser, setCurrentUser] = useState<any>(null)
+    const [currentUser, setCurrentUser] = useState<{ correo?: string; nivelCargo?: string } | null>(null)
     const [showInstructions, setShowInstructions] = useState(false)
     const [selectedSolicitud, setSelectedSolicitud] = useState<any>(null)
 

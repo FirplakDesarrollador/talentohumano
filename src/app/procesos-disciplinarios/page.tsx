@@ -31,7 +31,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
     const [empleados, setEmpleados] = useState<any[]>([])
     const [filteredEmpleados, setFilteredEmpleados] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
-    const [currentUser, setCurrentUser] = useState<any>(null)
+    const [currentUser, setCurrentUser] = useState<{ correo?: string; nivelCargo?: string; nombre?: string } | null>(null)
     const [isRestricted, setIsRestricted] = useState(false)
     const [isAnalista, setIsAnalista] = useState(false)
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)

@@ -39,7 +39,7 @@ export default function EntrenamientoDetailPage() {
     const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
     const [loading, setLoading] = useState(true)
     const [generatingPdf, setGeneratingPdf] = useState(false)
-    const [currentUser, setCurrentUser] = useState<{ id: number; email: string; nivelCargo?: string } | null>(null)
+    const [currentUser, setCurrentUser] = useState<{ id?: number; email?: string; nivelCargo?: string } | null>(null)
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
 
     const supabase = useMemo(() => createClient(), [])
@@ -157,21 +157,8 @@ export default function EntrenamientoDetailPage() {
                 console.log('[DEBUG] Record missing in query_hilu, initializing phases...')
                 const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
 
-                // Fetch numeric user ID from 'usuarios' table for audit fields
-                const { data: { user } } = await supabase.auth.getUser()
-                let numericCreatorId = 1 // Default to 1 (System/Admin)
-
-                if (user?.email) {
-                    const { data: profile } = await supabase
-                        .from('usuarios')
-                        .select('id')
-                        .eq('correo', user.email)
-                        .maybeSingle() as any
-                    if ((profile as any)?.id) {
-                        numericCreatorId = profile.id
-                        setCurrentUser({ id: profile.id })
-                    }
-                }
+                // Reuse the profile info we already fetched at the start of the function
+                let numericCreatorId = currentUserData.id;
 
                 try {
                     for (const table of phases) {
@@ -462,7 +449,7 @@ export default function EntrenamientoDetailPage() {
                     <HiluComponent
                         empleado={empleadoData}
                         onUpdate={fetchEmpleadoData}
-                        currentUser={currentUser || { id: 1 }}
+                        currentUser={currentUser}
                     />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">

@@ -32,7 +32,7 @@ export default function AusentismosPage() {
     const [ausentismos, setAusentismos] = useState<Ausentismo[]>([])
     const [filteredAusentismos, setFilteredAusentismos] = useState<Ausentismo[]>([])
     const [loading, setLoading] = useState(true)
-    const [currentUser, setCurrentUser] = useState<any>(null)
+    const [currentUser, setCurrentUser] = useState<{ correo?: string } | null>(null)
     const [userLevel, setUserLevel] = useState<string>('')
 
     // UI State
