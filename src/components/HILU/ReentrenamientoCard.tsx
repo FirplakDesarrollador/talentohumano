@@ -16,7 +16,7 @@ interface ReentrenamientoCardProps {
     cargo: string
     reentrenamientos: Reentrenamiento[]
     onUpdate: () => void
-    currentUser?: { id: number; email: string; nivelCargo?: string } | null
+    currentUser?: { id?: number; email?: string; nivelCargo?: string } | null
 }
 
 export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpdate, currentUser }: ReentrenamientoCardProps) {

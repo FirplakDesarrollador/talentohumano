@@ -17,7 +17,7 @@ interface AuditoriaCardProps {
     cargo: string
     auditorias: Auditoria[]
     onUpdate: () => void
-    currentUser?: { id: number; email: string; nivelCargo?: string } | null
+    currentUser?: { id?: number; email?: string; nivelCargo?: string } | null
 }
 
 export function AuditoriaCard({ empleadoId, cargo, auditorias, onUpdate, currentUser }: AuditoriaCardProps) {
