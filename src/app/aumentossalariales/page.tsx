@@ -72,7 +72,7 @@ export default function AumentosSalarialesPage() {
                     'coordinador': 'Coordinador'
                 }
                 const level = roleMap[u.rol?.toLowerCase()] || u.rol
-                return APPROVER_LEVELS.includes(level)
+                return (APPROVER_LEVELS as any).includes(level)
             })
 
             if (approverList) setApprovers(approverList)

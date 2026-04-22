@@ -75,7 +75,7 @@ export default function EntrenamientoDetailPage() {
             setCurrentUser(currentUserData)
 
             const plantasPermitidas = getPlantasPermitidas(email)
-            const isAdmin = ADMIN_EMAILS.includes(email) || ADMIN_LEVELS.includes(userProfile?.cargos?.nombre || '')
+            const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(userProfile?.cargos?.nombre || '')
 
             // Initial generic check (if they are in any list or admin)
             const isRestricted = RESTRICTED_SUPERVISORS.includes(email) || 

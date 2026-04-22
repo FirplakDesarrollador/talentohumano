@@ -166,7 +166,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
     }, [busqueda, empleados])
 
     const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
-                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
+                    (currentUser?.nivelCargo && (ADMIN_LEVELS as any).includes(currentUser.nivelCargo))
 
     if (isAuthorized === false) {
         return (

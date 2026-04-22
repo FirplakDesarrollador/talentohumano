@@ -47,7 +47,7 @@ export function ProcesoCard({ proceso, onEdit }: ProcesoCardProps) {
         if (!currentUser || !proceso.created_at) return false
 
         const isAdmin = ADMIN_EMAILS.includes(currentUser.email || '') || 
-                       ADMIN_LEVELS.includes(currentUser.user_metadata?.nivelCargo || '')
+                       (ADMIN_LEVELS as any).includes(currentUser.user_metadata?.nivelCargo || '')
 
         if (isAdmin) return true
 

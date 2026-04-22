@@ -167,7 +167,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         
         // Estiven Londono and Coordinacion Calidad have full permissions
         if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
-        const isAdmin = ADMIN_EMAILS.includes(email) || ADMIN_LEVELS.includes(currentUser.nivelCargo || '')
+        const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
         
         if (isAdmin) return true
         
