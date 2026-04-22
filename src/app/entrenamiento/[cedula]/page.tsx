@@ -14,6 +14,16 @@ import { ReentrenamientoCard } from '@/components/HILU/ReentrenamientoCard'
 import { generateTrainingCertificatePDF } from '@/lib/pdf-utils'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { 
+    getPlantasPermitidas, 
+    ADMIN_EMAILS, 
+    ADMIN_LEVELS,
+    RESTRICTED_SUPERVISORS,
+    COORDINADORES_CON_ACCESO,
+    JEFES_CON_ACCESO,
+    DIRECTORES_CON_ACCESO,
+    ANALISTAS_CON_ACCESO
+} from '@/lib/constants/roles'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
 type Auditoria = Database['public']['Tables']['auditorias']['Row']
@@ -29,7 +39,8 @@ export default function EntrenamientoDetailPage() {
     const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
     const [loading, setLoading] = useState(true)
     const [generatingPdf, setGeneratingPdf] = useState(false)
-    const [currentUser, setCurrentUser] = useState<{ id: number } | null>(null)
+    const [currentUser, setCurrentUser] = useState<{ id?: number; email?: string; nivelCargo?: string } | null>(null)
+    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
 
     const supabase = useMemo(() => createClient(), [])
 
@@ -41,6 +52,44 @@ export default function EntrenamientoDetailPage() {
         }
 
         try {
+            // 0. Get Current User and Check Authorization
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                router.push('/login')
+                return
+            }
+
+            const email = user.email!
+            const { data: profile } = await supabase
+                .from('usuarios')
+                .select('id, correo, cargos(nombre)')
+                .eq('correo', email)
+                .maybeSingle() as any
+
+            const userProfile = profile as any
+            const currentUserData = { 
+                id: userProfile?.id || 1, 
+                email,
+                nivelCargo: userProfile?.cargos?.nombre 
+            }
+            setCurrentUser(currentUserData)
+
+            const plantasPermitidas = getPlantasPermitidas(email)
+            const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(userProfile?.cargos?.nombre || '')
+
+            // Initial generic check (if they are in any list or admin)
+            const isRestricted = RESTRICTED_SUPERVISORS.includes(email) || 
+                                COORDINADORES_CON_ACCESO.includes(email) || 
+                                JEFES_CON_ACCESO.includes(email) ||
+                                DIRECTORES_CON_ACCESO.includes(email) ||
+                                ANALISTAS_CON_ACCESO.includes(email)
+
+            if (!isAdmin && !isRestricted) {
+                setIsAuthorized(false)
+                setLoading(false)
+                return
+            }
+
             const parsedParam = parseInt(paramId)
             console.log('[DEBUG] Training Detail Request:', { paramId, parsedParam })
             
@@ -108,21 +157,8 @@ export default function EntrenamientoDetailPage() {
                 console.log('[DEBUG] Record missing in query_hilu, initializing phases...')
                 const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
 
-                // Fetch numeric user ID from 'usuarios' table for audit fields
-                const { data: { user } } = await supabase.auth.getUser()
-                let numericCreatorId = 1 // Default to 1 (System/Admin)
-
-                if (user?.email) {
-                    const { data: profile } = await supabase
-                        .from('usuarios')
-                        .select('id')
-                        .eq('correo', user.email)
-                        .maybeSingle() as any
-                    if ((profile as any)?.id) {
-                        numericCreatorId = profile.id
-                        setCurrentUser({ id: profile.id })
-                    }
-                }
+                // Reuse the profile info we already fetched at the start of the function
+                let numericCreatorId = currentUserData.id;
 
                 try {
                     for (const table of phases) {
@@ -174,9 +210,29 @@ export default function EntrenamientoDetailPage() {
             }
 
             if (hiluDataObj) {
+                // 3. Final Authorization Check (Plant level)
+                const userPlantas = getPlantasPermitidas(email)
+                const empPlanta = hiluDataObj.planta || ''
+                
+                if (!isAdmin && userPlantas && !userPlantas.includes(empPlanta)) {
+                    setIsAuthorized(false)
+                    setLoading(false)
+                    return
+                }
+
+                setIsAuthorized(true)
                 setEmpleadoData({ ...hiluDataObj, foto: emp.foto || null })
             } else {
                 console.log('[DEBUG] Falling back to PseudoData')
+                // Even for pseudodata, check plant
+                const userPlantas = getPlantasPermitidas(email)
+                if (!isAdmin && userPlantas && !userPlantas.includes(emp.planta || '')) {
+                    setIsAuthorized(false)
+                    setLoading(false)
+                    return
+                }
+
+                setIsAuthorized(true)
                 const pseudo: any = {
                     cedula: resolvedCedula,
                     nombreCompleto: emp.nombreCompleto,
@@ -206,7 +262,7 @@ export default function EntrenamientoDetailPage() {
         } finally {
             setLoading(false)
         }
-    }, [paramId, supabase])
+    }, [paramId, supabase, router])
 
     useEffect(() => {
         fetchEmpleadoData(true) // Initial load shows spinner
@@ -219,6 +275,34 @@ export default function EntrenamientoDetailPage() {
                     <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
                     <p className="text-gray-600 font-medium">Sincronizando información del colaborador...</p>
                 </div>
+            </div>
+        )
+    }
+
+    if (isAuthorized === false) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <Card className="max-w-md w-full border-orange-200 shadow-xl bg-white rounded-2xl overflow-hidden">
+                    <div className="bg-orange-500 h-2 w-full" />
+                    <CardHeader className="pt-8">
+                        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <ArrowLeft className="h-10 w-10 text-orange-600" />
+                        </div>
+                        <CardTitle className="text-center text-2xl font-black text-gray-800 uppercase tracking-tight">ACCESO NO AUTORIZADO</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center space-y-6 pb-10">
+                        <p className="text-gray-600 leading-relaxed">
+                            No tienes permisos suficientes para visualizar el historial HILU de este colaborador 
+                            perteneciente a la planta <span className="font-bold text-gray-800">{empleadoData?.planta || 'restringida'}</span>.
+                        </p>
+                        <Button 
+                            onClick={() => router.push('/menu')} 
+                            className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white font-bold py-6 rounded-xl shadow-lg transition-all active:scale-95"
+                        >
+                            VOLVER AL MENÚ PRINCIPAL
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
@@ -365,7 +449,7 @@ export default function EntrenamientoDetailPage() {
                     <HiluComponent
                         empleado={empleadoData}
                         onUpdate={fetchEmpleadoData}
-                        currentUser={currentUser || { id: 1 }}
+                        currentUser={currentUser}
                     />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
@@ -374,6 +458,7 @@ export default function EntrenamientoDetailPage() {
                             cargo={empleadoData.cargo || 'N/A'}
                             auditorias={auditorias}
                             onUpdate={fetchEmpleadoData}
+                            currentUser={currentUser}
                         />
 
                         <ReentrenamientoCard
@@ -381,6 +466,7 @@ export default function EntrenamientoDetailPage() {
                             cargo={empleadoData.cargo || 'N/A'}
                             reentrenamientos={reentrenamientos}
                             onUpdate={fetchEmpleadoData}
+                            currentUser={currentUser}
                         />
                     </div>
                 </div>

@@ -27,6 +27,7 @@ export default function DetalleProcesosDisciplinarioPage() {
     const [procesos, setProcesos] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [editingProceso, setEditingProceso] = useState<any>(null)
 
     // 1. Fetch Data
     const fetchData = useCallback(async () => {
@@ -76,6 +77,16 @@ export default function DetalleProcesosDisciplinarioPage() {
         fetchData()
     }, [fetchData])
 
+    const handleEdit = (proceso: any) => {
+        setEditingProceso(proceso)
+        setIsCreateModalOpen(true)
+    }
+
+    const handleCloseModal = () => {
+        setIsCreateModalOpen(false)
+        setEditingProceso(null)
+    }
+
     return (
         <div className="min-h-screen bg-[#F1F4F8] flex flex-col">
             {/* Standard AppBar */}
@@ -90,7 +101,10 @@ export default function DetalleProcesosDisciplinarioPage() {
                     Expediente Disciplinario
                 </div>
                 <Button
-                    onClick={() => setIsCreateModalOpen(true)}
+                    onClick={() => {
+                        setEditingProceso(null)
+                        setIsCreateModalOpen(true)
+                    }}
                     className="bg-white/10 hover:bg-white/20 text-white h-9 px-4 rounded-full font-bold uppercase text-[10px] tracking-wider flex items-center gap-2 border border-white/20 shadow-none"
                 >
                     <Plus className="h-4 w-4" />
@@ -136,11 +150,14 @@ export default function DetalleProcesosDisciplinarioPage() {
                                             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                                             style={{ animationDelay: `${index * 50}ms` }}
                                         >
-                                            <ProcesoCard proceso={{
-                                                ...proceso,
-                                                created_at: proceso.created_at || proceso.createdAt,
-                                                created_by: proceso.created_by || proceso.createdBy
-                                            }} />
+                                            <ProcesoCard 
+                                                proceso={{
+                                                    ...proceso,
+                                                    created_at: proceso.created_at || proceso.createdAt,
+                                                    created_by: proceso.created_by || proceso.createdBy
+                                                }} 
+                                                onEdit={handleEdit}
+                                            />
                                         </div>
                                     ))}
                                 </div>
@@ -170,9 +187,10 @@ export default function DetalleProcesosDisciplinarioPage() {
             {empleado && (
                 <CrearProcesoModal
                     isOpen={isCreateModalOpen}
-                    onClose={() => setIsCreateModalOpen(false)}
+                    onClose={handleCloseModal}
                     empleadoId={empleado.id}
                     onSuccess={fetchData}
+                    proceso={editingProceso}
                 />
             )}
         </div>

@@ -16,9 +16,10 @@ interface ReentrenamientoCardProps {
     cargo: string
     reentrenamientos: Reentrenamiento[]
     onUpdate: () => void
+    currentUser?: { id?: number; email?: string; nivelCargo?: string } | null
 }
 
-export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpdate }: ReentrenamientoCardProps) {
+export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpdate, currentUser }: ReentrenamientoCardProps) {
     const [isAdding, setIsAdding] = useState(false)
     const [loading, setLoading] = useState(false)
     const supabase = createClient()

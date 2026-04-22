@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, NivelCargo } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { SolicitudDetalle } from '@/components/Cesantias/SolicitudDetalle'
 import { formatMotivo } from '@/lib/utils'
@@ -37,7 +37,7 @@ export default function CesantiasPage() {
     const [loading, setLoading] = useState(false)
     const [history, setHistory] = useState<any[]>([])
     const [historyLoading, setHistoryLoading] = useState(false)
-    const [currentUser, setCurrentUser] = useState<any>(null)
+    const [currentUser, setCurrentUser] = useState<{ correo?: string; nivelCargo?: string } | null>(null)
     const [showInstructions, setShowInstructions] = useState(false)
     const [selectedSolicitud, setSelectedSolicitud] = useState<any>(null)
 
@@ -104,7 +104,7 @@ export default function CesantiasPage() {
     }, [supabase])
 
     const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
-                    (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo))
+                    (currentUser?.nivelCargo && (ADMIN_LEVELS as string[]).includes(currentUser.nivelCargo))
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)
