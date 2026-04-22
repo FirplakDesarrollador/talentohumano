@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 import { Plus, RotateCcw, Calendar, CheckCircle, Clock } from 'lucide-react'
+import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
 
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
 

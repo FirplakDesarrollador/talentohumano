@@ -194,6 +194,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     // Sync local state when parent data refreshes (Only if it's a different employee)
     useEffect(() => {
         setLocalEmpleado(empleado)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado.cedula])
 
     // Generic update function (Internal sync)
