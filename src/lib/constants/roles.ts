@@ -45,6 +45,41 @@ export const APPROVER_LEVELS: NivelCargo[] = [
 ];
 
 /**
+ * Levels that can access the Salary Increase module.
+ * Restricted to: Coordinador, Jefe, Director, Gerente.
+ */
+export const AUMENTOS_SALARIALES_LEVELS: NivelCargo[] = [
+    NIVELES_CARGO.COORDINADOR,
+    NIVELES_CARGO.JEFE,
+    NIVELES_CARGO.DIRECTOR,
+    NIVELES_CARGO.GERENTE,
+];
+
+/**
+ * Levels that can access the Ausentismos module.
+ * Restricted to: Coordinador, Jefe, Supervisor, Gerente, Director.
+ */
+export const AUSENTISMOS_LEVELS: NivelCargo[] = [
+    NIVELES_CARGO.COORDINADOR,
+    NIVELES_CARGO.JEFE,
+    NIVELES_CARGO.SUPERVISOR,
+    NIVELES_CARGO.GERENTE,
+    NIVELES_CARGO.DIRECTOR,
+];
+
+/**
+ * Levels that can access the Procesos Disciplinarios module.
+ * Restricted to: Coordinador, Jefe, Supervisor, Gerente, Director.
+ */
+export const PROCESOS_DISCIPLINARIOS_LEVELS: NivelCargo[] = [
+    NIVELES_CARGO.COORDINADOR,
+    NIVELES_CARGO.JEFE,
+    NIVELES_CARGO.SUPERVISOR,
+    NIVELES_CARGO.GERENTE,
+    NIVELES_CARGO.DIRECTOR,
+];
+
+/**
  * Levels with access to the Gestor de Personal module.
  * Roles NOT included will not see the module at all.
  * Excluded: Operario, Gerente, Auxiliar, Especialista, Practicante, Tecnico, Promotor, Asesor

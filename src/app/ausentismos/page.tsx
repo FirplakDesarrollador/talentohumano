@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -169,7 +169,7 @@ export default function AusentismosPage() {
     }, [busqueda, ausentismos, filtroReciente])
 
     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(userLevel as any)
-    const hasAccess = isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
+    const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any)
 
     if (!loading && !hasAccess) {
         return (
