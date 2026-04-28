@@ -112,9 +112,37 @@ export default function RegisterPage() {
                 return
             }
 
-            // 4. El registro en public.usuarios ahora se maneja automáticamente
-            // mediante un trigger de base de datos (handle_new_user) 
-            // que se dispara tras el signUp exitoso.
+            // 4. Mapear rol basado en nivelCargo
+            const mapRol = (nivel: string | null) => {
+                if (!nivel) return 'visitante'
+                const n = nivel.toLowerCase()
+                if (n.includes('coordinador')) return 'coordinador'
+                if (n.includes('jefe')) return 'jefe'
+                if (n.includes('supervisor')) return 'supervisor'
+                if (n.includes('gerente')) return 'gerente'
+                if (n.includes('director')) return 'director'
+                if (n.includes('analista')) return 'analista'
+                return 'visitante'
+            }
+
+            // 5. Crear registro en tabla public.usuarios
+            const { error: insertError } = await supabase
+                .from('usuarios')
+                .insert({
+                    user_id: authData.user.id,
+                    empleado_id: empleado.id,
+                    correo: formData.email,
+                    nombre: empleado.nombreCompleto,
+                    rol: mapRol(empleado.nivelCargo),
+                    activo: true
+                })
+
+            if (insertError) {
+                console.error('Error al crear perfil de usuario:', insertError)
+                setError('Se creó la cuenta pero hubo un problema al vincular tus permisos. Por favor contacta a soporte.')
+                setLoading(false)
+                return
+            }
 
             setSuccess(true)
             setTimeout(() => {
@@ -183,10 +211,10 @@ export default function RegisterPage() {
                     <form onSubmit={handleRegister} className="space-y-4">
                         <div className="space-y-3">
                             <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-500 ml-1">Email corporativo</label>
+                                <label className="text-xs font-semibold text-gray-500 ml-1">Correo electrónico</label>
                                 <Input
                                     type="email"
-                                    placeholder="correo@firplak.com"
+                                    placeholder="tu@email.com"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     required
