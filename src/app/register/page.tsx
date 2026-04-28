@@ -28,7 +28,8 @@ export default function RegisterPage() {
         const hasUpper = /[A-Z]/.test(password)
         const hasLower = /[a-z]/.test(password)
         const hasNumber = /[0-9]/.test(password)
-        const hasSpecial = /[@$!%*?&._-]/.test(password)
+        // Acepta cualquier carácter que no sea letra o número como carácter especial
+        const hasSpecial = /[^A-Za-z0-9]/.test(password)
 
         return {
             isValid: hasMinLength && hasUpper && hasLower && hasNumber && hasSpecial,
