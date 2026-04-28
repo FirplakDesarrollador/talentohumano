@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS, AUMENTOS_SALARIALES_LEVELS } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import {
     ArrowLeft
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 export default function AumentosSalarialesPage() {
     const [cedula, setCedula] = useState('')
@@ -98,6 +99,15 @@ export default function AumentosSalarialesPage() {
                     }
                     const mappedLevel = roleMap[(profile as any).rol?.toLowerCase()] || (profile as any).rol
                     setCurrentUser({ ...(profile as any), correo: user.email, nivelCargo: mappedLevel })
+
+                    // Check for access permission
+                    const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(mappedLevel as any)
+                    const hasAccess = isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(mappedLevel as any)
+                    
+                    if (!hasAccess) {
+                        toast.error('No tienes permisos para acceder a este módulo')
+                        router.push('/menu')
+                    }
                 }
             }
         }

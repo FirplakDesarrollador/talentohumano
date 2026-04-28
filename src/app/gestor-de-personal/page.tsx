@@ -9,12 +9,11 @@ import {
     ArrowLeft,
     Users,
     Loader2,
-    SortAsc,
-    SortDesc,
-    Calendar,
-    Type,
     ArrowUpDown,
-    ExternalLink
+    ExternalLink,
+    Download,
+    Calendar,
+    Type
 } from 'lucide-react'
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
@@ -234,6 +233,38 @@ export default function GestorPersonalPage() {
         }
     }, [fetchEmpleados, user, userLevel])
 
+    const handleDownloadExcel = async () => {
+        const toastId = toast.loading('Generando archivo Excel...')
+        try {
+            const { data, error } = await supabase
+                .from('empleados')
+                .select('*')
+                .order('nombreCompleto', { ascending: true })
+
+            if (error) throw error
+
+            if (!data || data.length === 0) {
+                toast.error('No hay datos para exportar', { id: toastId })
+                return
+            }
+
+            // Dynamically import xlsx to keep bundle size smaller for non-admins
+            const XLSX = await import('xlsx')
+            const worksheet = XLSX.utils.json_to_sheet(data)
+            const workbook = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Empleados')
+            
+            // Generate filename with current date
+            const date = new Date().toLocaleDateString('es-CO').replace(/\//g, '-')
+            XLSX.writeFile(workbook, `Base_Datos_Empleados_${date}.xlsx`)
+            
+            toast.success('Archivo Excel descargado correctamente', { id: toastId })
+        } catch (error: any) {
+            console.error('Error downloading excel:', error)
+            toast.error('Error al descargar Excel: ' + error.message, { id: toastId })
+        }
+    }
+
     const handleClearFilters = () => {
         setBusqueda('')
         setSelectedJefe('')
@@ -289,14 +320,25 @@ export default function GestorPersonalPage() {
                         )}
 
                         {((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)) && (
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsCargosModalOpen(true)}
-                                className="border-gray-200 text-gray-700 hover:bg-white flex items-center gap-2 px-6 rounded-xl h-11"
-                            >
-                                <ExternalLink className="h-5 w-5 text-blue-500" />
-                                Gestionar Cargos
-                            </Button>
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsCargosModalOpen(true)}
+                                    className="border-gray-200 text-gray-700 hover:bg-white flex items-center gap-2 px-6 rounded-xl h-11"
+                                >
+                                    <ExternalLink className="h-5 w-5 text-blue-500" />
+                                    Gestionar Cargos
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    onClick={handleDownloadExcel}
+                                    className="border-gray-200 text-gray-700 hover:bg-white flex items-center gap-2 px-6 rounded-xl h-11"
+                                >
+                                    <Download className="h-5 w-5 text-emerald-600" />
+                                    Descargar Excel
+                                </Button>
+                            </>
                         )}
                     </div>
 

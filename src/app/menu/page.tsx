@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -20,7 +20,11 @@ import {
     Loader2,
     BookOpen,
     UserPlus,
-    Gavel
+    Gavel,
+    ExternalLink,
+    Wallet,
+    Stethoscope,
+    UserCircle
 } from 'lucide-react'
 
 export default function MenuPage() {
@@ -88,7 +92,7 @@ export default function MenuPage() {
             title: 'Aumentos salariales',
             href: '/aumentossalariales',
             icon: TrendingUp,
-            visible: isSystemAdmin || APPROVER_LEVELS.includes(userLevel as any)
+            visible: isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(userLevel as any)
         },
         {
             title: 'Cesantías',
@@ -100,13 +104,7 @@ export default function MenuPage() {
             title: 'Vacaciones',
             href: '/vacaciones',
             icon: Umbrella,
-            visible: true
-        },
-        {
-            title: 'NOVEDADES NÓMINA',
-            href: '/novedades-nomina',
-            icon: Newspaper,
-            visible: isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
+            visible: isSystemAdmin || userLevel !== 'Operario'
         },
         {
             title: 'Gestor de personal',
@@ -118,13 +116,13 @@ export default function MenuPage() {
             title: 'Ausentismos',
             href: '/ausentismos',
             icon: UserX,
-            visible: isSystemAdmin || (APPROVER_LEVELS.includes(userLevel as any) || userLevel === 'Analista')
+            visible: isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any)
         },
         {
             title: 'Procesos Disciplinarios',
             href: '/procesos-disciplinarios',
             icon: Gavel,
-            visible: true
+            visible: isSystemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(userLevel as any)
         },
         {
             title: 'HILU',
@@ -137,6 +135,34 @@ export default function MenuPage() {
             href: '/desempeno',
             icon: Component,
             visible: user?.email && ADMIN_EMAILS.includes(user.email)
+        }
+    ]
+
+    const externalLinks = [
+        {
+            title: 'Anticipos de nómina FIRPLAK Y JIRO',
+            href: 'https://vilulatam.com/',
+            icon: Wallet
+        },
+        {
+            title: 'Reporte de incapacidades FIRPLAK Y JIRO',
+            href: 'https://incapacidades.azurewebsites.net/',
+            icon: Stethoscope
+        },
+        {
+            title: 'Portal personal Firplak (Sigha)',
+            href: 'https://Sigha.com.co/se_ogh/control_usuario',
+            icon: UserCircle
+        },
+        {
+            title: 'Portal personal Jiro (Sigha)',
+            href: 'https://sigha.com.co/se_temporal/control_usuario/',
+            icon: UserCircle
+        },
+        {
+            title: 'Portal personal Vinculamos',
+            href: 'https://portalempleados.vinculamos.com.co/',
+            icon: UserCircle
         }
     ]
 
@@ -192,6 +218,42 @@ export default function MenuPage() {
                             </Link>
                         )
                     })}
+                </div>
+
+                {/* External Links Section */}
+                <div className="mt-16 pt-8 border-t border-gray-100">
+                    <h3 className="text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-8">
+                        Servicios y Enlaces Externos
+                    </h3>
+                    <div className="flex flex-wrap justify-center gap-6">
+                        {externalLinks.map((item) => {
+                            const Icon = item.icon
+                            return (
+                                <a 
+                                    key={item.title} 
+                                    href={item.href} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="group"
+                                >
+                                    <div className="w-[180px] h-[90px] bg-[#f8fafc] rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-white hover:shadow-lg transition-all duration-300 flex items-center p-4 gap-4">
+                                        <div className="bg-white p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                                            <Icon className="h-6 w-6 text-blue-600" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-[#1D3557] leading-tight">
+                                                {item.title}
+                                            </span>
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <span className="text-[8px] text-gray-400 font-medium">Ir al sitio</span>
+                                                <ExternalLink className="h-2 w-2 text-gray-400" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            )
+                        })}
+                    </div>
                 </div>
             </main>
 
