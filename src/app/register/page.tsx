@@ -126,8 +126,8 @@ export default function RegisterPage() {
             }
 
             // 5. Crear registro en tabla public.usuarios
-            const { error: insertError } = await supabase
-                .from('usuarios')
+            const { error: insertError } = await (supabase
+                .from('usuarios') as any)
                 .insert({
                     user_id: authData.user.id,
                     empleado_id: empleado.id,
