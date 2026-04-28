@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
-import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS } from '@/lib/constants/roles'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -79,26 +79,9 @@ export default function BuscadorProcesosDisciplinariosPage() {
 
                 // Check Authorization
                 const email = user.email!
-                const restrictedSupervisor = RESTRICTED_SUPERVISORS.includes(email)
-                const restrictedCoordinator = COORDINADORES_CON_ACCESO.includes(email)
-                const restrictedJefe = JEFES_CON_ACCESO.includes(email) || JEFES_MUEBLES_CEFI.includes(email) || JEFES_ALMACEN_CEDI.includes(email) || JEFES_INGENIERIA_MOLDES.includes(email)
-                const restrictedDirector = DIRECTORES_CON_ACCESO.includes(email)
-                const analistaAcceso = ANALISTAS_CON_ACCESO.includes(email)
                 const systemAdmin = ADMIN_EMAILS.includes(email)
 
-                // Only Supervisor, Director, Jefe, Coordinator and Admins have access to Disciplinarios
-                const authorized = systemAdmin || restrictedSupervisor || restrictedCoordinator || restrictedJefe || restrictedDirector
-                setIsAuthorized(authorized)
-
-                if (!authorized) {
-                    setLoading(false)
-                    return
-                }
-
-                setIsRestricted(restrictedSupervisor || restrictedCoordinator || restrictedJefe || restrictedDirector)
-                setIsAnalista(analistaAcceso)
-
-                // Obtener nivel_cargo de la tabla empleados
+                // 1. Fetch cargo level from empleados
                 const { data: empleado } = await supabase
                     .from('empleados')
                     .select('nivelCargo')
@@ -106,14 +89,13 @@ export default function BuscadorProcesosDisciplinariosPage() {
                     .maybeSingle()
 
                 let currentLevel = ''
+                let userProfile = null
+
                 if ((empleado as any)?.nivelCargo) {
                     currentLevel = (empleado as any).nivelCargo
-                    const userObj = { ...(empleado as any), correo: email, nivelCargo: currentLevel }
-                    setCurrentUser(userObj)
-                    
-                    const userPlants = getPlantasPermitidas(email)
-                    fetchEmpleados(userPlants || [])
+                    userProfile = { ...(empleado as any), correo: email, nivelCargo: currentLevel }
                 } else {
+                    // 2. Fetch role from usuarios if not in empleados
                     const { data: profile } = await supabase
                         .from('usuarios')
                         .select('*')
@@ -131,16 +113,29 @@ export default function BuscadorProcesosDisciplinariosPage() {
                             'analista': 'Analista'
                         }
                         currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
-                        const userObj = { ...(profile as any), correo: email, nivelCargo: currentLevel }
-                        setCurrentUser(userObj)
-                        
-                        const userPlants = getPlantasPermitidas(email)
-                        fetchEmpleados(userPlants || [])
-                    } else {
-                        const userPlants = getPlantasPermitidas(email)
-                        fetchEmpleados(userPlants || [])
+                        userProfile = { ...(profile as any), correo: email, nivelCargo: currentLevel }
                     }
                 }
+
+                setCurrentUser(userProfile)
+
+                // 3. Authorization Check
+                const authorized = systemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(currentLevel as any)
+                setIsAuthorized(authorized)
+
+                if (!authorized) {
+                    setLoading(false)
+                    return
+                }
+
+                // 4. Set legacy flags for UI compatibility
+                const analistaAcceso = ANALISTAS_CON_ACCESO.includes(email)
+                setIsAnalista(analistaAcceso)
+                
+                // If authorized, fetch data
+                const userPlants = getPlantasPermitidas(email)
+                fetchEmpleados(userPlants || [])
+
             } catch (error) {
                 console.error('Error fetching user data:', error)
                 fetchEmpleados([]) 

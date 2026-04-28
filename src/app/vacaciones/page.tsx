@@ -36,6 +36,7 @@ import {
     Download
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { cargarEmpleadoPorCedula, vacacionesValidarCalcular, descargarQueryVacaciones } from '@/lib/vacation-utils'
 
 export interface Empleado {
@@ -120,7 +121,15 @@ export default function VacacionesPage() {
                     .maybeSingle()
 
                 if ((empleado as any)?.nivelCargo) {
-                    setCurrentUser({ correo: user.email, nivelCargo: (empleado as any).nivelCargo })
+                    const level = (empleado as any).nivelCargo
+                    setCurrentUser({ correo: user.email, nivelCargo: level })
+
+                    // Permission check
+                    const isSystemAdmin = (user.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(level as any)
+                    if (!isSystemAdmin && level === 'Operario') {
+                        toast.error('Los operarios no tienen acceso a este módulo')
+                        router.push('/menu')
+                    }
                 } else {
                     // Fallback a tabla usuarios
                     const { data: profile } = await supabase
@@ -141,6 +150,13 @@ export default function VacacionesPage() {
                         }
                         const mappedLevel = roleMap[(profile as any).rol] || (profile as any).rol
                         setCurrentUser({ ...(profile as any), nivelCargo: mappedLevel })
+
+                        // Permission check
+                        const isSystemAdmin = (user.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(mappedLevel as any)
+                        if (!isSystemAdmin && mappedLevel === 'Operario') {
+                            toast.error('Los operarios no tienen acceso a este módulo')
+                            router.push('/menu')
+                        }
                     } else {
                         setCurrentUser({ correo: user.email })
                     }
