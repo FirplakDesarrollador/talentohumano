@@ -164,7 +164,7 @@ export default function VacacionesPage() {
             }
         }
         fetchUser()
-    }, [supabase])
+    }, [supabase, router])
 
     const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
                     (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo as NivelCargo))

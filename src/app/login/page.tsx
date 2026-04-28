@@ -122,12 +122,18 @@ export default function LoginPage() {
                             {loading ? 'Cargando...' : 'Ingresar'}
                         </Button>
 
-                        <div className="text-center">
+                        <div className="text-center space-y-2">
                             <Link
                                 href="/forgot-password"
-                                className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                                className="text-sm text-gray-500 hover:text-gray-800 transition-colors block"
                             >
                                 ¿Olvidaste tu contraseña?
+                            </Link>
+                            <Link
+                                href="/register"
+                                className="text-sm font-medium text-[#1a365d] hover:text-[#2d4356] transition-colors block"
+                            >
+                                Crear usuario
                             </Link>
                         </div>
                     </form>
