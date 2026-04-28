@@ -112,7 +112,7 @@ export default function AumentosSalarialesPage() {
             }
         }
         fetchContext()
-    }, [supabase])
+    }, [supabase, router])
 
     const fetchHistory = useCallback(async (empleadoId: number) => {
         setHistoryLoading(true)

@@ -94,8 +94,8 @@ export default function RegisterPage() {
                 password: formData.password,
                 options: {
                     data: {
-                        full_name: empleado.nombreCompleto,
-                        cedula: empleado.id
+                        full_name: (empleado as any).nombreCompleto,
+                        cedula: (empleado as any).id
                     }
                 }
             })
