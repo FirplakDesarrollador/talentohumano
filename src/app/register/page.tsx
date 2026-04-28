@@ -130,10 +130,10 @@ export default function RegisterPage() {
                 .from('usuarios') as any)
                 .insert({
                     user_id: authData.user.id,
-                    empleado_id: empleado.id,
+                    empleado_id: (empleado as any).id,
                     correo: formData.email,
-                    nombre: empleado.nombreCompleto,
-                    rol: mapRol(empleado.nivelCargo),
+                    nombre: (empleado as any).nombreCompleto,
+                    rol: mapRol((empleado as any).nivelCargo),
                     activo: true
                 })
 
