@@ -64,11 +64,13 @@ export default function RegisterPage() {
 
         try {
             // 1. Verificar si el empleado existe
-            const { data: empleado, error: empError } = await supabase
-                .from('empleados')
+            const { data: empleadoData, error: empError } = await (supabase
+                .from('empleados') as any)
                 .select('id, nombreCompleto, nivelCargo')
                 .eq('id', formData.cedula)
                 .single()
+
+            const empleado = empleadoData as any
 
             if (empError || !empleado) {
                 setError('No se encontró un empleado registrado con esta cédula. Por favor contacta a Talento Humano.')
@@ -130,11 +132,11 @@ export default function RegisterPage() {
             const { error: insertError } = await (supabase
                 .from('usuarios') as any)
                 .insert({
-                    user_id: authData.user.id,
-                    empleado_id: (empleado as any).id,
+                    user_id: (authData.user as any).id,
+                    empleado_id: empleado.id,
                     correo: formData.email,
-                    nombre: (empleado as any).nombreCompleto,
-                    rol: mapRol((empleado as any).nivelCargo),
+                    nombre: empleado.nombreCompleto,
+                    rol: mapRol(empleado.nivelCargo),
                     activo: true
                 })
 
@@ -278,7 +280,7 @@ export default function RegisterPage() {
                                 </div>
                                 <div className="flex items-center space-x-1">
                                     {passwordStatus.requirements.special ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-gray-300" />}
-                                    <span className={passwordStatus.requirements.special ? 'text-green-600' : 'text-gray-500'}>Carac. especial (@$!%*?&._-)</span>
+                                    <span className={passwordStatus.requirements.special ? 'text-green-600' : 'text-gray-500'}>Carácter especial (+*@$!%*?&._-)</span>
                                 </div>
                             </div>
 
