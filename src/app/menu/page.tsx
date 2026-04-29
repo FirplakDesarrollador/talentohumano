@@ -43,12 +43,12 @@ export default function MenuPage() {
                 
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivel_cargo, nombreCompleto')
+                    .select('nivelCargo, nombreCompleto')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivel_cargo) {
-                    setUserLevel((empleado as any).nivel_cargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                     setUserName((empleado as any).nombreCompleto || '')
                 } else {
                     const { data: usuario } = await supabase
@@ -59,6 +59,7 @@ export default function MenuPage() {
                     
                     if ((usuario as any)?.rol) {
                         setUserName((usuario as any).nombre || '')
+                        const dbRole = (usuario as any).rol.toLowerCase()
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',
@@ -67,10 +68,10 @@ export default function MenuPage() {
                             'director': 'Director',
                             'coordinador': 'Coordinador',
                             'analista': 'Analista',
-                            'supervisor': 'Jefe',
+                            'supervisor': 'Supervisor',
                             'visitante': 'Operario'
                         }
-                        setUserLevel(roleMap[(usuario as any).rol] || (usuario as any).rol)
+                        setUserLevel(roleMap[dbRole] || (usuario as any).rol)
                     }
                 }
             }
@@ -128,7 +129,7 @@ export default function MenuPage() {
             title: 'HILU',
             href: '/buscador-hilu',
             icon: Monitor,
-            visible: isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista'].includes(userLevel)
+            visible: isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
         },
         {
             title: 'Desempeño',
