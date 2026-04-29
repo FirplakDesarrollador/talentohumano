@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES } from '@/lib/constants/roles'
+import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,12 +16,51 @@ export default function IndicadoresHiluPage() {
     const router = useRouter()
     const [empleados, setEmpleados] = useState<EmpleadoHILU[]>([])
     const [loading, setLoading] = useState(true)
+    const [userLevel, setUserLevel] = useState<string>('')
+    const [userEmail, setUserEmail] = useState<string>('')
 
     const supabase = createClient()
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchUserAndData = async () => {
             try {
+                // 1. Fetch User Level
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    setUserEmail(user.email || '')
+                    const { data: empleado } = await supabase
+                        .from('empleados')
+                        .select('nivelCargo')
+                        .eq('correo_electronico', user.email!)
+                        .maybeSingle()
+
+                    if ((empleado as any)?.nivelCargo) {
+                        setUserLevel((empleado as any).nivelCargo)
+                    } else {
+                        const { data: profile } = await supabase
+                            .from('usuarios')
+                            .select('rol')
+                            .eq('correo', user.email!)
+                            .maybeSingle()
+                        
+                        if ((profile as any)?.rol) {
+                            const dbRole = (profile as any).rol.toLowerCase()
+                            const roleMap: Record<string, string> = {
+                                'admin': 'Jefe',
+                                'desarrollador': 'Jefe',
+                                'jefe': 'Jefe',
+                                'gerente': 'Gerente',
+                                'director': 'Director',
+                                'coordinador': 'Coordinador',
+                                'analista': 'Analista',
+                                'supervisor': 'Supervisor'
+                            }
+                            setUserLevel(roleMap[dbRole] || (profile as any).rol)
+                        }
+                    }
+                }
+
+                // 2. Fetch Data
                 const { data, error } = await supabase
                     .from('query_estado_hilu')
                     .select('*')
@@ -54,8 +93,11 @@ export default function IndicadoresHiluPage() {
             }
         }
 
-        fetchData()
+        fetchUserAndData()
     }, [supabase])
+
+    const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
+    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
 
     if (loading) {
         return (
@@ -65,6 +107,26 @@ export default function IndicadoresHiluPage() {
                     <div className="text-center">
                         <Loader2 className="inline-block animate-spin h-12 w-12 text-blue-600 mb-4" />
                         <p className="text-gray-600">Cargando indicadores...</p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    if (!canSeeHilu) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                <Navbar />
+                <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-md">
+                        <TrendingUp className="h-16 w-16 text-red-500 mx-auto mb-4 opacity-20" />
+                        <h1 className="text-2xl font-bold mb-2">Acceso Restringido</h1>
+                        <p className="text-gray-600 mb-6">
+                            No tienes permisos suficientes para acceder a los indicadores HILU.
+                        </p>
+                        <Button onClick={() => router.push('/menu')} className="w-full">
+                            Volver al inicio
+                        </Button>
                     </div>
                 </div>
             </div>

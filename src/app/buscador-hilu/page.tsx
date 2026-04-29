@@ -61,12 +61,12 @@ export default function BuscadorHiluPage() {
                 setUserEmail(user.email || '')
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivel_cargo')
+                    .select('nivelCargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivel_cargo) {
-                    setUserLevel((empleado as any).nivel_cargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                 } else {
                     const { data: profile } = await supabase
                         .from('usuarios')
@@ -75,6 +75,7 @@ export default function BuscadorHiluPage() {
                         .maybeSingle()
                     
                     if ((profile as any)?.rol) {
+                        const dbRole = (profile as any).rol.toLowerCase()
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
                             'desarrollador': 'Jefe',
@@ -82,12 +83,14 @@ export default function BuscadorHiluPage() {
                             'gerente': 'Gerente',
                             'director': 'Director',
                             'coordinador': 'Coordinador',
-                            'analista': 'Analista'
+                            'analista': 'Analista',
+                            'supervisor': 'Supervisor'
                         }
-                        setUserLevel(roleMap[(profile as any).rol] || (profile as any).rol)
+                        setUserLevel(roleMap[dbRole] || (profile as any).rol)
                     }
                 }
             }
+            setLoading(false)
         }
         fetchUser()
     }, [supabase])
@@ -159,7 +162,7 @@ export default function BuscadorHiluPage() {
     }, [isInitialized, selectedStatus, selectedPlanta, busqueda, supabase])
 
     const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
-    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista'].includes(userLevel)
+    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
 
     useEffect(() => {
         const handleFocus = () => {

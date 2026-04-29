@@ -60,22 +60,30 @@ export default function EntrenamientoDetailPage() {
             }
 
             const email = user.email!
-            const { data: profile } = await supabase
+            // 1. Obtener perfil del usuario actual (el que está logueado)
+            const { data: profile, error: profileError } = await supabase
                 .from('usuarios')
-                .select('id, correo, cargos(nombre)')
+                .select('id, correo, rol, plantas')
                 .eq('correo', email)
-                .maybeSingle() as any
+                .maybeSingle()
 
+            if (profileError) console.error('[DEBUG] Profile fetch error:', profileError)
+            
             const userProfile = profile as any
-            const currentUserData = { 
-                id: userProfile?.id || 1, 
-                email,
-                nivelCargo: userProfile?.cargos?.nombre 
+            
+            // Normalizar rol para comparación con constantes (DB: 'supervisor' -> Const: 'Supervisor')
+            const userRoleName = userProfile?.rol ? 
+                userProfile.rol.charAt(0).toUpperCase() + userProfile.rol.slice(1) : 
+                '';
+
+            const currentUserData = {
+                id: userProfile?.id || 1,
+                email: email,
+                nivelCargo: userRoleName || 'Visitante'
             }
             setCurrentUser(currentUserData)
 
-            const plantasPermitidas = getPlantasPermitidas(email)
-            const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(userProfile?.cargos?.nombre || '')
+            const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(userRoleName)
 
             // Initial generic check (if they are in any list or admin)
             const isRestricted = RESTRICTED_SUPERVISORS.includes(email) || 
@@ -211,10 +219,15 @@ export default function EntrenamientoDetailPage() {
 
             if (hiluDataObj) {
                 // 3. Final Authorization Check (Plant level)
-                const userPlantas = getPlantasPermitidas(email)
-                const empPlanta = hiluDataObj.planta || ''
+                const userPlantas = userProfile?.plantas || getPlantasPermitidas(email)
+                const rawEmpPlanta = hiluDataObj.planta || ''
                 
-                if (!isAdmin && userPlantas && !userPlantas.includes(empPlanta)) {
+                // Normalización robusta de planta
+                const empPlanta = rawEmpPlanta.trim()
+                const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
+
+                if (!isAdmin && userPlantas && !hasPlantAccess) {
+                    console.log(`[DEBUG] Access Denied: User ${email} with plants ${JSON.stringify(userPlantas)} cannot access employee in plant ${empPlanta}`)
                     setIsAuthorized(false)
                     setLoading(false)
                     return
@@ -225,8 +238,13 @@ export default function EntrenamientoDetailPage() {
             } else {
                 console.log('[DEBUG] Falling back to PseudoData')
                 // Even for pseudodata, check plant
-                const userPlantas = getPlantasPermitidas(email)
-                if (!isAdmin && userPlantas && !userPlantas.includes(emp.planta || '')) {
+                const userPlantas = userProfile?.plantas || getPlantasPermitidas(email)
+                const rawEmpPlanta = emp.planta || ''
+                const empPlanta = rawEmpPlanta.trim()
+                const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
+
+                if (!isAdmin && userPlantas && !hasPlantAccess) {
+                    console.log(`[DEBUG] Access Denied (Pseudo): User ${email} with plants ${JSON.stringify(userPlantas)} cannot access employee in plant ${empPlanta}`)
                     setIsAuthorized(false)
                     setLoading(false)
                     return
