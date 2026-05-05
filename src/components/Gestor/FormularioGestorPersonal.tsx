@@ -335,10 +335,22 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
                     // Fetch employee polyvalences
                     const { data: empPolys } = await supabase.from('polivalencia').select('"Puesto polivalencia"').eq('Cedula', emp.id.toString());
-                    if (empPolys) {
-                        const polyList = empPolys.map(p => p["Puesto polivalencia"]);
-                        setFormData(prev => ({ ...prev, polivalenciasSeleccionadas: polyList }));
+                    let polyList: string[] = [];
+                    
+                    // Filter out empty or null values from related table
+                    const polyListFromTable = empPolys ? empPolys.map(p => p["Puesto polivalencia"]).filter(Boolean) : [];
+                    
+                    if (polyListFromTable.length > 0) {
+                        polyList = polyListFromTable;
+                    } else if (emp.polivalencia_json && Array.isArray(emp.polivalencia_json) && emp.polivalencia_json.length > 0) {
+                        polyList = emp.polivalencia_json;
+                    } else if (emp.polivalencia) {
+                        // Soporte para formato antiguo (string separado por pipe)
+                        polyList = emp.polivalencia.split('|').map((s: string) => s.trim()).filter(Boolean);
                     }
+                    
+                    setFormData(prev => ({ ...prev, polivalenciasSeleccionadas: polyList }));
+
                     if (!emp.activo) {
                         const { data: rd } = await (supabase as any).from('retiro_personal').select('*').eq('empleado_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle();
                         if (rd) {

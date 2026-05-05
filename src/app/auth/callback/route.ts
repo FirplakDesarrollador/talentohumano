@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const redirectResponse = NextResponse.redirect(new URL(next, request.url))
-      // Copiamos las cookies de la respuesta base a la de redirección
+      // Copiamos las cookies de la respuesta base a la de redirección asegurando que se pasen todas las opciones
       response.cookies.getAll().forEach((cookie) => {
-        redirectResponse.cookies.set(cookie.name, cookie.value)
+        redirectResponse.cookies.set(cookie)
       })
       return redirectResponse
     }
