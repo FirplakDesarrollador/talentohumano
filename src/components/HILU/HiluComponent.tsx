@@ -255,7 +255,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         console.log(`[HILU → Guardar Herramienta] "${tool}" - Fase ${phase}`, {
             tabla: tableMap[phase],
             id,
-            empleado: localEmpleado.nombre_completo,
+            empleado: localEmpleado.nombreCompleto,
             cedula: localEmpleado.cedula,
             estadoHerramienta: toolState,
             payload,
