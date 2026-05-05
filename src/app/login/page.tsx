@@ -124,7 +124,7 @@ export default function LoginPage() {
 
                         <div className="text-center space-y-2">
                             <Link
-                                href="/forgot-password"
+                                href="/auth/forgot-password"
                                 className="text-sm text-gray-500 hover:text-gray-800 transition-colors block"
                             >
                                 ¿Olvidaste tu contraseña?

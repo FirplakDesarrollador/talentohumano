@@ -15,7 +15,39 @@ export default function ResetPasswordPage() {
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const supabase = createClient()
+    const [verifying, setVerifying] = useState(true)
 
+    React.useEffect(() => {
+        const checkSession = async () => {
+            // Primero revisamos si hay un código en la URL (flujo PKCE)
+            const urlParams = new URLSearchParams(window.location.search)
+            const code = urlParams.get('code')
+
+            if (code) {
+                const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+                if (exchangeError) {
+                    setError('El código de recuperación es inválido o ha expirado.')
+                    setVerifying(false)
+                    return
+                }
+            }
+
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                // Si no hay sesión, damos un pequeño margen por si se está procesando
+                setTimeout(async () => {
+                    const { data: { session: retrySession } } = await supabase.auth.getSession()
+                    if (!retrySession) {
+                        setError('No se pudo encontrar una sesión válida. Por favor, solicita un nuevo enlace de recuperación.')
+                    }
+                    setVerifying(false)
+                }, 1000)
+            } else {
+                setVerifying(false)
+            }
+        }
+        checkSession()
+    }, [supabase.auth])
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
@@ -107,10 +139,10 @@ export default function ResetPasswordPage() {
 
                         <Button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || verifying}
                             className="w-full bg-[#2d4356] hover:bg-[#1e2d3a] text-white h-12 rounded-lg text-base font-medium transition-colors"
                         >
-                            {loading ? 'Actualizando...' : 'Actualizar contraseña'}
+                            {loading ? 'Actualizando...' : verifying ? 'Verificando sesión...' : 'Actualizar contraseña'}
                         </Button>
                     </form>
                 </div>

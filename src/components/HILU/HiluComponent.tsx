@@ -191,11 +191,23 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         return true 
     }
 
-    // Sync local state when parent data refreshes (Only if it's a different employee)
+    // Sync local state ONLY when switching to a different employee
+    // Preserves local optimistic updates for the same employee
     useEffect(() => {
-        setLocalEmpleado(empleado)
+        setLocalEmpleado(prev => {
+            if (prev.cedula !== empleado.cedula) {
+                return empleado  // Different employee → full reset
+            }
+            // Same employee: merge server data but keep local detalles (unsaved or just saved)
+            return {
+                ...empleado,
+                fi_detalles: prev.fi_detalles,
+                fl_detalles: prev.fl_detalles,
+                fu_detalles: prev.fu_detalles
+            }
+        })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [empleado.cedula])
+    }, [empleado])
 
     // Generic update function (Internal sync)
     const updatePhase = async (table: 'fase_H' | 'fase_I' | 'fase_L' | 'fase_U', id: number, data: any) => {
@@ -204,14 +216,12 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 .from(table) as any)
                 .update({
                     ...data,
-                    modified_at: new Date().toISOString(),
-                    modified_by: currentUser?.id
+                    modified_at: new Date().toISOString()
                 })
                 .eq('id', id)
 
             if (error) throw error
             
-            // Wait for parent re-fetch
             if (onUpdate) {
                 await (onUpdate as any)()
             }
@@ -220,15 +230,110 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         } catch (error: any) {
             console.error('Error updating phase:', JSON.stringify(error, null, 2))
             alert(`Error al guardar cambios: ${error.message || 'Consulte la consola'}`)
-            // Revert on error? For now, the next prop update will revert it anyway.
         }
+    }
+
+    const handleSaveToolPhase = async (phase: 'I' | 'L' | 'U', tool: string) => {
+        const tableMap = { 'I': 'fase_I', 'L': 'fase_L', 'U': 'fase_U' } as const
+        const idMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_id', 'L': 'fl_id', 'U': 'fu_id' }
+        const fieldMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_detalles', 'L': 'fl_detalles', 'U': 'fu_detalles' }
+
+        const id = localEmpleado[idMap[phase]] as number
+        if (!id) {
+            toast.error('No se encontró el ID de la fase')
+            return
+        }
+
+        const currentDetails = (localEmpleado[fieldMap[phase]] as unknown as ToolDetails) || {}
+        const toolState = currentDetails[tool] || {}
+
+        const payload = {
+            detalles: currentDetails,
+            modified_at: new Date().toISOString()
+        }
+
+        console.log(`[HILU → Guardar Herramienta] "${tool}" - Fase ${phase}`, {
+            tabla: tableMap[phase],
+            id,
+            empleado: localEmpleado.nombreCompleto,
+            cedula: localEmpleado.cedula,
+            estadoHerramienta: toolState,
+            payload,
+            timestamp: new Date().toISOString()
+        })
+
+        const { error } = await (supabase
+            .from(tableMap[phase]) as any)
+            .update(payload)
+            .eq('id', id)
+
+        if (error) {
+            console.error(`[HILU ERROR] "${tool}" - Fase ${phase}`, {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint,
+                full: JSON.stringify(error)
+            })
+            toast.error(`Error al guardar "${tool}"`, { description: error.message || JSON.stringify(error) })
+            return
+        }
+
+        console.log(`[HILU ✔] "${tool}" Fase ${phase} guardado correctamente`)
+        toast.success(`Herramienta "${tool}" guardada`, {
+            description: `Fase ${phase} — Los cambios fueron sincronizados correctamente.`
+        })
+        if (onUpdate) {
+            await (onUpdate as any)()
+        }
+        await checkPhaseCompletion(phase, localEmpleado)
+    }
+
+    const handleSavePhase = async (phase: 'I' | 'L' | 'U') => {
+        const tableMap = { 'I': 'fase_I', 'L': 'fase_L', 'U': 'fase_U' } as const
+        const idMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_id', 'L': 'fl_id', 'U': 'fu_id' }
+        const fieldMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_detalles', 'L': 'fl_detalles', 'U': 'fu_detalles' }
+        
+        const id = localEmpleado[idMap[phase]] as number
+        if (!id) {
+            toast.error('No se encontró el ID de la fase')
+            return
+        }
+
+        const dataToSave: any = {
+            detalles: localEmpleado[fieldMap[phase]]
+        }
+        
+        if (phase === 'I') {
+            dataToSave.estandar_hdt = localEmpleado.fi_estandar_hdt
+            dataToSave.entrenamiento_calidad = localEmpleado.fi_entrenamiento_calidad
+            dataToSave.hace_acompanado = localEmpleado.fi_hace_acompanado
+            dataToSave.hace_solo = localEmpleado.fi_hace_solo
+            dataToSave.curso_5s = localEmpleado.fi_curso_5s
+            dataToSave.actitud = localEmpleado.fi_actitud
+            dataToSave.aprendizaje = localEmpleado.fi_aprendizaje
+            dataToSave.destreza = localEmpleado.fi_destreza
+            dataToSave.conocimiento = localEmpleado.fi_conocimiento
+            dataToSave.comentario = localEmpleado.fi_comentario
+        } else if (phase === 'L') {
+            dataToSave.cumple_calidad = localEmpleado.fl_cumple_calidad
+            dataToSave.cumple_estandar = localEmpleado.fl_cumple_estandar
+            dataToSave.cumple_tiempo = localEmpleado.fl_cumple_tiempo
+            dataToSave.comentario = localEmpleado.fl_comentario
+        } else if (phase === 'U') {
+            dataToSave.capacitado_para_entrenar = localEmpleado.fu_capacitado_para_entrenar
+            dataToSave.entrena_solo = localEmpleado.fu_entrena_solo
+            dataToSave.acompana_entrenamientos = localEmpleado.fu_acompana_entrenamientos
+            dataToSave.comentario = localEmpleado.fu_comentario
+        }
+        
+        await updatePhase(tableMap[phase], id, dataToSave)
+        await checkPhaseCompletion(phase, localEmpleado)
     }
 
     // Tool Logic Helpers
     const handleToolCheck = (phase: 'I' | 'L' | 'U', tool: string, checkInfo: string, currentVal: boolean) => {
         const fieldMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_detalles', 'L': 'fl_detalles', 'U': 'fu_detalles' }
-        const idMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_id', 'L': 'fl_id', 'U': 'fu_id' }
-        const tableMap = { 'I': 'fase_I', 'L': 'fase_L', 'U': 'fase_U' } as const
 
         // Cast to unknown first to avoid TS issues with View types vs Table types
         const currentDetails = (localEmpleado[fieldMap[phase]] as unknown as ToolDetails) || {}
@@ -244,9 +349,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         // @ts-ignore
         newLocal[fieldMap[phase]] = newDetails
         setLocalEmpleado(newLocal)
-
-        // @ts-ignore - Supabase update (requires DB column 'detalles' to be added via migration)
-        updatePhase(tableMap[phase], localEmpleado[idMap[phase]] as number, { detalles: newDetails })
     }
 
     const checkPhaseCompletion = async (phase: 'H' | 'I' | 'L' | 'U', currentData: QueryHiluRow) => {
@@ -351,8 +453,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                     const toolProgress = Math.round((completedChecks / checks.length) * 100)
 
                     return (
-                        <div key={tool} className="grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-gray-100 pb-4 last:border-0 items-center">
-                            <div className="flex flex-col">
+                        <div key={tool} className="flex items-center gap-4 border-b border-gray-100 pb-3 last:border-0">
+                            {/* Col 1: Tool name + progress */}
+                            <div className="flex flex-col w-[140px] shrink-0">
                                 <div className="flex items-center justify-between mb-1">
                                     <span className={`font-bold text-sm text-[#2d4356] ${toolDisabled ? 'opacity-50' : ''}`}>{tool}</span>
                                     <span className={`text-[10px] font-bold ${toolProgress === 100 ? 'text-green-600' : 'text-blue-600'}`}>{toolProgress}%</span>
@@ -365,17 +468,32 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 </div>
                                 {toolDisabled && <span className="text-[9px] text-red-500 font-bold uppercase mt-1">Pendiente fase anterior</span>}
                             </div>
-                            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {/* Col 2: Checkboxes */}
+                            <div className="flex-1 flex gap-1">
                                 {checks.map(chk => (
-                                    <PillCheckbox
-                                        key={chk}
-                                        id={`${phase}-${tool}-${chk}`}
-                                        label={chk}
-                                        checked={toolDetails[chk] || false}
-                                        disabled={toolDisabled}
-                                        onChange={() => handleToolCheck(phase, tool, chk, toolDetails[chk] || false)}
-                                    />
+                                    <div key={chk} className="flex-1">
+                                        <PillCheckbox
+                                            id={`${phase}-${tool}-${chk}`}
+                                            label={chk}
+                                            checked={toolDetails[chk] || false}
+                                            disabled={toolDisabled}
+                                            onChange={() => handleToolCheck(phase, tool, chk, toolDetails[chk] || false)}
+                                        />
+                                    </div>
                                 ))}
+                            </div>
+                            {/* Col 3: Save button */}
+                            <div className="shrink-0 w-[130px] flex items-center justify-end">
+                                {!toolDisabled && (
+                                    <Button
+                                        size="sm"
+                                        onClick={() => handleSaveToolPhase(phase, tool)}
+                                        className="bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-1.5 h-[44px] w-full px-3 text-xs rounded-lg shadow-sm"
+                                    >
+                                        <Save className="h-3.5 w-3.5 shrink-0" />
+                                        Guardar {tool}
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     )
@@ -632,11 +750,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         </div>
                                         <PillCheckbox id="fi_estandar_hdt" label="Estándar del puesto (HDT)" checked={localEmpleado.fi_estandar_hdt || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_estandar_hdt: c }))
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { estandar_hdt: c })
                                         }} />
                                         <PillCheckbox id="fi_entrenamiento_calidad" label="Entrenamiento de calidad" checked={localEmpleado.fi_entrenamiento_calidad || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_entrenamiento_calidad: c }))
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { entrenamiento_calidad: c })
                                         }} />
                                     </div>
 
@@ -644,15 +760,12 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                         <PillCheckbox id="fi_hace_acompanado" label="Hace acompañado" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { hace_acompanado: c })
                                         }} />
                                         <PillCheckbox id="fi_hace_solo" label="Hace solo" checked={localEmpleado.fi_hace_solo || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_hace_solo: c }))
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { hace_solo: c })
                                         }} />
                                         <PillCheckbox id="fi_curso_5s" label="Curso de 5S" checked={localEmpleado.fi_curso_5s || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_curso_5s: c }))
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { curso_5s: c })
                                         }} />
                                     </div>
 
@@ -663,7 +776,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                             value={localEmpleado.fi_actitud || 0} 
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_actitud: v }))
-                                                updatePhase('fase_I', localEmpleado.fi_id!, { actitud: v })
                                             }} 
                                         />
                                         <StarRating 
@@ -671,7 +783,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                             value={localEmpleado.fi_aprendizaje || 0} 
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_aprendizaje: v }))
-                                                updatePhase('fase_I', localEmpleado.fi_id!, { aprendizaje: v })
                                             }} 
                                         />
                                         <StarRating 
@@ -679,7 +790,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                             value={localEmpleado.fi_destreza || 0} 
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_destreza: v }))
-                                                updatePhase('fase_I', localEmpleado.fi_id!, { destreza: v })
                                             }} 
                                         />
                                         <StarRating 
@@ -687,7 +797,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                             value={localEmpleado.fi_conocimiento || 0} 
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_conocimiento: v }))
-                                                updatePhase('fase_I', localEmpleado.fi_id!, { conocimiento: v })
                                             }} 
                                         />
                                         <StarRating 
@@ -712,8 +821,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     <textarea className="w-full h-[120px] p-4 rounded-lg bg-gray-50/50 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all" defaultValue={localEmpleado.fi_comentario || ''} onBlur={(e) => {
                                         const next = { ...localEmpleado, fi_comentario: e.target.value }
                                         setLocalEmpleado(next)
-                                        updatePhase('fase_I', localEmpleado.fi_id!, { comentario: e.target.value })
-                                            .then(() => checkPhaseCompletion('I', next))
                                     }} />
                                 </div>
                             </div>
@@ -748,7 +855,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         <Label className="text-[9px] font-bold text-gray-400 uppercase block mb-1 text-center">Evidencias Adjuntas</Label>
                                         <EvidenciasComponent evidencias={localEmpleado.fi_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_I', localEmpleado.fi_id!, { evidencias: evs })} path="fase-i" />
                                     </div>
-                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('I', localEmpleado)}><Save className="h-5 w-5" /> Sincronizar Fase I</Button>
+                                    <Button className={`w-full text-white flex items-center gap-2 h-12 shadow-lg rounded-xl ${progress < 100 ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1e2f3d] hover:bg-[#2c4255]'}`} onClick={() => handleSavePhase('I')} disabled={progress < 100}><Save className="h-5 w-5" /> Guardar Fase I</Button>
                                 </div>
                             </div>
                         </div>
@@ -831,15 +938,12 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                 <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${(!faseIComplete || !canEditPhase('L')) ? 'opacity-60 pointer-events-none' : ''}`}>
                                     <PillCheckbox id="fl_cumple_calidad" label="Cumple Calidad" checked={localEmpleado.fl_cumple_calidad || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_calidad: c }))
-                                        updatePhase('fase_L', localEmpleado.fl_id!, { cumple_calidad: c })
                                     }} />
                                     <PillCheckbox id="fl_cumple_estandar" label="Cumple Estándar" checked={localEmpleado.fl_cumple_estandar || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_estandar: c }))
-                                        updatePhase('fase_L', localEmpleado.fl_id!, { cumple_estandar: c })
                                     }} />
                                     <PillCheckbox id="fl_cumple_tiempo" label="Cumple Tiempo" checked={localEmpleado.fl_cumple_tiempo || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_tiempo: c }))
-                                        updatePhase('fase_L', localEmpleado.fl_id!, { cumple_tiempo: c })
                                     }} />
                                 </div>
                             </div>
@@ -857,8 +961,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     <textarea className="w-full h-[154px] p-4 rounded-lg bg-gray-50/10 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium" defaultValue={localEmpleado.fl_comentario || ''} onBlur={(e) => {
                                         const next = { ...localEmpleado, fl_comentario: e.target.value }
                                         setLocalEmpleado(next)
-                                        updatePhase('fase_L', localEmpleado.fl_id!, { comentario: e.target.value })
-                                            .then(() => checkPhaseCompletion('L', next))
                                     }} />
                                 </div>
                             </div>
@@ -893,7 +995,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         <Label className="text-[9px] font-bold text-gray-400 uppercase block mb-1 text-center">Evidencias de L</Label>
                                         <EvidenciasComponent evidencias={localEmpleado.fl_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_L', localEmpleado.fl_id!, { evidencias: evs })} path="fase-l" />
                                     </div>
-                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('L', localEmpleado)}><Save className="h-5 w-5" /> Sincronizar Fase L</Button>
+                                    <Button className={`w-full text-white flex items-center gap-2 h-12 shadow-lg rounded-xl ${progress < 100 ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1e2f3d] hover:bg-[#2c4255]'}`} onClick={() => handleSavePhase('L')} disabled={progress < 100}><Save className="h-5 w-5" /> Guardar Fase L</Button>
                                 </div>
                             </div>
                         </div>
@@ -948,17 +1050,14 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         </div>
                                         <PillCheckbox id="fu_capacitado_para_entrenar" label="Capacitado para entrenar" checked={localEmpleado.fu_capacitado_para_entrenar || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fu_capacitado_para_entrenar: c }))
-                                            updatePhase('fase_U', localEmpleado.fu_id!, { capacitado_para_entrenar: c })
                                         }} />
                                         <PillCheckbox id="fu_acompana_entrenamientos" label="Acompaña entrenamientos" checked={localEmpleado.fu_acompana_entrenamientos || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fu_acompana_entrenamientos: c }))
-                                            updatePhase('fase_U', localEmpleado.fu_id!, { acompana_entrenamientos: c })
                                         }} />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                                         <PillCheckbox id="fu_entrena_solo" label="Sabe entrenar solo" checked={localEmpleado.fu_entrena_solo || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fu_entrena_solo: c }))
-                                            updatePhase('fase_U', localEmpleado.fu_id!, { entrena_solo: c })
                                         }} />
                                     </div>
                                 </>
@@ -994,8 +1093,6 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onBlur={(e) => {
                                             const next = { ...localEmpleado, fu_comentario: e.target.value }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_U', localEmpleado.fu_id!, { comentario: e.target.value })
-                                                .then(() => checkPhaseCompletion('U', next))
                                         }} 
                                     />
                                 </div>
@@ -1030,7 +1127,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         <Label className="text-[9px] font-bold text-gray-400 uppercase block mb-1 text-center">Evidencias Adjuntas</Label>
                                         <EvidenciasComponent evidencias={localEmpleado.fu_evidencias || []} onEvidenciasChange={(evs) => updatePhase('fase_U', localEmpleado.fu_id!, { evidencias: evs })} path="fase-u" />
                                     </div>
-                                    <Button className="w-full bg-[#1e2f3d] hover:bg-[#2c4255] text-white flex items-center gap-2 h-12 shadow-lg rounded-xl" onClick={() => checkPhaseCompletion('U', localEmpleado)}><Save className="h-5 w-5" /> Guardar Todo</Button>
+                                    <Button className={`w-full text-white flex items-center gap-2 h-12 shadow-lg rounded-xl ${progress < 100 ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1e2f3d] hover:bg-[#2c4255]'}`} onClick={() => handleSavePhase('U')} disabled={progress < 100}><Save className="h-5 w-5" /> Guardar Fase U</Button>
                                 </div>
                             </div>
                         </div>
