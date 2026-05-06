@@ -16,8 +16,12 @@ export default function ResetPasswordPage() {
     const router = useRouter()
     const supabase = createClient()
     const [verifying, setVerifying] = useState(true)
+    const hasExchanged = React.useRef(false)
 
     React.useEffect(() => {
+        if (hasExchanged.current) return
+        hasExchanged.current = true
+
         const checkSession = async () => {
             // Primero revisamos si hay un código en la URL (flujo PKCE)
             const urlParams = new URLSearchParams(window.location.search)
@@ -25,10 +29,14 @@ export default function ResetPasswordPage() {
 
             if (code) {
                 const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+                // Si hay error de intercambio, verificamos si ya existe una sesión (pudo ser procesada por el middleware)
                 if (exchangeError) {
-                    setError('El código de recuperación es inválido o ha expirado.')
-                    setVerifying(false)
-                    return
+                    const { data: { session: existingSession } } = await supabase.auth.getSession()
+                    if (!existingSession) {
+                        setError('El código de recuperación es inválido o ha expirado.')
+                        setVerifying(false)
+                        return
+                    }
                 }
             }
 
@@ -43,6 +51,7 @@ export default function ResetPasswordPage() {
                     setVerifying(false)
                 }, 1000)
             } else {
+                setError(null) // Limpiamos cualquier error si la sesión es válida
                 setVerifying(false)
             }
         }
