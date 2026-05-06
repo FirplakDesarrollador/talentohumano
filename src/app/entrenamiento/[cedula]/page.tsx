@@ -45,6 +45,7 @@ import {
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
 type Auditoria = Database['public']['Tables']['auditorias']['Row']
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
+type HiluDisplayRecord = QueryHiluRow & { displayCargo: string | null; foto: string | null };
 
 // Subcomponente para las tarjetas de cargo
 const CargoCard = ({ record, isActive, onSelect, isTitular }: { record: any, isActive: boolean, onSelect: () => void, isTitular: boolean }) => {
@@ -143,7 +144,7 @@ export default function EntrenamientoDetailPage() {
     const params = useParams()
     const paramId = params.cedula as string
 
-    const [hiluRecords, setHiluRecords] = useState<QueryHiluRow[]>([])
+    const [hiluRecords, setHiluRecords] = useState<HiluDisplayRecord[]>([])
     const [selectedCargo, setSelectedCargo] = useState<string | null>(null)
     const [polyvalencias, setPolyvalencias] = useState<string[]>([])
     const [loading, setLoading] = useState(true)
@@ -157,10 +158,9 @@ export default function EntrenamientoDetailPage() {
     const supabase = useMemo(() => createClient(), [])
 
     const currentRecord = useMemo(() => {
-        const record = hiluRecords.find(r => (r as any).displayCargo === selectedCargo) || hiluRecords[0];
-        // Sobrescribimos r.cargo con displayCargo para que los componentes hijos (HILU, Auditoria, etc.)
-        // usen el cargo correcto del registro y no el cargo actual del empleado
-        return record ? { ...record, cargo: (record as any).displayCargo } : null;
+        const record = hiluRecords.find(r => r.displayCargo === selectedCargo) || hiluRecords[0];
+        if (!record) return null;
+        return { ...record, cargo: record.displayCargo };
     }, [hiluRecords, selectedCargo]);
 
     const titularCargoName = useMemo(() => {
@@ -249,12 +249,11 @@ export default function EntrenamientoDetailPage() {
             const cargoTitular = emp.cargo || ''
 
             // 1.5 Fetch Polyvalencias
-            const { data: polyData } = await supabase
-                .from('polivalencia')
+            const { data: polyData } = await (supabase.from('polivalencia') as any)
                 .select('Puesto polivalencia')
                 .eq('Cedula', resolvedCedula.toString())
 
-            const polyList = Array.from(new Set(polyData?.map(p => p['Puesto polivalencia'] as string).filter(Boolean) || []))
+            const polyList = Array.from(new Set(polyData?.map((p: any) => p['Puesto polivalencia'] as string).filter(Boolean) || [])) as string[]
             setPolyvalencias(polyList)
 
             // 2. Fetch ALL HILU Records for this employee
@@ -341,9 +340,9 @@ export default function EntrenamientoDetailPage() {
                 .filter(r => r.displayCargo !== cargoTitular && (r as any).fl_completado)
                 .map(r => r.displayCargo);
             
-            const combinedPolies = Array.from(new Set([...polyList, ...automaticPolies]));
+            const combinedPolies = Array.from(new Set([...polyList, ...automaticPolies])).filter((p): p is string => p !== null);
             setPolyvalencias(combinedPolies)
-            setHiluRecords(finalRecords)
+            setHiluRecords(finalRecords as HiluDisplayRecord[])
 
             // Select default cargo (titular or the first available)
             if (!selectedCargo) {
@@ -365,7 +364,7 @@ export default function EntrenamientoDetailPage() {
         } finally {
             setLoading(false)
         }
-    }, [paramId, supabase, router])
+    }, [paramId, supabase, router, selectedCargo])
 
     useEffect(() => {
         fetchEmpleadoData(true) // Initial load shows spinner
@@ -428,6 +427,7 @@ export default function EntrenamientoDetailPage() {
         )
     }
 
+    if (!currentRecord) return null;
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">

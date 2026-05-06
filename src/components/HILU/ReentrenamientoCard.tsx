@@ -266,14 +266,14 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                             <div className="h-8 w-px bg-gray-100" />
                                             <div className="flex flex-col">
                                                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha Inicio</p>
-                                                <p className="text-xs font-black text-gray-600">{new Date(item.fecha_inicio).toLocaleDateString()}</p>
+                                                <p className="text-xs font-black text-gray-600">{item.fecha_inicio ? new Date(item.fecha_inicio).toLocaleDateString() : 'N/A'}</p>
                                             </div>
                                             {item.fecha_fin && (
                                                 <>
                                                     <div className="h-8 w-px bg-gray-100" />
                                                     <div className="flex flex-col">
                                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha Fin</p>
-                                                        <p className="text-xs font-black text-gray-600">{new Date(item.fecha_fin).toLocaleDateString()}</p>
+                                                        <p className="text-xs font-black text-gray-600">{item.fecha_fin ? new Date(item.fecha_fin).toLocaleDateString() : 'N/A'}</p>
                                                     </div>
                                                 </>
                                             )}
@@ -296,7 +296,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                 {item.comentarios && (
                                     <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Comentarios Técnicos</p>
-                                        <p className="text-xs text-gray-600 leading-relaxed italic">"{item.comentarios}"</p>
+                                        <p className="text-xs text-gray-600 leading-relaxed italic">&quot;{item.comentarios}&quot;</p>
                                     </div>
                                 )}
                                 

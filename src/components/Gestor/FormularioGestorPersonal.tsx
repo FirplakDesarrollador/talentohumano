@@ -276,9 +276,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 if (bosses) setExistingJefes(Array.from(new Set((bosses as any[]).map((e: any) => e.jefe).filter(Boolean))).sort() as string[]);
                 if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map(j => j.cargo).filter(Boolean))).sort() as string[]);
                 
-                const { data: polyData } = await supabase.from('polivalencia').select('"Puesto polivalencia"');
+                const { data: polyData } = await (supabase.from('polivalencia') as any).select('"Puesto polivalencia"');
                 if (polyData) {
-                    setAvailablePolivalencias(Array.from(new Set(polyData.map(p => p["Puesto polivalencia"]).filter(Boolean))).sort() as string[]);
+                    setAvailablePolivalencias(Array.from(new Set(polyData.map((p: any) => p["Puesto polivalencia"]).filter(Boolean))).sort() as string[]);
                 }
             } catch (err) {
                 console.error('Error fetching helpers:', err);
@@ -352,9 +352,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     });
 
                     // Fetch employee polyvalences from all possible sources
-                    const { data: empPolys } = await supabase.from('polivalencia').select('"Puesto polivalencia"').eq('Cedula', emp.id.toString());
+                    const { data: empPolys } = await (supabase.from('polivalencia') as any).select('"Puesto polivalencia"').eq('Cedula', emp.id.toString());
                     
-                    const polyListFromTable = empPolys ? empPolys.map(p => p["Puesto polivalencia"]).filter(Boolean) : [];
+                    const polyListFromTable = empPolys ? empPolys.map((p: any) => p["Puesto polivalencia"]).filter(Boolean) : [];
                     const polyListFromJSON = (emp.polivalencia_json && Array.isArray(emp.polivalencia_json)) ? emp.polivalencia_json.filter(Boolean) : [];
                     const polyListFromString = emp.polivalencia ? emp.polivalencia.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
                     
@@ -440,7 +440,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             // Sync Polyvalences
             if (formData.cedula) {
                 // Delete existing ones
-                await supabase.from('polivalencia').delete().eq('Cedula', formData.cedula);
+                await (supabase.from('polivalencia') as any).delete().eq('Cedula', formData.cedula);
                 
                 // Insert new ones
                 if (formData.polivalenciasSeleccionadas.length > 0) {
@@ -448,11 +448,11 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         'Cedula': formData.cedula,
                         'Puesto polivalencia': p
                     }));
-                    await supabase.from('polivalencia').insert(polyToInsert);
+                    await (supabase.from('polivalencia') as any).insert(polyToInsert);
                 }
                 
                 // Also update polivalencia_json and polivalencia string in empleados for redundancy/BI
-                await supabase.from('empleados').update({
+                await (supabase.from('empleados') as any).update({
                     polivalencia_json: formData.polivalenciasSeleccionadas,
                     polivalencia: formData.polivalenciasSeleccionadas.join(' | ')
                 }).eq('id', parseInt(formData.cedula));
@@ -1262,7 +1262,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             </div>
                             <h3 className="text-xl font-black text-[#1e2f3d] uppercase tracking-tight">¿Eliminar Polivalencia?</h3>
                             <p className="text-gray-500 text-sm font-medium leading-relaxed">
-                                Estás a punto de quitar <span className="font-bold text-red-600">"{polyToDelete}"</span> de la lista. Esta acción no se puede deshacer.
+                                Estás a punto de quitar <span className="font-bold text-red-600">&quot;{polyToDelete}&quot;</span> de la lista. Esta acción no se puede deshacer.
                             </p>
                             <div className="flex flex-col w-full gap-3 pt-4">
                                 <Button 

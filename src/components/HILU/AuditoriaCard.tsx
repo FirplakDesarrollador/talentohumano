@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
-import { Plus, Calendar, User, CheckCircle2, XCircle, AlertCircle, Trash2 } from 'lucide-react'
+import { Plus, Calendar, User, CheckCircle2, XCircle, AlertCircle, Trash2, Loader2 } from 'lucide-react'
 import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
 type Auditoria = Database['public']['Tables']['auditorias']['Row']
