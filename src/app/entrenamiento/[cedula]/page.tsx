@@ -5,7 +5,24 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Loader2, User, Briefcase, Building2, MapPin, FileDown, Newspaper, CheckCircle2 } from 'lucide-react'
+import { 
+    Calendar, 
+    User, 
+    Briefcase, 
+    Building2, 
+    TrendingUp, 
+    ChevronRight, 
+    ArrowLeft, 
+    LayoutDashboard,
+    Clock,
+    CheckCircle2,
+    ShieldCheck,
+    Search,
+    Filter,
+    FileDown, 
+    Newspaper,
+    Loader2
+} from 'lucide-react'
 import Image from 'next/image'
 import type { Database } from '@/lib/supabase/types'
 import { HiluComponent } from '@/components/HILU/HiluComponent'
@@ -29,20 +46,128 @@ type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
 type Auditoria = Database['public']['Tables']['auditorias']['Row']
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
 
+// Subcomponente para las tarjetas de cargo
+const CargoCard = ({ record, isActive, onSelect, isTitular }: { record: any, isActive: boolean, onSelect: () => void, isTitular: boolean }) => {
+    const getPhaseStatus = (p: string) => {
+        const prefix = p.toLowerCase();
+        const isDone = record[`f${prefix}_completado`];
+        const progress = record[`f${prefix}_avance`] || 0;
+        if (isDone) return 'done';
+        if (progress > 0) return 'in-progress';
+        return 'pending';
+    };
+
+    const isStageLDone = !!(record as any).fl_completado;
+    const isPolivalencia = !isTitular && isStageLDone;
+    const isHistorial = !isTitular && !isStageLDone;
+
+    return (
+        <div 
+            onClick={onSelect}
+            className={`group relative overflow-hidden rounded-[2.5rem] p-7 transition-all duration-700 cursor-pointer border-2 ${
+                isActive 
+                ? 'bg-[#1e2f3d] border-blue-500 shadow-2xl shadow-blue-500/20 scale-[1.02] z-10' 
+                : 'bg-white border-white shadow-xl hover:shadow-2xl hover:border-blue-100 hover:-translate-y-1'
+            }`}
+        >
+            <div className="relative z-10 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`border-none ${
+                                isTitular 
+                                ? 'bg-blue-500/10 text-blue-400' 
+                                : isPolivalencia 
+                                    ? 'bg-green-500/10 text-green-500' 
+                                    : 'bg-amber-500/10 text-amber-400'
+                            } text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full`}>
+                                {isTitular ? 'Cargo Titular' : isPolivalencia ? 'Polivalencia' : 'Historial'}
+                            </Badge>
+                            {!isTitular && isPolivalencia && (
+                                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                            )}
+                        </div>
+                        <h4 className={`text-xl font-black uppercase tracking-tight leading-tight ${isActive ? 'text-white' : 'text-[#1e2f3d]'}`}>
+                            {record.displayCargo}
+                        </h4>
+                    </div>
+                    <div className={`p-3.5 rounded-2xl transition-all duration-500 ${
+                        isActive 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 rotate-12' 
+                        : 'bg-gray-50 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:rotate-12'
+                    }`}>
+                        {isTitular ? <Building2 className="h-6 w-6" /> : <Briefcase className="h-6 w-6" />}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                    {['H', 'I', 'L', 'U'].map(p => {
+                        const status = getPhaseStatus(p);
+                        return (
+                            <div 
+                                key={p} 
+                                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-500 ${
+                                    status === 'done'
+                                    ? (isActive ? 'bg-green-500 border-green-400 shadow-lg shadow-green-500/20' : 'bg-green-50 border-green-100')
+                                    : status === 'in-progress'
+                                        ? (isActive ? 'bg-blue-400 border-blue-300 animate-pulse' : 'bg-blue-50 border-blue-100')
+                                        : (isActive ? 'bg-white/5 border-white/10 opacity-30' : 'bg-gray-50 border-gray-100')
+                                }`}
+                            >
+                                <span className={`text-lg font-black ${
+                                    isActive 
+                                    ? (status === 'done' || status === 'in-progress' ? 'text-white' : 'text-white/20')
+                                    : (status === 'done' ? 'text-green-600' : status === 'in-progress' ? 'text-blue-600' : 'text-gray-300')
+                                }`}>{p}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {isActive && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3">
+                        <div className="h-1.5 bg-blue-500 rounded-t-full shadow-lg shadow-blue-500/50" />
+                    </div>
+                )}
+            </div>
+            
+            <div className={`absolute -bottom-8 -right-8 opacity-[0.03] transition-all duration-700 group-hover:scale-150 group-hover:rotate-12 ${isActive ? 'text-white' : 'text-[#1e2f3d]'}`}>
+                {isTitular ? <Building2 className="h-40 w-40" /> : <Briefcase className="h-40 w-40" />}
+            </div>
+        </div>
+    );
+};
+
 export default function EntrenamientoDetailPage() {
     const router = useRouter()
     const params = useParams()
     const paramId = params.cedula as string
 
-    const [empleadoData, setEmpleadoData] = useState<(QueryHiluRow & { foto?: string | null }) | null>(null)
-    const [auditorias, setAuditorias] = useState<Auditoria[]>([])
-    const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
+    const [hiluRecords, setHiluRecords] = useState<QueryHiluRow[]>([])
+    const [selectedCargo, setSelectedCargo] = useState<string | null>(null)
+    const [polyvalencias, setPolyvalencias] = useState<string[]>([])
     const [loading, setLoading] = useState(true)
     const [generatingPdf, setGeneratingPdf] = useState(false)
     const [currentUser, setCurrentUser] = useState<{ id?: number; email?: string; nivelCargo?: string } | null>(null)
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
+    const [auditorias, setAuditorias] = useState<Auditoria[]>([])
+    const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
+    const [activeTab, setActiveTab] = useState<'actual' | 'otros'>('actual')
 
     const supabase = useMemo(() => createClient(), [])
+
+    const currentRecord = useMemo(() => {
+        const record = hiluRecords.find(r => (r as any).displayCargo === selectedCargo) || hiluRecords[0];
+        // Sobrescribimos r.cargo con displayCargo para que los componentes hijos (HILU, Auditoria, etc.)
+        // usen el cargo correcto del registro y no el cargo actual del empleado
+        return record ? { ...record, cargo: (record as any).displayCargo } : null;
+    }, [hiluRecords, selectedCargo]);
+
+    const titularCargoName = useMemo(() => {
+        if (!hiluRecords.length) return null;
+        // El cargo titular real es el que viene de la tabla empleados (cargo_titular o cargo)
+        return hiluRecords[0].cargo_titular || hiluRecords[0].cargo;
+    }, [hiluRecords]);
 
     const fetchEmpleadoData = useCallback(async (showLoader = false) => {
         if (!paramId) return
@@ -106,170 +231,130 @@ export default function EntrenamientoDetailPage() {
 
             // 1. Resolve Identity
             let emp: any = null
-
-            // Try first by PK 'id' (most reliable)
-            const { data: empById, error: errorId } = await supabase
-                .from('empleados')
-                .select('*')
-                .eq('id', parsedParam)
-                .maybeSingle()
-
+            const { data: empById } = await supabase.from('empleados').select('*').eq('id', parsedParam).maybeSingle()
             emp = empById
 
-            // Fallback second by 'cedula' column ONLY if not found by ID
-            if (!emp && !errorId) {
-                try {
-                    const { data: empByCedula } = await supabase
-                        .from('empleados')
-                        .select('*')
-                        .eq('cedula', parsedParam)
-                        .maybeSingle()
-                    emp = empByCedula
-                } catch (e) {
-                    console.log('[DEBUG] Error checking optional cedula column:', e)
-                }
+            if (!emp) {
+                const { data: empByCedula } = await supabase.from('empleados').select('*').eq('cedula', parsedParam).maybeSingle()
+                emp = empByCedula
             }
 
             if (!emp) {
-                console.warn('[DEBUG] Employee not found by ID or optional Cedula column:', { paramId, parsedParam, errorId })
                 setLoading(false)
                 return
             }
 
-            console.log('[DEBUG] Identity Fetched Successfully:', Object.keys(emp))
-
-            // In this DB, 'id' is often the Cedula. We ensure resolvedCedula is valid.
             const resolvedId = emp.id
             const resolvedCedula = Number(emp.cedula || emp.id)
-            const cargoStr = emp.cargo || ''
+            const cargoTitular = emp.cargo || ''
 
-            console.log('[DEBUG] Identity Resolved:', {
-                resolvedId,
-                resolvedCedula,
-                cargo: cargoStr
-            })
+            // 1.5 Fetch Polyvalencias
+            const { data: polyData } = await supabase
+                .from('polivalencia')
+                .select('Puesto polivalencia')
+                .eq('Cedula', resolvedCedula.toString())
 
-            // 2. Fetch HILU View Data
-            const { data: hiluDataList, error: hiluError } = await (supabase
+            const polyList = Array.from(new Set(polyData?.map(p => p['Puesto polivalencia'] as string).filter(Boolean) || []))
+            setPolyvalencias(polyList)
+
+            // 2. Fetch ALL HILU Records for this employee
+            const { data: hiluRecordsList, error: hiluError } = await (supabase
                 .from('query_hilu')
                 .select('*')
-                .eq('cedula', resolvedCedula) as any) // Cast as any to avoid bigint/number type clash in query
-                .limit(1)
+                .eq('cedula', resolvedCedula) as any)
 
             if (hiluError) console.error('[DEBUG] HILU Query Error:', hiluError)
 
-            let hiluDataObj = hiluDataList?.[0] as QueryHiluRow | undefined
+            let allRecords = (hiluRecordsList || []) as QueryHiluRow[]
 
-            // HILU Initialization
-            if (!hiluDataObj) {
-                console.log('[DEBUG] Record missing in query_hilu, initializing phases...')
-                const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
+            // 3. Initialize missing phases if needed
+            // We check for the titular cargo and all polyvalences
+            const cargosToInitialize = Array.from(new Set([cargoTitular, ...polyList].filter(Boolean)))
+            let recordsAdded = false
 
-                // Reuse the profile info we already fetched at the start of the function
-                let numericCreatorId = currentUserData.id;
+            for (const cargo of cargosToInitialize) {
+                const existingRecord = allRecords.find(r => r.cargo === cargo)
+                if (!existingRecord) {
+                    console.log(`[DEBUG] Initializing phases for cargo: ${cargo}`)
+                    const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
+                    let numericCreatorId = currentUserData.id
 
-                try {
                     for (const table of phases) {
-                        const { count, error: countErr } = await supabase
+                        const { count } = await supabase
                             .from(table)
                             .select('*', { count: 'exact', head: true })
                             .eq('empleado_id', resolvedId)
+                            .eq('cargo', cargo)
 
-                        if (count === 0 && !countErr) {
-                            // Try super-minimal first, then expand if needed
-                            const payload = {
+                        if (count === 0) {
+                            await (supabase.from(table) as any).insert({
                                 empleado_id: resolvedId,
-                                cargo: (cargoStr || 'N/A').substring(0, 50),
+                                cargo: cargo,
                                 created_by: numericCreatorId,
                                 modified_by: numericCreatorId
-                            }
-                            console.log(`[DEBUG] Initializing ${table}...`)
-
-                            const { error: insErr } = await (supabase.from(table) as any).insert(payload)
-
-                            if (insErr && insErr.code === '23505') {
-                                console.log(`[DEBUG] ${table} already exists, skipping initialization.`)
-                            } else if (insErr) {
-                                console.error(`[DEBUG] Error init ${table}:`, insErr.message)
-                                // Minimal fallback including mandatory audit fields
-                                await (supabase.from(table) as any).insert({
-                                    empleado_id: resolvedId,
-                                    cargo: (cargoStr || 'LIDER').substring(0, 50),
-                                    created_by: numericCreatorId,
-                                    modified_by: numericCreatorId
-                                })
-                            }
+                            })
+                            recordsAdded = true
                         }
                     }
-
-                    // Re-fetch with a slight delay to allow views to propagate if needed (though usually immediate)
-                    const { data: refetchedList } = await (supabase
-                        .from('query_hilu')
-                        .select('*')
-                        .eq('cedula', resolvedCedula) as any)
-
-                    if (refetchedList?.[0]) {
-                        hiluDataObj = refetchedList[0]
-                        console.log('[DEBUG] Record found after initialization')
-                    }
-                } catch (initErr) {
-                    console.error('[DEBUG] Phase initialization exception:', initErr)
                 }
             }
 
-            if (hiluDataObj) {
-                // 3. Final Authorization Check (Plant level)
-                const userPlantas = userProfile?.plantas || getPlantasPermitidas(email)
-                const rawEmpPlanta = hiluDataObj.planta || ''
-                
-                // Normalización robusta de planta
-                const empPlanta = rawEmpPlanta.trim()
-                const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
+            if (recordsAdded) {
+                const { data: refreshedRecords } = await (supabase
+                    .from('query_hilu')
+                    .select('*')
+                    .eq('cedula', resolvedCedula) as any)
+                allRecords = (refreshedRecords || []) as QueryHiluRow[]
+            }
 
-                if (!isAdmin && userPlantas && !hasPlantAccess) {
-                    console.log(`[DEBUG] Access Denied: User ${email} with plants ${JSON.stringify(userPlantas)} cannot access employee in plant ${empPlanta}`)
-                    setIsAuthorized(false)
-                    setLoading(false)
-                    return
-                }
+            // Authorization check based on employee's plant
+            const userPlantas = userProfile?.plantas || getPlantasPermitidas(email)
+            const empPlanta = (emp.planta || '').trim()
+            const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
 
-                setIsAuthorized(true)
-                setEmpleadoData({ ...hiluDataObj, foto: emp.foto || null })
-            } else {
-                console.log('[DEBUG] Falling back to PseudoData')
-                // Even for pseudodata, check plant
-                const userPlantas = userProfile?.plantas || getPlantasPermitidas(email)
-                const rawEmpPlanta = emp.planta || ''
-                const empPlanta = rawEmpPlanta.trim()
-                const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
+            if (!isAdmin && userPlantas && !hasPlantAccess) {
+                setIsAuthorized(false)
+                setLoading(false)
+                return
+            }
 
-                if (!isAdmin && userPlantas && !hasPlantAccess) {
-                    console.log(`[DEBUG] Access Denied (Pseudo): User ${email} with plants ${JSON.stringify(userPlantas)} cannot access employee in plant ${empPlanta}`)
-                    setIsAuthorized(false)
-                    setLoading(false)
-                    return
-                }
+            setIsAuthorized(true)
+            
+            // Map records and inject photo, ensuring UNIQUE CARGOS to avoid React key errors
+            // Use fh_cargo as the primary identifier for the training record's cargo
+            const uniqueCargosSet = new Set();
+            const finalRecords = allRecords
+                .map(r => {
+                    // El cargo real del registro es fh_cargo (o fi_cargo, etc.)
+                    // cargo es el actual de la tabla empleados
+                    const recordCargo = r.fh_cargo || r.cargo;
+                    return { ...r, displayCargo: recordCargo, foto: emp.foto || null };
+                })
+                .filter(r => {
+                    if (uniqueCargosSet.has(r.displayCargo)) return false;
+                    uniqueCargosSet.add(r.displayCargo);
+                    return true;
+                });
+            
+            // 3.5 Calculate combined polyvalencias (Static + Automatic by HILU L completion)
+            const automaticPolies = finalRecords
+                .filter(r => r.displayCargo !== cargoTitular && (r as any).fl_completado)
+                .map(r => r.displayCargo);
+            
+            const combinedPolies = Array.from(new Set([...polyList, ...automaticPolies]));
+            setPolyvalencias(combinedPolies)
+            setHiluRecords(finalRecords)
 
-                setIsAuthorized(true)
-                const pseudo: any = {
-                    cedula: resolvedCedula,
-                    nombreCompleto: emp.nombreCompleto,
-                    cargo: cargoStr,
-                    planta: emp.planta,
-                    jefe: emp.jefe,
-                    activo: emp.activo,
-                    cargo_titular: cargoStr,
-                    foto: emp.foto,
-                    fh_id: null, fi_id: null, fl_id: null, fu_id: null,
-                    fh_completado: false, fi_completado: false, fl_completado: false, fu_completado: false
-                }
-                setEmpleadoData(pseudo as QueryHiluRow)
+            // Select default cargo (titular or the first available)
+            if (!selectedCargo) {
+                const titularRecord = finalRecords.find(r => r.displayCargo === cargoTitular)
+                setSelectedCargo(titularRecord ? cargoTitular : (finalRecords[0]?.displayCargo || cargoTitular))
             }
 
             // 4. Activity Data
             const [{ data: auditData }, { data: reentrenData }] = await Promise.all([
-                supabase.from('auditorias').select('*').eq('empleado_id', resolvedId).order('created_at', { ascending: false }),
-                supabase.from('reentrenamientos').select('*').eq('empleado_id', resolvedId).order('created_at', { ascending: false })
+                supabase.from('auditorias').select('*').eq('empleado_id', resolvedCedula).order('created_at', { ascending: false }),
+                supabase.from('reentrenamientos').select('*').eq('empleado_id', resolvedCedula).order('created_at', { ascending: false })
             ])
 
             setAuditorias(auditData || [])
@@ -311,7 +396,7 @@ export default function EntrenamientoDetailPage() {
                     <CardContent className="text-center space-y-6 pb-10">
                         <p className="text-gray-600 leading-relaxed">
                             No tienes permisos suficientes para visualizar el historial HILU de este colaborador 
-                            perteneciente a la planta <span className="font-bold text-gray-800">{empleadoData?.planta || 'restringida'}</span>.
+                            perteneciente a la planta <span className="font-bold text-gray-800">{hiluRecords[0]?.planta || 'restringida'}</span>.
                         </p>
                         <Button 
                             onClick={() => router.push('/menu')} 
@@ -325,7 +410,7 @@ export default function EntrenamientoDetailPage() {
         )
     }
 
-    if (!empleadoData) {
+    if (hiluRecords.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <Card className="max-w-md w-full border-red-100 shadow-lg">
@@ -342,6 +427,7 @@ export default function EntrenamientoDetailPage() {
             </div>
         )
     }
+
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">
@@ -364,48 +450,62 @@ export default function EntrenamientoDetailPage() {
                         <div className="flex flex-col md:flex-row gap-8 p-10 items-center md:items-start bg-gradient-to-br from-white via-white to-blue-50/30">
                             <div className="relative">
                                 <div className="w-44 h-44 rounded-full overflow-hidden border-8 border-white shadow-xl bg-gray-50 flex items-center justify-center">
-                                    {empleadoData.foto && (empleadoData.foto.startsWith('http') || empleadoData.foto.startsWith('/')) ? (
-                                        <Image src={empleadoData.foto} alt={empleadoData.nombreCompleto} width={180} height={180} className="object-cover h-full w-full transform hover:scale-110 transition-transform duration-500" />
+                                    {currentRecord.foto && (currentRecord.foto.startsWith('http') || currentRecord.foto.startsWith('/')) ? (
+                                        <Image src={currentRecord.foto} alt={currentRecord.nombreCompleto || ''} width={180} height={180} className="object-cover h-full w-full transform hover:scale-110 transition-transform duration-500" />
                                     ) : (
                                         <User className="h-24 w-24 text-gray-200" />
                                     )}
                                 </div>
-                                {empleadoData.activo === false && (
+                                {currentRecord.activo === false && (
                                     <Badge className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-black uppercase text-[10px] px-4 py-1.5 shadow-lg border-none animate-bounce">Inactivo</Badge>
                                 )}
                             </div>
 
                             <div className="flex-1 min-w-0 text-center md:text-left pt-2">
                                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
-                                    <h2 className="text-4xl font-black text-[#1e2f3d] tracking-tight truncate">{empleadoData.nombreCompleto}</h2>
+                                    <h2 className="text-4xl font-black text-[#1e2f3d] tracking-tight truncate">{currentRecord.nombreCompleto}</h2>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><User className="h-3 w-3 text-blue-500" />Identidad</label>
-                                        <p className="text-lg font-bold text-gray-800 tracking-wider">{empleadoData.cedula}</p>
+                                        <p className="text-lg font-bold text-gray-800 tracking-wider">{currentRecord.cedula}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Briefcase className="h-3 w-3 text-blue-500" />Posición</label>
-                                        <p className="text-lg font-bold text-gray-800 truncate" title={empleadoData.cargo || ''}>{empleadoData.cargo || 'POR DEFINIR'}</p>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Briefcase className="h-3 w-3 text-blue-500" />Cargo Titular</label>
+                                        <p className="text-xl font-black text-[#1e2f3d] truncate" title={titularCargoName || ''}>{titularCargoName || 'POR DEFINIR'}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><CheckCircle2 className="h-3 w-3 text-green-500" />Polivalencias</label>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {polyvalencias.length > 0 ? (
+                                                polyvalencias.map((p, idx) => (
+                                                    <Badge key={idx} variant="secondary" className="bg-blue-50 text-blue-700 text-[10px] font-bold py-0.5 px-2">
+                                                        {p}
+                                                    </Badge>
+                                                ))
+                                            ) : (
+                                                <p className="text-xs text-gray-400 italic">Ninguna registrada</p>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Building2 className="h-3 w-3 text-blue-500" />Ubicación</label>
-                                        <p className="text-lg font-bold text-gray-800">{empleadoData.planta || 'CENTRAL'}</p>
+                                        <p className="text-xl font-black text-[#1e2f3d]">{currentRecord.planta || 'CENTRAL'}</p>
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><User className="h-3 w-3 text-blue-500" />Mentoria</label>
-                                        <p className="text-lg font-bold text-gray-800 truncate" title={empleadoData.jefe || ''}>{empleadoData.jefe || 'N/A'}</p>
+                                        <p className="text-xl font-black text-[#1e2f3d] truncate" title={currentRecord.jefe || ''}>{currentRecord.jefe || 'N/A'}</p>
                                     </div>
                                 </div>
 
                                 <div className="mt-10 flex flex-wrap justify-center md:justify-start gap-4">
-                                    <Button onClick={() => router.push(`/novedades-nomina/${empleadoData.cedula}`)} className="bg-[#1e2f3d] hover:bg-[#1e2f3d]/90 text-white flex items-center gap-3 rounded-2xl px-8 py-6 font-bold uppercase text-xs shadow-xl transition-all hover:-translate-y-1 active:scale-95">
+                                    <Button onClick={() => router.push(`/novedades-nomina/${currentRecord.cedula}`)} className="bg-[#1e2f3d] hover:bg-[#1e2f3d]/90 text-white flex items-center gap-3 rounded-2xl px-8 py-6 font-bold uppercase text-xs shadow-xl transition-all hover:-translate-y-1 active:scale-95">
                                         <Newspaper className="h-5 w-5" />Registrar Novedad
                                     </Button>
                                     <Button onClick={async () => {
                                         setGeneratingPdf(true);
-                                        try { await generateTrainingCertificatePDF(empleadoData); toast.success('Certificado generado correctamente'); }
+                                        try { await generateTrainingCertificatePDF(currentRecord); toast.success('Certificado generado correctamente'); }
                                         catch (e) { console.error(e); toast.error('Error al generar el certificado'); }
                                         finally { setGeneratingPdf(false); }
                                     }} disabled={generatingPdf} className="bg-white hover:bg-gray-50 text-[#1e2f3d] border-2 border-[#1e2f3d]/10 flex items-center gap-3 rounded-2xl px-8 py-6 font-bold uppercase text-xs shadow-lg transition-all hover:-translate-y-1 active:scale-95">
@@ -426,20 +526,20 @@ export default function EntrenamientoDetailPage() {
                             <div className="flex gap-4 z-10 overflow-x-auto max-w-full py-2 px-1">
                                 {['H', 'I', 'L', 'U'].map(f => {
                                     const fieldPrefix = f.toLowerCase();
-                                    const dbCompletado = (empleadoData as any)[`f${fieldPrefix}_completado`];
+                                    const dbCompletado = (currentRecord as any)[`f${fieldPrefix}_completado`];
                                     
                                     // Robust check for Stage H
                                     let isStageDone = dbCompletado;
                                     if (f === 'H' && !isStageDone) {
                                         isStageDone = !!(
-                                            empleadoData.fh_induccion_th && 
-                                            empleadoData.fh_aros_seguridad && 
-                                            empleadoData.fh_induccion_planta && 
-                                            empleadoData.fh_puesto_piloto && 
-                                            empleadoData.fh_observacion_puesto && 
-                                            empleadoData.fh_explicacion_puesto &&
-                                            empleadoData.fh_firma_empleado &&
-                                            empleadoData.fh_firma_supervisor
+                                            currentRecord.fh_induccion_th && 
+                                            currentRecord.fh_aros_seguridad && 
+                                            currentRecord.fh_induccion_planta && 
+                                            currentRecord.fh_puesto_piloto && 
+                                            currentRecord.fh_observacion_puesto && 
+                                            currentRecord.fh_explicacion_puesto &&
+                                            currentRecord.fh_firma_empleado &&
+                                            currentRecord.fh_firma_supervisor
                                         );
                                     }
 
@@ -461,27 +561,136 @@ export default function EntrenamientoDetailPage() {
                         </div>
                     </CardContent>
                 </Card>
+                <div className="space-y-8">
+                    {/* TABS SWITCHER CUSTOM */}
+                    <div className="flex justify-center">
+                        <div className="inline-flex bg-white/50 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-xl ring-1 ring-black/[0.03]">
+                            <button
+                                onClick={() => setActiveTab('actual')}
+                                className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${
+                                    activeTab === 'actual'
+                                    ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                    : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                }`}
+                            >
+                                <LayoutDashboard className={`h-4 w-4 ${activeTab === 'actual' ? 'text-blue-400' : ''}`} />
+                                HILU Cargo Actual
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('otros')}
+                                className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${
+                                    activeTab === 'otros'
+                                    ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                    : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                }`}
+                            >
+                                <Clock className={`h-4 w-4 ${activeTab === 'otros' ? 'text-amber-400' : ''}`} />
+                                HILU Otros Cargos
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* CONTENIDO DE TABS */}
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        {activeTab === 'actual' ? (
+                            <div className="space-y-6">
+                                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">Formación Principal</p>
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="text-3xl font-black text-[#1e2f3d] uppercase tracking-tight">Cargo Titular:</h3>
+                                            <span className="text-3xl font-black text-blue-600 uppercase tracking-tight">{titularCargoName || 'POR DEFINIR'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {hiluRecords
+                                        .filter(r => (r as any).displayCargo === titularCargoName)
+                                        .map((record) => (
+                                            <CargoCard 
+                                                key={(record as any).displayCargo} 
+                                                record={record} 
+                                                isActive={selectedCargo === (record as any).displayCargo}
+                                                isTitular={true}
+                                                onSelect={() => setSelectedCargo((record as any).displayCargo)}
+                                            />
+                                        ))
+                                    }
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em]">Historial y Polivalencia</p>
+                                        <h3 className="text-3xl font-black text-[#1e2f3d] uppercase tracking-tight">Otros Desempeños</h3>
+                                    </div>
+                                    
+                                    <div className="hidden xl:flex items-center gap-4 bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white shadow-sm ring-1 ring-black/[0.03]">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-3 w-3 rounded-full bg-green-500" />
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Completado</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-3 w-3 rounded-full bg-blue-400 animate-pulse" />
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">En Curso</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {hiluRecords.filter(r => (r as any).displayCargo !== titularCargoName).length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {hiluRecords
+                                            .filter(r => (r as any).displayCargo !== titularCargoName)
+                                            .map((record) => (
+                                                <CargoCard 
+                                                    key={(record as any).displayCargo} 
+                                                    record={record} 
+                                                    isActive={selectedCargo === (record as any).displayCargo}
+                                                    isTitular={false}
+                                                    onSelect={() => setSelectedCargo((record as any).displayCargo)}
+                                                />
+                                            ))
+                                        }
+                                    </div>
+                                ) : (
+                                    <div className="bg-white/50 border-2 border-dashed border-gray-200 rounded-[3rem] p-20 text-center space-y-4">
+                                        <div className="inline-flex p-6 rounded-full bg-gray-100 text-gray-300">
+                                            <Briefcase className="h-12 w-12" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="text-xl font-black text-gray-400 uppercase">Sin otros registros</h4>
+                                            <p className="text-sm text-gray-400">Este colaborador no cuenta con polivalencias o historiales previos.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Training Details Section */}
                 <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
                     <HiluComponent
-                        empleado={empleadoData}
+                        key={currentRecord.cargo || 'default'}
+                        empleado={currentRecord}
                         onUpdate={fetchEmpleadoData}
                         currentUser={currentUser}
                     />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
                         <AuditoriaCard
-                            empleadoId={empleadoData.cedula}
-                            cargo={empleadoData.cargo || 'N/A'}
+                            empleadoId={currentRecord.cedula}
+                            cargo={currentRecord.cargo || 'N/A'}
                             auditorias={auditorias}
                             onUpdate={fetchEmpleadoData}
                             currentUser={currentUser}
                         />
 
                         <ReentrenamientoCard
-                            empleadoId={empleadoData.cedula}
-                            cargo={empleadoData.cargo || 'N/A'}
+                            empleadoId={currentRecord.cedula}
+                            cargo={currentRecord.cargo || 'N/A'}
                             reentrenamientos={reentrenamientos}
                             onUpdate={fetchEmpleadoData}
                             currentUser={currentUser}

@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
-import { Plus, RotateCcw, Calendar, CheckCircle, Clock } from 'lucide-react'
+import { Plus, RotateCcw, Calendar, CheckCircle, Clock, Trash2, Loader2, AlertCircle } from 'lucide-react'
 import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
+import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
 
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
 
@@ -24,6 +26,11 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     const [isAdding, setIsAdding] = useState(false)
     const [loading, setLoading] = useState(false)
     const supabase = createClient()
+
+    const filteredReentrenamientos = useMemo(() => 
+        reentrenamientos.filter(r => r.cargo === cargo),
+        [reentrenamientos, cargo]
+    )
 
     // Form states
     const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0])
@@ -77,13 +84,42 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
 
             if (error) throw error
 
-            alert('Reentrenamiento registrado correctamente')
+            toast.success('Reentrenamiento registrado correctamente')
             setIsAdding(false)
             resetForm()
             onUpdate()
         } catch (error) {
             console.error('Error adding retraining:', error)
-            alert('Error al registrar reentrenamiento')
+            toast.error('Error al registrar reentrenamiento')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleDeleteReentrenamiento = async (id: number) => {
+        const isConfirmed = window.confirm(
+            '⚠️ AVISO DE SEGURIDAD\n\n' +
+            '¿Desea eliminar este registro de REENTRENAMIENTO?\n\n' +
+            'Esta información es crítica para el seguimiento de la capacitación técnica. ' +
+            'Si continúa, el dato se borrará definitivamente.'
+        );
+
+        if (!isConfirmed) return;
+
+        setLoading(true)
+        try {
+            const { error } = await supabase
+                .from('reentrenamientos')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+
+            toast.success('Registro eliminado')
+            onUpdate()
+        } catch (error) {
+            console.error('Error deleting retraining:', error)
+            toast.error('Error al eliminar el registro')
         } finally {
             setLoading(false)
         }
@@ -98,9 +134,9 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     }
 
     return (
-        <Card className="shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gray-50 border-b">
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
+        <Card className="shadow-md border-none rounded-2xl overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 bg-gray-50/50 border-b">
+                <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2 text-[#1e2f3d]">
                     <RotateCcw className="h-5 w-5 text-orange-600" />
                     Reentrenamientos
                 </CardTitle>
@@ -109,68 +145,79 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                         variant="outline"
                         size="sm"
                         onClick={() => setIsAdding(!isAdding)}
-                        className={isAdding ? 'bg-red-50 text-red-600 border-red-200' : ''}
+                        className={`font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all ${
+                            isAdding ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-[#1e2f3d] border-gray-200 hover:bg-gray-50'
+                        }`}
                     >
-                        {isAdding ? 'Cancelar' : <><Plus className="h-4 w-4 mr-2" /> Nuevo Registro</>}
+                        {isAdding ? 'Cancelar' : <><Plus className="h-3 w-3 mr-2" /> Nuevo Registro</>}
                     </Button>
                 )}
             </CardHeader>
             <CardContent className="p-6">
                 {isAdding && (
-                    <form onSubmit={handleAddReentrenamiento} className="mb-8 p-4 border rounded-lg bg-orange-50/50 space-y-4">
-                        <h4 className="font-semibold text-orange-900 mb-2">Registrar Reentrenamiento</h4>
+                    <form onSubmit={handleAddReentrenamiento} className="mb-8 p-6 border-2 border-orange-100 rounded-2xl bg-orange-50/30 space-y-4 animate-in slide-in-from-top-4 duration-300">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="h-2 w-2 rounded-full bg-orange-500" />
+                            <h4 className="font-black text-[10px] uppercase tracking-widest text-orange-900">Registrar Reentrenamiento</h4>
+                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="fechaInicio">Fecha Inicio</Label>
+                                <Label htmlFor="fechaInicio" className="text-[10px] font-black uppercase text-gray-400">Fecha Inicio</Label>
                                 <Input
                                     id="fechaInicio"
                                     type="date"
                                     required
                                     value={fechaInicio}
                                     onChange={(e) => setFechaInicio(e.target.value)}
+                                    className="rounded-xl border-gray-200"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="fechaFin">Fecha Fin (Opcional)</Label>
+                                <Label htmlFor="fechaFin" className="text-[10px] font-black uppercase text-gray-400">Fecha Fin (Opcional)</Label>
                                 <Input
                                     id="fechaFin"
                                     type="date"
                                     value={fechaFin}
                                     onChange={(e) => setFechaFin(e.target.value)}
+                                    className="rounded-xl border-gray-200"
                                 />
                             </div>
 
                             <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="motivo">Motivo</Label>
+                                <Label htmlFor="motivo" className="text-[10px] font-black uppercase text-gray-400">Motivo</Label>
                                 <Input
                                     id="motivo"
                                     required
                                     placeholder="Ej: Cambio de estándar, Problema de calidad..."
                                     value={motivo}
                                     onChange={(e) => setMotivo(e.target.value)}
+                                    className="rounded-xl border-gray-200"
                                 />
                             </div>
 
                             <div className="md:col-span-2 space-y-2">
-                                <Label className="flex items-center space-x-2 cursor-pointer">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-10 h-6 rounded-full p-1 transition-colors ${completado ? 'bg-orange-500' : 'bg-gray-200'}`}>
+                                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${completado ? 'translate-x-4' : 'translate-x-0'}`} />
+                                    </div>
                                     <input
                                         type="checkbox"
                                         checked={completado}
                                         onChange={(e) => setCompletado(e.target.checked)}
-                                        className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                        className="hidden"
                                     />
-                                    <span className="font-medium text-gray-700">Reentrenamiento Completado</span>
-                                </Label>
+                                    <span className="text-xs font-black uppercase tracking-wider text-gray-600 group-hover:text-gray-900 transition-colors">Reentrenamiento Completado</span>
+                                </label>
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="comentarios">Comentarios</Label>
+                            <Label htmlFor="comentarios" className="text-[10px] font-black uppercase text-gray-400">Comentarios</Label>
                             <textarea
                                 id="comentarios"
-                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-[100px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 transition-all"
                                 placeholder="Observaciones adicionales..."
                                 value={comentarios}
                                 onChange={(e) => setComentarios(e.target.value)}
@@ -178,51 +225,83 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                         </div>
 
                         <div className="flex justify-end pt-2">
-                            <Button type="submit" disabled={loading}>
-                                {loading ? 'Guardando...' : 'Guardar Registro'}
+                            <Button type="submit" disabled={loading} className="bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest px-8 py-6 rounded-xl shadow-lg transition-all active:scale-95">
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Registro'}
                             </Button>
                         </div>
                     </form>
                 )}
 
-                <div className="space-y-4">
-                    {reentrenamientos.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed">
-                            <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                            <p>No hay reentrenamientos registrados</p>
+                <div className="space-y-3">
+                    {filteredReentrenamientos.length === 0 ? (
+                        <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-[2rem] bg-gray-50/50">
+                            <Clock className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Sin reentrenamientos</p>
                         </div>
                     ) : (
-                        reentrenamientos.map((item) => (
-                            <div key={item.id} className="p-4 rounded-lg border bg-white flex flex-col sm:flex-row gap-4">
-                                <div className="flex-1">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                                            {item.motivo}
-                                        </h3>
-                                        {item.completado ? (
-                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-medium border border-green-200">
-                                                <CheckCircle className="h-3 w-3" /> Completado
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium border border-yellow-200">
-                                                <Clock className="h-3 w-3" /> Pendiente
-                                            </span>
-                                        )}
+                        filteredReentrenamientos.map((item) => (
+                            <div
+                                key={item.id}
+                                className="group relative bg-white border border-gray-100 p-5 rounded-[2rem] hover:shadow-xl transition-all duration-300 overflow-hidden"
+                            >
+                                <div className="flex justify-between items-start relative z-10">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${item.completado ? 'bg-green-50 text-green-500' : 'bg-orange-50 text-orange-500'}`}>
+                                                {item.completado ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Motivo de Formación</p>
+                                                <h4 className="text-sm font-black text-[#1e2f3d] uppercase tracking-tight">{item.motivo}</h4>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Estado</p>
+                                                <Badge className={`${item.completado ? 'bg-green-500' : 'bg-orange-500'} text-white border-none px-3 py-0.5 rounded-full text-[10px] font-black`}>
+                                                    {item.completado ? 'COMPLETADO' : 'EN CURSO'}
+                                                </Badge>
+                                            </div>
+                                            <div className="h-8 w-px bg-gray-100" />
+                                            <div className="flex flex-col">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha Inicio</p>
+                                                <p className="text-xs font-black text-gray-600">{new Date(item.fecha_inicio).toLocaleDateString()}</p>
+                                            </div>
+                                            {item.fecha_fin && (
+                                                <>
+                                                    <div className="h-8 w-px bg-gray-100" />
+                                                    <div className="flex flex-col">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha Fin</p>
+                                                        <p className="text-xs font-black text-gray-600">{new Date(item.fecha_fin).toLocaleDateString()}</p>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="text-sm text-gray-600 mb-2">
-                                        <span className="font-medium">Inicio:</span> {new Date(item.fecha_inicio || '').toLocaleDateString()}
-                                        {item.fecha_fin && (
-                                            <>
-                                                <span className="mx-2 text-gray-300">|</span>
-                                                <span className="font-medium">Fin:</span> {new Date(item.fecha_fin).toLocaleDateString()}
-                                            </>
-                                        )}
+
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-10 w-10 rounded-2xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                            onClick={() => handleDeleteReentrenamiento(item.id)}
+                                            disabled={loading}
+                                        >
+                                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                        </Button>
                                     </div>
-                                    {item.comentarios && (
-                                        <p className="text-sm text-gray-700 mt-2 bg-gray-50 p-2 rounded italic">
-                                            {item.comentarios}
-                                        </p>
-                                    )}
+                                </div>
+
+                                {item.comentarios && (
+                                    <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Comentarios Técnicos</p>
+                                        <p className="text-xs text-gray-600 leading-relaxed italic">"{item.comentarios}"</p>
+                                    </div>
+                                )}
+                                
+                                <div className="absolute -bottom-4 -right-4 text-gray-50 opacity-20 transform -rotate-12">
+                                    <RotateCcw className="h-24 w-24" />
                                 </div>
                             </div>
                         ))
@@ -232,3 +311,4 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
         </Card>
     )
 }
+
