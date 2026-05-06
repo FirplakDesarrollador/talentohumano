@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next') ?? '/'
 
   if (code) {
-    const response = NextResponse.next()
+    const response = NextResponse.redirect(new URL(next, request.url))
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,9 +18,6 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            )
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)
             )
@@ -28,14 +25,11 @@ export async function GET(request: NextRequest) {
         },
       }
     )
+    
     const { error } = await supabase.auth.exchangeCodeForSession(code)
+    
     if (!error) {
-      const redirectResponse = NextResponse.redirect(new URL(next, request.url))
-      // Copiamos las cookies de la respuesta base a la de redirección asegurando que se pasen todas las opciones
-      response.cookies.getAll().forEach((cookie) => {
-        redirectResponse.cookies.set(cookie)
-      })
-      return redirectResponse
+      return response
     }
   }
 
