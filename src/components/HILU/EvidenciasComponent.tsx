@@ -51,9 +51,17 @@ export function EvidenciasComponent({ evidencias = [], onEvidenciasChange, readO
     }
 
     const handleRemove = (index: number) => {
-        const newEvidencias = [...evidencias]
-        newEvidencias.splice(index, 1)
-        onEvidenciasChange(newEvidencias)
+        const isConfirmed = window.confirm(
+            '🗑️ ELIMINAR EVIDENCIA\n\n' +
+            '¿Está seguro de que desea quitar este archivo adjunto?\n\n' +
+            'Esta acción no eliminará el archivo del servidor inmediatamente, pero lo desvinculará de este registro.'
+        );
+
+        if (isConfirmed) {
+            const newEvidencias = [...evidencias]
+            newEvidencias.splice(index, 1)
+            onEvidenciasChange(newEvidencias)
+        }
     }
 
     return (
