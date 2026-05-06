@@ -31,7 +31,8 @@ import {
     Baby,
     Users,
     Upload,
-    AlertCircle
+    AlertCircle,
+    X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
@@ -67,9 +68,27 @@ const NIVELES_CARGO = [
 const NIVELES_EDUCATIVOS = ['Primaria', 'Secundaria', 'Técnico', 'Tecnólogo', 'Profesional', 'Especialización', 'Maestría', 'Doctorado'];
 const CONSUMO_OPTIONS = ['Nunca', 'Ocasionalmente', 'Siempre'];
 const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-const TALLAS_PANTALON = ['28', '30', '32', '34', '36', '38', '40', '42'];
-const TIPOS_CAMISA = ['Polo', 'Camiseta', 'Camisa Formal'];
-const TIPOS_PANTALON = ['Jean', 'Cargo', 'Formal'];
+const TALLAS_PANTALON = ['6', '8', '10', '12', '14', '16', '18', '28', '30', '32', '34', '36', '38', '40', '42'];
+const TIPOS_CAMISA = [
+    'Camiseta cuello redondo gris',
+    'Camiseta oxford azul hombre',
+    'Camiseta oxford azul mujer',
+    'Camiseta oxford blanca "be home" hombre',
+    'Camiseta oxford blanca "be home" mujer',
+    'Camiseta oxford blanca hombre',
+    'Camiseta oxford blanca mujer',
+    'Camiseta tipo polo azul hombre',
+    'Camiseta tipo polo gris hombre',
+    'Camiseta tipo polo gris mujer',
+    'Camisa drill azul oscuro',
+    'Camisa drill caqui',
+    'Camisa drill negra',
+    'Camisa tipopolo azul mujer',
+    'Camisa cuello redondo roja',
+    'Cuello redondo beis',
+    'Delantal'
+];
+const TIPOS_PANTALON = ['Jean clasico indigo', 'Pantalon beige hombre', 'Pantalon beige mujer'];
 const SEXOS = ['Masculino', 'Femenino'];
 
 // Fixed Section Component
@@ -188,7 +207,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         hijo4_nombre: '', hijo4_nacimiento: '', hijo4_sexo: '',
         // Education
         nivel_educativo: '',
-        ultimo_grado: '',
         actualmente_estudiando: false,
         que_estudia: '',
         // Health
@@ -209,7 +227,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         talla_camisa: '',
         tipo_pantalon: '',
         talla_pantalon: '',
-        talla_chaleco: ''
+        talla_chaleco: '',
+        polivalenciasSeleccionadas: [] as string[]
     });
 
     const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,6 +264,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     // Helper State for Dropdowns
     const [existingJefes, setExistingJefes] = useState<string[]>([]);
     const [existingCargos, setExistingCargos] = useState<string[]>([]);
+    const [availablePolivalencias, setAvailablePolivalencias] = useState<string[]>([]);
+    const [polyToDelete, setPolyToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchHelpers = async () => {
@@ -254,6 +275,11 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
                 if (bosses) setExistingJefes(Array.from(new Set((bosses as any[]).map((e: any) => e.jefe).filter(Boolean))).sort() as string[]);
                 if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map(j => j.cargo).filter(Boolean))).sort() as string[]);
+                
+                const { data: polyData } = await (supabase.from('polivalencia') as any).select('"Puesto polivalencia"');
+                if (polyData) {
+                    setAvailablePolivalencias(Array.from(new Set(polyData.map((p: any) => p["Puesto polivalencia"]).filter(Boolean))).sort() as string[]);
+                }
             } catch (err) {
                 console.error('Error fetching helpers:', err);
             }
@@ -304,7 +330,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         hijo3_nombre: emp.nombre_hijo3 || '', hijo3_nacimiento: emp.fecha_nacimiento_hijo3 || '', hijo3_sexo: emp.sexo_hijo3 || '',
                         hijo4_nombre: emp.nombre_hijo4 || '', hijo4_nacimiento: emp.fecha_nacimiento_hijo4 || '', hijo4_sexo: emp.sexo_hijo4 || '',
                         nivel_educativo: emp.nivel_educativo || '',
-                        ultimo_grado: emp.ultimo_grado_cursado || '',
                         actualmente_estudiando: emp.estudia_actualmente ?? false,
                         que_estudia: emp.queestudia || '',
                         tiene_recomendaciones_medicas: !!emp.recomendaciones_medicas,
@@ -322,8 +347,22 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         talla_camisa: emp.talla_camisa || '',
                         tipo_pantalon: emp.pantalon || '',
                         talla_pantalon: emp.talla_pantalon || '',
-                        talla_chaleco: emp.chaleco || ''
+                        talla_chaleco: emp.chaleco || '',
+                        polivalenciasSeleccionadas: []
                     });
+
+                    // Fetch employee polyvalences from all possible sources
+                    const { data: empPolys } = await (supabase.from('polivalencia') as any).select('"Puesto polivalencia"').eq('Cedula', emp.id.toString());
+                    
+                    const polyListFromTable = empPolys ? empPolys.map((p: any) => p["Puesto polivalencia"]).filter(Boolean) : [];
+                    const polyListFromJSON = (emp.polivalencia_json && Array.isArray(emp.polivalencia_json)) ? emp.polivalencia_json.filter(Boolean) : [];
+                    const polyListFromString = emp.polivalencia ? emp.polivalencia.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
+                    
+                    // Merge all sources and remove duplicates
+                    const combinedPolys = Array.from(new Set([...polyListFromTable, ...polyListFromJSON, ...polyListFromString]));
+                    
+                    setFormData(prev => ({ ...prev, polivalenciasSeleccionadas: combinedPolys }));
+
                     if (!emp.activo) {
                         const { data: rd } = await (supabase as any).from('retiro_personal').select('*').eq('empleado_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle();
                         if (rd) {
@@ -369,7 +408,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 nombre_hijo3: formData.hijo3_nombre || null, fecha_nacimiento_hijo3: formData.hijo3_nacimiento || null, sexo_hijo3: formData.hijo3_sexo || null,
                 nombre_hijo4: formData.hijo4_nombre || null, fecha_nacimiento_hijo4: formData.hijo4_nacimiento || null, sexo_hijo4: formData.hijo4_sexo || null,
                 nivel_educativo: formData.nivel_educativo || null,
-                ultimo_grado_cursado: formData.ultimo_grado || null,
                 estudia_actualmente: formData.actualmente_estudiando,
                 queestudia: formData.que_estudia || null,
                 recomendaciones_medicas: formData.recomendaciones_medicas || null,
@@ -397,6 +435,27 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 const { error } = await (supabase as any).from('empleados').insert([{ ...dataToSave, created: new Date().toISOString() }]);
                 if (error) throw error;
                 toast.success('Empleado creado');
+            }
+
+            // Sync Polyvalences
+            if (formData.cedula) {
+                // Delete existing ones
+                await (supabase.from('polivalencia') as any).delete().eq('Cedula', formData.cedula);
+                
+                // Insert new ones
+                if (formData.polivalenciasSeleccionadas.length > 0) {
+                    const polyToInsert = formData.polivalenciasSeleccionadas.map(p => ({
+                        'Cedula': formData.cedula,
+                        'Puesto polivalencia': p
+                    }));
+                    await (supabase.from('polivalencia') as any).insert(polyToInsert);
+                }
+                
+                // Also update polivalencia_json and polivalencia string in empleados for redundancy/BI
+                await (supabase.from('empleados') as any).update({
+                    polivalencia_json: formData.polivalenciasSeleccionadas,
+                    polivalencia: formData.polivalenciasSeleccionadas.join(' | ')
+                }).eq('id', parseInt(formData.cedula));
             }
 
             // Save retirement data if employee is inactive
@@ -509,6 +568,75 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         <Input list="cargos-list" value={formData.cargo} onChange={(e) => updateField('cargo', e.target.value)} className={inputClass} />
                         <datalist id="cargos-list">{existingCargos.map(c => <option key={c} value={c} />)}</datalist>
                     </FormField>
+
+                    <div className="md:col-span-2 space-y-4">
+                        <FormField label="Polivalencias (Múltiples)" icon={<Users className="h-3 w-3" />}>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {formData.polivalenciasSeleccionadas.map((poly) => (
+                                    <div key={poly} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border border-blue-100 shadow-sm animate-in zoom-in-95">
+                                        {poly}
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setPolyToDelete(poly)}
+                                            className="hover:bg-red-100 hover:text-red-600 rounded-full p-0.5 transition-all"
+                                            title="Eliminar"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {formData.polivalenciasSeleccionadas.length === 0 && (
+                                    <p className="text-[10px] text-gray-400 font-medium italic">No se han seleccionado polivalencias</p>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <Input 
+                                    className={inputClass}
+                                    placeholder="Escriba o seleccione para añadir..."
+                                    list="polivalencias-options"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const val = (e.target as HTMLInputElement).value.trim();
+                                            if (val && !formData.polivalenciasSeleccionadas.includes(val)) {
+                                                updateField('polivalenciasSeleccionadas', [...formData.polivalenciasSeleccionadas, val]);
+                                                (e.target as HTMLInputElement).value = '';
+                                            }
+                                        }
+                                    }}
+                                    onChange={(e) => {
+                                        const val = e.target.value.trim();
+                                        // If the value matches an option exactly, add it
+                                        if (availablePolivalencias.includes(val) && !formData.polivalenciasSeleccionadas.includes(val)) {
+                                            updateField('polivalenciasSeleccionadas', [...formData.polivalenciasSeleccionadas, val]);
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                />
+                                <datalist id="polivalencias-options">
+                                    {availablePolivalencias
+                                        .filter(p => !formData.polivalenciasSeleccionadas.includes(p))
+                                        .map(p => <option key={p} value={p} />)
+                                    }
+                                </datalist>
+                                <Button 
+                                    type="button" 
+                                    onClick={(e) => {
+                                        const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                        const val = input.value.trim();
+                                        if (val && !formData.polivalenciasSeleccionadas.includes(val)) {
+                                            updateField('polivalenciasSeleccionadas', [...formData.polivalenciasSeleccionadas, val]);
+                                            input.value = '';
+                                        }
+                                    }}
+                                    className="h-11 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 border-none shadow-none"
+                                >
+                                    <UserPlus className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </FormField>
+                    </div>
+
                     <FormField label="Planta / Área" icon={<Building2 className="h-3 w-3" />}>
                         <select value={formData.planta} onChange={(e) => updateField('planta', e.target.value)} className={selectClass}>
                             <option value="">Seleccione planta</option>
@@ -543,6 +671,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             {NIVELES_CARGO.map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                     </FormField>
+
                 </div>
 
                 <div className="mt-8 pt-8 border-t border-gray-100 grid grid-cols-1 gap-6">
@@ -785,16 +914,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                 <option key={nivel} value={nivel}>{nivel}</option>
                             ))}
                         </select>
-                    </FormField>
-
-                    <FormField label="Último Grado Cursado">
-                        <Input
-                            value={formData.ultimo_grado}
-                            onChange={(e) => updateField('ultimo_grado', e.target.value)}
-                            placeholder="Ej: 11°, Semestre 5"
-                            className={inputClass}
-                            disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}
-                        />
                     </FormField>
                 </div>
 
@@ -1127,6 +1246,43 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     }}
                                 >
                                     Confirmar Retiro
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Custom Delete Confirmation Modal */}
+            {polyToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-300">
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-2">
+                                <AlertCircle className="h-8 w-8 text-red-500" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#1e2f3d] uppercase tracking-tight">¿Eliminar Polivalencia?</h3>
+                            <p className="text-gray-500 text-sm font-medium leading-relaxed">
+                                Estás a punto de quitar <span className="font-bold text-red-600">&quot;{polyToDelete}&quot;</span> de la lista. Esta acción no se puede deshacer.
+                            </p>
+                            <div className="flex flex-col w-full gap-3 pt-4">
+                                <Button 
+                                    type="button" 
+                                    onClick={() => {
+                                        updateField('polivalenciasSeleccionadas', formData.polivalenciasSeleccionadas.filter(p => p !== polyToDelete));
+                                        setPolyToDelete(null);
+                                        toast.success('Polivalencia eliminada');
+                                    }}
+                                    className="w-full h-12 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all active:scale-95"
+                                >
+                                    Sí, eliminar
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={() => setPolyToDelete(null)}
+                                    className="w-full h-12 rounded-xl font-bold border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
+                                >
+                                    Cancelar
                                 </Button>
                             </div>
                         </div>
