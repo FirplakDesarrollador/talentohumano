@@ -42,6 +42,13 @@ export async function updateSession(request: NextRequest) {
     const publicRoutes = ['/login', '/auth/callback', '/auth/forgot-password', '/login/newPassword', '/register']
     const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
+    // Fix for broken reset password links that double the /newPassword path
+    if (request.nextUrl.pathname === '/login/newPassword/newPassword') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login/newPassword'
+        return NextResponse.redirect(url)
+    }
+
     if (!user && !isPublicRoute) {
         // no user, potentially respond by redirecting the user to the login page
         const url = request.nextUrl.clone()
