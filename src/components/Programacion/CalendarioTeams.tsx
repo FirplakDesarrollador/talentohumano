@@ -1,0 +1,217 @@
+'use client'
+
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { 
+    ChevronLeft, 
+    ChevronRight, 
+    Clock, 
+    User, 
+    MapPin, 
+    Calendar as CalendarIcon,
+    Loader2,
+    Plus
+} from 'lucide-react';
+import { 
+    format, 
+    addDays, 
+    startOfWeek, 
+    eachDayOfInterval, 
+    isSameDay, 
+    addWeeks, 
+    subWeeks,
+    parseISO,
+    isToday
+} from 'date-fns';
+import { es } from 'date-fns/locale';
+
+interface CalendarioTeamsProps {
+    onEventClick?: (event: any) => void;
+}
+
+export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick }) => {
+    const supabase = React.useMemo(() => createClient(), []);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [events, setEvents] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekEnd = addDays(weekStart, 6);
+    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+    const hours = Array.from({ length: 13 }, (_, i) => i + 7); // 7 AM to 7 PM
+
+    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+
+    useEffect(() => {
+        const fetchEvents = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('hilu_programacion')
+                    .select('*, empleados(nombreCompleto)')
+                    .gte('fecha_programada', weekStartStr)
+                    .lte('fecha_programada', weekEndStr);
+
+                if (error) throw error;
+                setEvents(data || []);
+            } catch (err) {
+                console.error('Error fetching calendar events:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEvents();
+    }, [weekStartStr, weekEndStr, supabase]);
+
+    const getEventsForDayAndHour = (day: Date, hour: number) => {
+        return events.filter(event => {
+            const eventDate = parseISO(event.fecha_programada);
+            if (!isSameDay(eventDate, day)) return false;
+            
+            const startHour = parseInt(event.hora_inicio.split(':')[0]);
+            return startHour === hour;
+        });
+    };
+
+    const nextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+    const prevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
+    const goToday = () => setCurrentDate(new Date());
+
+    return (
+        <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 overflow-hidden flex flex-col h-[800px]">
+            {/* Header */}
+            <div className="px-8 py-6 border-bottom border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="flex items-center gap-4">
+                    <div className="bg-[#1e2f3d] p-3 rounded-2xl text-white shadow-lg shadow-blue-900/20">
+                        <CalendarIcon className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">Programación Semanal</h2>
+                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                            {format(weekStart, "dd 'de' MMMM", { locale: es })} - {format(weekEnd, "dd 'de' MMMM, yyyy", { locale: es })}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+                    <button 
+                        onClick={prevWeek}
+                        className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-600"
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button 
+                        onClick={goToday}
+                        className="px-4 py-2 text-sm font-bold text-[#1e2f3d] hover:bg-gray-50 rounded-xl transition-colors"
+                    >
+                        HOY
+                    </button>
+                    <button 
+                        onClick={nextWeek}
+                        className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-600"
+                    >
+                        <ChevronRight className="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="flex-1 overflow-auto relative">
+                {loading && (
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
+                        <Loader2 className="h-10 w-10 text-[#1e2f3d] animate-spin" />
+                    </div>
+                )}
+                
+                <div className="min-w-[800px] grid grid-cols-[100px_repeat(7,1fr)] h-full">
+                    {/* Time Column Header */}
+                    <div className="border-r border-b border-gray-100 bg-gray-50/30 sticky top-0 z-20 h-16 flex items-center justify-center">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                    </div>
+
+                    {/* Day Headers */}
+                    {days.map((day, idx) => (
+                        <div 
+                            key={idx} 
+                            className={`border-b border-gray-100 sticky top-0 z-20 h-16 flex flex-col items-center justify-center transition-colors ${
+                                isToday(day) ? 'bg-blue-50/50' : 'bg-gray-50/30'
+                            }`}
+                        >
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${isToday(day) ? 'text-blue-500' : 'text-gray-400'}`}>
+                                {format(day, 'EEEE', { locale: es })}
+                            </span>
+                            <span className={`text-xl font-black ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}`}>
+                                {format(day, 'dd')}
+                            </span>
+                            {isToday(day) && (
+                                <div className="absolute bottom-1 w-1 h-1 bg-blue-500 rounded-full" />
+                            )}
+                        </div>
+                    ))}
+
+                    {/* Time Rows */}
+                    {hours.map((hour) => (
+                        <React.Fragment key={hour}>
+                            {/* Time Label */}
+                            <div className="border-r border-gray-100 flex items-start justify-center pt-3 text-[10px] font-bold text-gray-400 bg-gray-50/10">
+                                {hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
+                            </div>
+
+                            {/* Day Cells */}
+                            {days.map((day, dayIdx) => {
+                                const dayEvents = getEventsForDayAndHour(day, hour);
+                                return (
+                                    <div 
+                                        key={`${dayIdx}-${hour}`} 
+                                        className={`border-r border-b border-gray-50 min-h-[80px] p-1.5 transition-colors hover:bg-gray-50/30 group relative`}
+                                    >
+                                        {dayEvents.map((event) => (
+                                            <div
+                                                key={event.id}
+                                                onClick={() => onEventClick?.(event)}
+                                                className={`
+                                                    p-2 rounded-xl text-left cursor-pointer transition-all duration-300 shadow-sm border
+                                                    ${event.tipo === 'Entrenamiento' 
+                                                        ? 'bg-blue-50 border-blue-100 text-blue-900 hover:shadow-md hover:scale-[1.02] hover:bg-blue-100' 
+                                                        : 'bg-purple-50 border-purple-100 text-purple-900 hover:shadow-md hover:scale-[1.02] hover:bg-purple-100'
+                                                    }
+                                                    w-full h-full overflow-hidden flex flex-col justify-between
+                                                `}
+                                            >
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="text-[9px] font-black uppercase tracking-tighter opacity-70">
+                                                            {event.fase_hilu ? `FASE ${event.fase_hilu}` : event.tipo}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold opacity-60">
+                                                            {event.hora_inicio}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] font-black leading-none truncate mb-1">
+                                                        {event.empleados?.nombreCompleto || 'Sin nombre'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-60">
+                                                    <MapPin className="h-2.5 w-2.5" />
+                                                    <span className="text-[9px] font-bold truncate">{event.planta || 'Sin planta'}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        {/* Quick Add Button on Hover */}
+                                        <button className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                                            <Plus className="h-4 w-4 text-gray-300" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};

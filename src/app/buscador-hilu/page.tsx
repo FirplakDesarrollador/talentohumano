@@ -8,12 +8,19 @@ import { ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser } from 'lucide-react'
+import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser, Calendar } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { EmpleadoCardHILU } from '@/components/HILU/EmpleadoCardHILU'
 import type { Database } from '@/lib/supabase/types'
 
 type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
+
+// Areas that belong to the "Administrativa" virtual group
+const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'I+D+i', 'Logistica',
+    'Manufactura', 'Comercial'
+]
 
 export default function BuscadorHiluPage() {
     const router = useRouter()
@@ -97,18 +104,20 @@ export default function BuscadorHiluPage() {
 
     const fetchFilters = useCallback(async () => {
         try {
-            // Fetch unique Plantas
-            const { data: plantasData } = await supabase
+            // Fetch unique areas
+            const { data: areasData } = await supabase
                 .from('query_estado_hilu')
-                .select('planta')
-                .not('planta', 'is', null) as { data: { planta: string | null }[] | null }
+                .select('area')
+                .not('area', 'is', null) as { data: { area: string | null }[] | null }
 
-            if (plantasData) {
-                const uniquePlantas = Array.from(new Set(plantasData.map(p => p.planta).filter(Boolean))) as string[]
-                // Filter out commercial and also JSON/Object strings from SharePoint
-                setPlantas(uniquePlantas
-                    .filter(p => !p.toLowerCase().includes('comercial'))
-                    .filter(p => !p.startsWith('{'))
+            if (areasData) {
+                const uniqueAreas = Array.from(new Set(areasData.map(p => p.area).filter(Boolean))) as string[]
+                // Exclude Administrativa sub-areas (they appear under the "Administrativa" group)
+                // and filter out JSON/Object strings from SharePoint
+                setPlantas(uniqueAreas
+                    .filter(a => !AREAS_ADMINISTRATIVAS.includes(a))
+                    .filter(a => !a.startsWith('{'))
+                    .filter(a => a !== 'Produccion' && a !== 'Todos')
                     .sort()
                 )
             }
@@ -124,16 +133,21 @@ export default function BuscadorHiluPage() {
             let query = supabase
                 .from('query_estado_hilu')
                 .select('*')
-                .not('planta', 'ilike', '%comercial%')
 
             // Filter by Status
             if (selectedStatus !== 'all') {
                 query = query.eq('activo', selectedStatus === 'activo')
             }
 
-            // Filter by Planta
+            // Filter by Area (with special Administrativa group)
             if (selectedPlanta && selectedPlanta !== 'all') {
-                query = query.eq('planta', selectedPlanta)
+                if (selectedPlanta === 'Administrativa') {
+                    // Show all employees belonging to administrative areas
+                    const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
+                    query = query.or(adminFilter)
+                } else {
+                    query = query.eq('area', selectedPlanta)
+                }
             }
 
             // Search by name or cedula
@@ -146,8 +160,8 @@ export default function BuscadorHiluPage() {
                 }
             }
 
-            // Filter out management positions (same logic as Flutter code)
-            query = query.order('nombreCompleto', { ascending: true })
+            // Order by most recently edited first
+            query = query.order('modified_at', { ascending: false, nullsFirst: false })
 
             const { data, error } = await query
 
@@ -225,7 +239,7 @@ export default function BuscadorHiluPage() {
                     <ArrowLeft className="h-6 w-6" />
                 </button>
                 <div className="flex-1 text-center font-medium text-lg tracking-wide">
-                    Entrenamiento
+                    HILU
                 </div>
                 <div className="w-8" /> {/* Spacer for balance */}
             </div>
@@ -249,16 +263,17 @@ export default function BuscadorHiluPage() {
                     </div>
 
                     <div className="w-full sm:w-56">
-                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1">Planta</Label>
+                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1">Área</Label>
                         <div className="relative">
                             <select
                                 className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300"
                                 value={selectedPlanta}
                                 onChange={(e) => setSelectedPlanta(e.target.value)}
                             >
-                                <option value="all">Todas las plantas</option>
-                                {plantas.map((planta) => (
-                                    <option key={planta} value={planta}>{planta}</option>
+                                <option value="all">Todas las áreas</option>
+                                <option value="Administrativa">Administrativa</option>
+                                {plantas.map((area) => (
+                                    <option key={area} value={area}>{area}</option>
                                 ))}
                             </select>
                         </div>
@@ -290,6 +305,13 @@ export default function BuscadorHiluPage() {
                                 className="h-10 w-10 p-0 border-gray-200 text-yellow-500 hover:text-yellow-600"
                             >
                                 <Eraser className="h-5 w-5" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-10 w-10 p-0 border-gray-200 text-blue-600 hover:text-blue-700"
+                                onClick={() => router.push('/programacion-entrenamientos')}
+                            >
+                                <Calendar className="h-5 w-5" />
                             </Button>
                         </div>
                     </div>

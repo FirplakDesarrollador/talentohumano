@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { CheckCircle2 } from 'lucide-react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 interface EmpleadoCardProps {
     empleado: {
@@ -23,6 +24,8 @@ interface EmpleadoCardProps {
 }
 
 export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
+    const router = useRouter()
+
     const defaultPhoto = 'https://jdtjtkncptwqdhlxmzds.supabase.co/storage/v1/object/public/publico/assets/perfil.png'
 
     const isValidUrl = (urlString: string | null) => {
@@ -36,6 +39,8 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
 
     const photoUrl = isValidUrl(empleado.foto) ? empleado.foto! : defaultPhoto
     const isAllHiluComplete = empleado.fh_completado && empleado.fi_completado && empleado.fl_completado && empleado.fu_completado
+
+
 
     return (
         <div onClick={onClick} className="cursor-pointer">
@@ -105,6 +110,8 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                         <div><span className="font-bold text-gray-400">Puesto:</span> {empleado.cargo}</div>
                         <div><span className="font-bold text-gray-400">Jefe:</span> {empleado.jefe}</div>
                     </div>
+
+
                 </div>
             </Card>
         </div>
