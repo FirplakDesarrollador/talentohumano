@@ -15,7 +15,6 @@ import {
     ArrowLeft, 
     LayoutDashboard,
     Clock,
-    CheckCircle2,
     ShieldCheck,
     Search,
     Filter,
@@ -268,7 +267,7 @@ export default function EntrenamientoDetailPage() {
 
             // 3. Initialize missing phases if needed
             // We check for the titular cargo and all polyvalences
-            const cargosToInitialize = Array.from(new Set([cargoTitular, ...polyList].filter(Boolean)))
+            const cargosToInitialize = Array.from(new Set([cargoTitular, ...polyList].filter(Boolean))).map(c => c.trim())
             let recordsAdded = false
 
             for (const cargo of cargosToInitialize) {
@@ -436,7 +435,7 @@ export default function EntrenamientoDetailPage() {
                 <Button onClick={() => router.back()} variant="ghost" className="text-white hover:bg-white/10 rounded-full h-10 w-10 p-0">
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <h1 className="text-xl font-black uppercase tracking-widest flex-1">Gestor HILU</h1>
+                <h1 className="text-xl font-black uppercase tracking-widest flex-1">HILU</h1>
                 <div className="flex items-center gap-2 pr-2">
                     <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-[10px] font-bold uppercase text-gray-400">En línea</span>
@@ -466,35 +465,21 @@ export default function EntrenamientoDetailPage() {
                                     <h2 className="text-4xl font-black text-[#1e2f3d] tracking-tight truncate">{currentRecord.nombreCompleto}</h2>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><User className="h-3 w-3 text-blue-500" />Identidad</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><User className="h-3 w-3 text-blue-500" />Documento</label>
                                         <p className="text-lg font-bold text-gray-800 tracking-wider">{currentRecord.cedula}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Briefcase className="h-3 w-3 text-blue-500" />Cargo Titular</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Briefcase className="h-3 w-3 text-blue-500" />Cargo Actual</label>
                                         <p className="text-xl font-black text-[#1e2f3d] truncate" title={titularCargoName || ''}>{titularCargoName || 'POR DEFINIR'}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><CheckCircle2 className="h-3 w-3 text-green-500" />Polivalencias</label>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                            {polyvalencias.length > 0 ? (
-                                                polyvalencias.map((p, idx) => (
-                                                    <Badge key={idx} variant="secondary" className="bg-blue-50 text-blue-700 text-[10px] font-bold py-0.5 px-2">
-                                                        {p}
-                                                    </Badge>
-                                                ))
-                                            ) : (
-                                                <p className="text-xs text-gray-400 italic">Ninguna registrada</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Building2 className="h-3 w-3 text-blue-500" />Ubicación</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><Building2 className="h-3 w-3 text-blue-500" />Planta</label>
                                         <p className="text-xl font-black text-[#1e2f3d]">{currentRecord.planta || 'CENTRAL'}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><User className="h-3 w-3 text-blue-500" />Mentoria</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start"><User className="h-3 w-3 text-blue-500" />Jefe</label>
                                         <p className="text-xl font-black text-[#1e2f3d] truncate" title={currentRecord.jefe || ''}>{currentRecord.jefe || 'N/A'}</p>
                                     </div>
                                 </div>
