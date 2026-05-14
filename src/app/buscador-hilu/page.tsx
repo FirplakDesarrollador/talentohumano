@@ -32,6 +32,8 @@ export default function BuscadorHiluPage() {
     const [plantas, setPlantas] = useState<string[]>([])
     const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
     const [selectedStatus, setSelectedStatus] = useState<string>('activo') // 'all', 'activo', 'inactivo'
+    const [selectedNivel, setSelectedNivel] = useState<string>('all')
+    const [niveles, setNiveles] = useState<string[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
     const [userLevel, setUserLevel] = useState<string>('')
     const [userEmail, setUserEmail] = useState<string>('')
@@ -42,10 +44,12 @@ export default function BuscadorHiluPage() {
     useEffect(() => {
         const savedPlanta = localStorage.getItem('hilu_selectedPlanta')
         const savedStatus = localStorage.getItem('hilu_selectedStatus')
+        const savedNivel = localStorage.getItem('hilu_selectedNivel')
         const savedBusqueda = localStorage.getItem('hilu_busqueda')
 
         if (savedPlanta) setSelectedPlanta(savedPlanta)
         if (savedStatus) setSelectedStatus(savedStatus)
+        if (savedNivel) setSelectedNivel(savedNivel)
         if (savedBusqueda) setBusqueda(savedBusqueda)
         
         setIsInitialized(true)
@@ -56,9 +60,10 @@ export default function BuscadorHiluPage() {
         if (isInitialized) {
             localStorage.setItem('hilu_selectedPlanta', selectedPlanta)
             localStorage.setItem('hilu_selectedStatus', selectedStatus)
+            localStorage.setItem('hilu_selectedNivel', selectedNivel)
             localStorage.setItem('hilu_busqueda', busqueda)
         }
-    }, [selectedPlanta, selectedStatus, busqueda, isInitialized])
+    }, [selectedPlanta, selectedStatus, selectedNivel, busqueda, isInitialized])
 
     // Fetch user context
     useEffect(() => {
@@ -121,6 +126,17 @@ export default function BuscadorHiluPage() {
                     .sort()
                 )
             }
+
+            // Fetch unique levels
+            const { data: nivelesData } = await supabase
+                .from('query_estado_hilu')
+                .select('nivelCargo')
+                .not('nivelCargo', 'is', null) as { data: { nivelCargo: string | null }[] | null }
+
+            if (nivelesData) {
+                const uniqueNiveles = Array.from(new Set(nivelesData.map(p => p.nivelCargo).filter(Boolean))) as string[]
+                setNiveles(uniqueNiveles.sort())
+            }
         } catch (error) {
             console.error('Error fetching filters:', error)
         }
@@ -137,6 +153,11 @@ export default function BuscadorHiluPage() {
             // Filter by Status
             if (selectedStatus !== 'all') {
                 query = query.eq('activo', selectedStatus === 'activo')
+            }
+
+            // Filter by Nivel de Cargo
+            if (selectedNivel !== 'all') {
+                query = query.eq('nivelCargo', selectedNivel)
             }
 
             // Filter by Area (with special Administrativa group)
@@ -171,9 +192,10 @@ export default function BuscadorHiluPage() {
         } catch (error) {
             console.error('Error fetching empleados:', error)
         } finally {
-            setLoading(false)
+            setLoading(true) // Pre-loader while processing
+            setTimeout(() => setLoading(false), 10)
         }
-    }, [isInitialized, selectedStatus, selectedPlanta, busqueda, supabase])
+    }, [isInitialized, selectedStatus, selectedNivel, selectedPlanta, busqueda, supabase])
 
     const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
     const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
@@ -226,6 +248,7 @@ export default function BuscadorHiluPage() {
         setBusqueda('')
         setSelectedPlanta('all')
         setSelectedStatus('activo')
+        setSelectedNivel('all')
     }
 
     return (
@@ -274,6 +297,22 @@ export default function BuscadorHiluPage() {
                                 <option value="Administrativa">Administrativa</option>
                                 {plantas.map((area) => (
                                     <option key={area} value={area}>{area}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="w-full sm:w-56">
+                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1">Nivel Cargo</Label>
+                        <div className="relative">
+                            <select
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                                value={selectedNivel}
+                                onChange={(e) => setSelectedNivel(e.target.value)}
+                            >
+                                <option value="all">Todos los niveles</option>
+                                {niveles.map((nivel) => (
+                                    <option key={nivel} value={nivel}>{nivel}</option>
                                 ))}
                             </select>
                         </div>
