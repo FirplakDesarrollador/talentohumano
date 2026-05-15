@@ -17,9 +17,7 @@ export default function ProgramacionEntrenamientosPage() {
                 >
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <div className="flex-1 text-center font-medium text-lg tracking-wide">
-                    Entrenamiento
-                </div>
+                <div className="flex-1" />
                 <div className="w-8" />
             </div>
 

@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
-import { ADMIN_LEVELS, ADMIN_EMAILS } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser, Calendar } from 'lucide-react'
+import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser, Calendar, ChevronDown, Check, User } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { EmpleadoCardHILU } from '@/components/HILU/EmpleadoCardHILU'
 import type { Database } from '@/lib/supabase/types'
@@ -18,8 +18,7 @@ type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
 // Areas that belong to the "Administrativa" virtual group
 const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'I+D+i', 'Logistica',
-    'Manufactura', 'Comercial'
+    'Negociacion y compras', 'Mercadeo', 'I+D+i', 'Servicios', 'Logistica'
 ]
 
 export default function BuscadorHiluPage() {
@@ -32,9 +31,10 @@ export default function BuscadorHiluPage() {
     const [plantas, setPlantas] = useState<string[]>([])
     const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
     const [selectedStatus, setSelectedStatus] = useState<string>('activo') // 'all', 'activo', 'inactivo'
-    const [selectedNivel, setSelectedNivel] = useState<string>('all')
-    const [niveles, setNiveles] = useState<string[]>([])
+    const [selectedNiveles, setSelectedNiveles] = useState<string[]>([])
     const [isInitialized, setIsInitialized] = useState(false)
+    const [isNivelOpen, setIsNivelOpen] = useState(false)
+    const nivelDropdownRef = useRef<HTMLDivElement>(null)
     const [userLevel, setUserLevel] = useState<string>('')
     const [userEmail, setUserEmail] = useState<string>('')
 
@@ -44,12 +44,18 @@ export default function BuscadorHiluPage() {
     useEffect(() => {
         const savedPlanta = localStorage.getItem('hilu_selectedPlanta')
         const savedStatus = localStorage.getItem('hilu_selectedStatus')
-        const savedNivel = localStorage.getItem('hilu_selectedNivel')
+        const savedNiveles = localStorage.getItem('hilu_selectedNiveles')
         const savedBusqueda = localStorage.getItem('hilu_busqueda')
 
         if (savedPlanta) setSelectedPlanta(savedPlanta)
         if (savedStatus) setSelectedStatus(savedStatus)
-        if (savedNivel) setSelectedNivel(savedNivel)
+        if (savedNiveles) {
+            try {
+                setSelectedNiveles(JSON.parse(savedNiveles))
+            } catch (e) {
+                setSelectedNiveles([])
+            }
+        }
         if (savedBusqueda) setBusqueda(savedBusqueda)
         
         setIsInitialized(true)
@@ -60,10 +66,10 @@ export default function BuscadorHiluPage() {
         if (isInitialized) {
             localStorage.setItem('hilu_selectedPlanta', selectedPlanta)
             localStorage.setItem('hilu_selectedStatus', selectedStatus)
-            localStorage.setItem('hilu_selectedNivel', selectedNivel)
+            localStorage.setItem('hilu_selectedNiveles', JSON.stringify(selectedNiveles))
             localStorage.setItem('hilu_busqueda', busqueda)
         }
-    }, [selectedPlanta, selectedStatus, selectedNivel, busqueda, isInitialized])
+    }, [selectedPlanta, selectedStatus, selectedNiveles, busqueda, isInitialized])
 
     // Fetch user context
     useEffect(() => {
@@ -107,6 +113,17 @@ export default function BuscadorHiluPage() {
         fetchUser()
     }, [supabase])
 
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (nivelDropdownRef.current && !nivelDropdownRef.current.contains(event.target as Node)) {
+                setIsNivelOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
     const fetchFilters = useCallback(async () => {
         try {
             // Fetch unique areas
@@ -126,17 +143,6 @@ export default function BuscadorHiluPage() {
                     .sort()
                 )
             }
-
-            // Fetch unique levels
-            const { data: nivelesData } = await supabase
-                .from('query_estado_hilu')
-                .select('nivelCargo')
-                .not('nivelCargo', 'is', null) as { data: { nivelCargo: string | null }[] | null }
-
-            if (nivelesData) {
-                const uniqueNiveles = Array.from(new Set(nivelesData.map(p => p.nivelCargo).filter(Boolean))) as string[]
-                setNiveles(uniqueNiveles.sort())
-            }
         } catch (error) {
             console.error('Error fetching filters:', error)
         }
@@ -155,9 +161,9 @@ export default function BuscadorHiluPage() {
                 query = query.eq('activo', selectedStatus === 'activo')
             }
 
-            // Filter by Nivel de Cargo
-            if (selectedNivel !== 'all') {
-                query = query.eq('nivelCargo', selectedNivel)
+            // Filter by Nivel de Cargo (Multi-select)
+            if (selectedNiveles.length > 0) {
+                query = query.in('nivelCargo', selectedNiveles)
             }
 
             // Filter by Area (with special Administrativa group)
@@ -168,6 +174,11 @@ export default function BuscadorHiluPage() {
                     query = query.or(adminFilter)
                 } else {
                     query = query.eq('area', selectedPlanta)
+                }
+            } else {
+                // By default, exclude administrative areas — only show operational/plant staff
+                for (const area of AREAS_ADMINISTRATIVAS) {
+                    query = query.neq('area', area)
                 }
             }
 
@@ -195,7 +206,7 @@ export default function BuscadorHiluPage() {
             setLoading(true) // Pre-loader while processing
             setTimeout(() => setLoading(false), 10)
         }
-    }, [isInitialized, selectedStatus, selectedNivel, selectedPlanta, busqueda, supabase])
+    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase])
 
     const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
     const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
@@ -248,8 +259,18 @@ export default function BuscadorHiluPage() {
         setBusqueda('')
         setSelectedPlanta('all')
         setSelectedStatus('activo')
-        setSelectedNivel('all')
+        setSelectedNiveles([])
     }
+
+    const toggleNivel = (nivel: string) => {
+        if (selectedNiveles.includes(nivel)) {
+            setSelectedNiveles(selectedNiveles.filter(n => n !== nivel))
+        } else {
+            setSelectedNiveles([...selectedNiveles, nivel])
+        }
+    }
+
+    const nivelesOptions = Object.values(NIVELES_CARGO)
 
     return (
         <div className="min-h-screen bg-white">
@@ -261,9 +282,7 @@ export default function BuscadorHiluPage() {
                 >
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <div className="flex-1 text-center font-medium text-lg tracking-wide">
-                    HILU
-                </div>
+                <div className="flex-1" />
                 <div className="w-8" /> {/* Spacer for balance */}
             </div>
 
@@ -294,7 +313,6 @@ export default function BuscadorHiluPage() {
                                 onChange={(e) => setSelectedPlanta(e.target.value)}
                             >
                                 <option value="all">Todas las áreas</option>
-                                <option value="Administrativa">Administrativa</option>
                                 {plantas.map((area) => (
                                     <option key={area} value={area}>{area}</option>
                                 ))}
@@ -302,20 +320,58 @@ export default function BuscadorHiluPage() {
                         </div>
                     </div>
 
-                    <div className="w-full sm:w-56">
-                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1">Nivel Cargo</Label>
-                        <div className="relative">
-                            <select
-                                className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300"
-                                value={selectedNivel}
-                                onChange={(e) => setSelectedNivel(e.target.value)}
-                            >
-                                <option value="all">Todos los niveles</option>
-                                {niveles.map((nivel) => (
-                                    <option key={nivel} value={nivel}>{nivel}</option>
+                    <div className="w-full sm:w-64 relative" ref={nivelDropdownRef}>
+                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1 flex items-center gap-1">
+                            <User className="h-3 w-3" /> Nivel de Cargo
+                        </Label>
+                        <button
+                            type="button"
+                            onClick={() => setIsNivelOpen(!isNivelOpen)}
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300 font-medium"
+                        >
+                            <span className="truncate">
+                                {selectedNiveles.length === 0 
+                                    ? 'Todos los niveles' 
+                                    : `${selectedNiveles.length} seleccionado(s)`}
+                            </span>
+                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isNivelOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isNivelOpen && (
+                            <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white rounded-md shadow-lg border border-gray-100 py-2 z-[60] max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                                {nivelesOptions.map((nivel) => (
+                                    <button
+                                        key={nivel}
+                                        type="button"
+                                        onClick={() => toggleNivel(nivel)}
+                                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
+                                    >
+                                        <div className={`h-4 w-4 rounded flex items-center justify-center border transition-colors ${
+                                            selectedNiveles.includes(nivel)
+                                                ? 'bg-blue-600 border-blue-600 text-white'
+                                                : 'bg-white border-gray-300'
+                                        }`}>
+                                            {selectedNiveles.includes(nivel) && <Check className="h-3 w-3" />}
+                                        </div>
+                                        <span className={`text-xs font-medium ${
+                                            selectedNiveles.includes(nivel) ? 'text-blue-600' : 'text-gray-600'
+                                        }`}>
+                                            {nivel}
+                                        </span>
+                                    </button>
                                 ))}
-                            </select>
-                        </div>
+                                {selectedNiveles.length > 0 && (
+                                    <div className="border-t border-gray-50 mt-1 pt-1 px-2">
+                                        <button
+                                            onClick={() => setSelectedNiveles([])}
+                                            className="text-[10px] font-bold text-red-400 hover:text-red-500 p-1 w-full text-center"
+                                        >
+                                            Limpiar selección
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1 w-full">

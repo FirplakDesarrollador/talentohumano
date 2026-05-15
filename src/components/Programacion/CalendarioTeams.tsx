@@ -27,11 +27,12 @@ import { es } from 'date-fns/locale';
 
 interface CalendarioTeamsProps {
     onEventClick?: (event: any) => void;
+    initialDate?: Date;
 }
 
-export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick }) => {
+export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick, initialDate }) => {
     const supabase = React.useMemo(() => createClient(), []);
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [currentDate, setCurrentDate] = useState(initialDate || new Date());
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -152,64 +153,96 @@ export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick }
                         </div>
                     ))}
 
-                    {/* Time Rows */}
-                    {hours.map((hour) => (
-                        <React.Fragment key={hour}>
-                            {/* Time Label */}
-                            <div className="border-r border-gray-100 flex items-start justify-center pt-3 text-[10px] font-bold text-gray-400 bg-gray-50/10">
+                    {/* Time Labels Column */}
+                    <div className="grid grid-rows-[repeat(13,80px)]">
+                        {hours.map((hour) => (
+                            <div key={hour} className="border-r border-b border-gray-100 flex items-start justify-center pt-3 text-[10px] font-bold text-gray-400 bg-gray-50/10">
                                 {hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                             </div>
+                        ))}
+                    </div>
 
-                            {/* Day Cells */}
-                            {days.map((day, dayIdx) => {
-                                const dayEvents = getEventsForDayAndHour(day, hour);
-                                return (
-                                    <div 
-                                        key={`${dayIdx}-${hour}`} 
-                                        className={`border-r border-b border-gray-50 min-h-[80px] p-1.5 transition-colors hover:bg-gray-50/30 group relative`}
-                                    >
-                                        {dayEvents.map((event) => (
-                                            <div
-                                                key={event.id}
-                                                onClick={() => onEventClick?.(event)}
-                                                className={`
-                                                    p-2 rounded-xl text-left cursor-pointer transition-all duration-300 shadow-sm border
-                                                    ${event.tipo === 'Entrenamiento' 
-                                                        ? 'bg-blue-50 border-blue-100 text-blue-900 hover:shadow-md hover:scale-[1.02] hover:bg-blue-100' 
-                                                        : 'bg-purple-50 border-purple-100 text-purple-900 hover:shadow-md hover:scale-[1.02] hover:bg-purple-100'
-                                                    }
-                                                    w-full h-full overflow-hidden flex flex-col justify-between
-                                                `}
-                                            >
-                                                <div>
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <span className="text-[9px] font-black uppercase tracking-tighter opacity-70">
-                                                            {event.fase_hilu ? `FASE ${event.fase_hilu}` : event.tipo}
-                                                        </span>
-                                                        <span className="text-[9px] font-bold opacity-60">
-                                                            {event.hora_inicio}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[11px] font-black leading-none truncate mb-1">
-                                                        {event.empleados?.nombreCompleto || 'Sin nombre'}
-                                                    </p>
+                    {/* Day Columns */}
+                    {days.map((day, dayIdx) => {
+                        const dayEvents = events.filter(event => {
+                            const eventDate = parseISO(event.fecha_programada);
+                            return isSameDay(eventDate, day);
+                        });
+
+                        return (
+                            <div key={dayIdx} className="relative border-r border-gray-100 grid grid-rows-[repeat(13,80px)]">
+                                {/* Grid Lines */}
+                                {hours.map((hour) => (
+                                    <div key={hour} className="border-b border-gray-50 h-[80px]" />
+                                ))}
+
+                                {/* Events Layer */}
+                                {dayEvents.map((event) => {
+                                    const startParts = event.hora_inicio.split(':');
+                                    const endParts = event.hora_fin.split(':');
+                                    
+                                    const startHour = parseInt(startParts[0]);
+                                    const startMin = parseInt(startParts[1]);
+                                    const endHour = parseInt(endParts[0]);
+                                    const endMin = parseInt(endParts[1]);
+
+                                    const startDecimal = startHour + (startMin / 60);
+                                    const endDecimal = endHour + (endMin / 60);
+                                    const duration = endDecimal - startDecimal;
+
+                                    // Position relative to 7 AM (the first hour in our array)
+                                    const topPosition = (startDecimal - 7) * 80;
+                                    const eventHeight = duration * 80;
+
+                                    return (
+                                        <div
+                                            key={event.id}
+                                            onClick={() => onEventClick?.(event)}
+                                            style={{ 
+                                                top: `${topPosition}px`, 
+                                                height: `${eventHeight}px`,
+                                                zIndex: 10
+                                            }}
+                                            className={`
+                                                absolute left-1 right-1 p-2 rounded-xl text-left cursor-pointer transition-all duration-300 shadow-sm border
+                                                ${event.tipo === 'Entrenamiento' 
+                                                    ? 'bg-blue-50 border-blue-200 text-blue-900 hover:shadow-md hover:scale-[1.01] hover:bg-blue-100' 
+                                                    : 'bg-purple-50 border-purple-200 text-purple-900 hover:shadow-md hover:scale-[1.01] hover:bg-purple-100'
+                                                }
+                                                overflow-hidden flex flex-col
+                                            `}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black uppercase tracking-tighter opacity-70">
+                                                    {event.fase_hilu ? `FASE ${event.fase_hilu}` : event.tipo}
+                                                </span>
+                                                <span className="text-[9px] font-bold opacity-60">
+                                                    {event.hora_inicio.substring(0, 5)} - {event.hora_fin.substring(0, 5)}
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] font-black leading-tight truncate">
+                                                {event.empleados?.nombreCompleto || 'Sin nombre'}
+                                            </p>
+                                            
+                                            {duration >= 1 && (
+                                                <div className="mt-1 flex items-center gap-1 opacity-80 text-blue-800">
+                                                    <User className="h-2.5 w-2.5" />
+                                                    <span className="text-[9px] font-black truncate">{event.instructor || 'Sin instructor'}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1 opacity-60">
+                                            )}
+
+                                            {duration >= 1.5 && (
+                                                <div className="mt-auto flex items-center gap-1 opacity-60">
                                                     <MapPin className="h-2.5 w-2.5" />
                                                     <span className="text-[9px] font-bold truncate">{event.planta || 'Sin planta'}</span>
                                                 </div>
-                                            </div>
-                                        ))}
-                                        
-                                        {/* Quick Add Button on Hover */}
-                                        <button className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                                            <Plus className="h-4 w-4 text-gray-300" />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </React.Fragment>
-                    ))}
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>

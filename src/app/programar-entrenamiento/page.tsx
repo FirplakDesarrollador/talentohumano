@@ -1,20 +1,37 @@
 'use client'
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, FormInput, Plus, LayoutGrid, List } from 'lucide-react';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Calendar, FormInput, Plus, LayoutGrid, List, Loader2 } from 'lucide-react';
 import { FormularioProgramacion } from '@/components/Programacion/FormularioProgramacion';
 import { CalendarioTeams } from '@/components/Programacion/CalendarioTeams';
 
-
-export default function ProgramarEntrenamientoPage() {
+function ProgramarEntrenamientoContent() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState('form');
+    const searchParams = useSearchParams();
+    
+    // Initialize tab from URL if present
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'form');
+    
+    // Parse date from URL if present
+    const initialDateParam = searchParams.get('date');
+    const [initialDate] = useState(initialDateParam ? new Date(initialDateParam + 'T12:00:00') : new Date());
+    
+    // Get editId from URL if present
+    const editId = searchParams.get('edit');
+    
+    // Get empleadoId from URL if present
+    const empleadoId = searchParams.get('empleadoId');
+    
     const [refreshKey, setRefreshKey] = useState(0);
 
     const handleSuccess = () => {
         setRefreshKey(prev => prev + 1);
         setActiveTab('calendar');
+        // Clear params if they exist to avoid confusion
+        if (editId || empleadoId) {
+            router.replace('/programar-entrenamiento?tab=calendar');
+        }
     };
 
     return (
@@ -27,9 +44,7 @@ export default function ProgramarEntrenamientoPage() {
                 >
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <div className="flex-1 text-center font-medium text-lg tracking-wide uppercase">
-                    Programación de Entrenamientos
-                </div>
+                <div className="flex-1" />
                 <div className="w-8" />
             </div>
 
@@ -38,8 +53,12 @@ export default function ProgramarEntrenamientoPage() {
                 <div className="space-y-8">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Gestión de Capacitaciones</h1>
-                            <p className="text-gray-500 font-medium">Programa y visualiza los entrenamientos técnicos del personal.</p>
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+                                {editId ? 'Editar Entrenamiento' : 'Programación de Entrenamientos'}
+                            </h1>
+                            <p className="text-gray-500 font-medium">
+                                {editId ? 'Modifique los detalles del entrenamiento seleccionado.' : 'Programa y visualiza los entrenamientos técnicos del personal.'}
+                            </p>
                         </div>
                         
                         <div className="bg-white border border-gray-200 p-1 rounded-2xl shadow-sm h-14 flex">
@@ -48,7 +67,7 @@ export default function ProgramarEntrenamientoPage() {
                                 className={`flex items-center rounded-xl px-6 transition-all font-bold ${activeTab === 'form' ? 'bg-[#1e2f3d] text-white' : 'text-gray-500 hover:bg-gray-50'}`}
                             >
                                 <FormInput className="h-4 w-4 mr-2" />
-                                FORMULARIO
+                                {editId ? 'EDITAR' : 'FORMULARIO'}
                             </button>
                             <button 
                                 onClick={() => setActiveTab('calendar')}
@@ -64,7 +83,11 @@ export default function ProgramarEntrenamientoPage() {
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                                 <div className="lg:col-span-5">
-                                    <FormularioProgramacion onSuccess={handleSuccess} />
+                                    <FormularioProgramacion 
+                                        onSuccess={handleSuccess} 
+                                        editId={editId} 
+                                        preselectedEmpleadoId={empleadoId}
+                                    />
                                 </div>
                                 <div className="lg:col-span-7 space-y-6">
                                     <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm">
@@ -75,7 +98,7 @@ export default function ProgramarEntrenamientoPage() {
                                             <h2 className="text-xl font-bold text-gray-900">Vista Previa del Calendario</h2>
                                         </div>
                                         <div className="transform scale-[0.8] origin-top opacity-80 pointer-events-none">
-                                            <CalendarioTeams key={`preview-${refreshKey}`} />
+                                            <CalendarioTeams key={`preview-${refreshKey}`} initialDate={initialDate} />
                                         </div>
                                         <div className="mt-4 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
                                             Pulse en el botón &quot;CALENDARIO&quot; para ver a pantalla completa
@@ -86,11 +109,23 @@ export default function ProgramarEntrenamientoPage() {
                         </div>
                     ) : (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <CalendarioTeams key={refreshKey} />
+                            <CalendarioTeams key={refreshKey} initialDate={initialDate} />
                         </div>
                     )}
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ProgramarEntrenamientoPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            </div>
+        }>
+            <ProgramarEntrenamientoContent />
+        </Suspense>
     );
 }
