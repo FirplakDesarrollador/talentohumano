@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { 
     ArrowLeft, 
     Search, 
-    Filter, 
     Download, 
     Calendar, 
     User, 
@@ -23,24 +22,87 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 
+// Same exclusion list as buscador HILU
+const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
+    'Negociacion y compras', 'Mercadeo', 'I+D+i', 'Servicios', 'Logistica'
+];
+
 export default function HistorialEntrenamientosPage() {
     const router = useRouter();
     const supabase = createClient();
     const [loading, setLoading] = useState(true);
     const [entrenamientos, setEntrenamientos] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedPlanta, setSelectedPlanta] = useState('all');
+    const [plantas, setPlantas] = useState<string[]>([]);
+
+    // Fetch plants dynamically (same as HILU buscador)
+    useEffect(() => {
+        const fetchPlantas = async () => {
+            const { data } = await supabase
+                .from('query_estado_hilu')
+                .select('area')
+                .not('area', 'is', null) as { data: { area: string | null }[] | null };
+
+            if (data) {
+                const unique = Array.from(new Set(data.map(p => p.area).filter(Boolean))) as string[];
+                setPlantas(
+                    unique
+                        .filter(a => !AREAS_ADMINISTRATIVAS.includes(a))
+                        .filter(a => !a.startsWith('{'))
+                        .filter(a => a !== 'Produccion' && a !== 'Todos')
+                        .sort()
+                );
+            }
+        };
+        fetchPlantas();
+    }, [supabase]);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const { data, error } = await supabase
+                // Fetch training records
+                const { data: programacionData, error: progError } = await (supabase as any)
                     .from('hilu_programacion')
-                    .select('*, empleados(nombreCompleto, cargo)')
+                    .select('*')
                     .order('fecha_programada', { ascending: false });
 
-                if (error) throw error;
-                setEntrenamientos(data || []);
+                if (progError) throw progError;
+                if (!programacionData || programacionData.length === 0) {
+                    setEntrenamientos([]);
+                    return;
+                }
+
+                // Get unique employee IDs to fetch their details (cast to number for BIGINT columns)
+                const empleadoIds = [...new Set(
+                    programacionData.map((p: any) => Number(p.empleado_id)).filter((id: any) => id && !isNaN(id))
+                )];
+
+                if (empleadoIds.length === 0) {
+                    setEntrenamientos(programacionData.map((p: any) => ({ ...p, empleados: null })));
+                    return;
+                }
+
+                const { data: empleadosData, error: empError } = await supabase
+                    .from('empleados')
+                    .select('id, nombreCompleto, cargo')
+                    .in('id', empleadoIds);
+
+                if (empError) {
+                    console.error('Error fetching empleados:', JSON.stringify(empError));
+                    throw empError;
+                }
+
+                // Merge employee data into training records
+                const empleadosMap = Object.fromEntries((empleadosData || []).map((e: any) => [e.id, e]));
+                const merged = programacionData.map((p: any) => ({
+                    ...p,
+                    empleados: empleadosMap[p.empleado_id] || null
+                }));
+
+                setEntrenamientos(merged);
             } catch (err) {
                 console.error('Error fetching history:', err);
             } finally {
@@ -50,11 +112,64 @@ export default function HistorialEntrenamientosPage() {
         fetchData();
     }, [supabase]);
 
-    const filteredData = entrenamientos.filter(item => 
-        item.empleados?.nombreCompleto?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.planta?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredData = entrenamientos.filter(item => {
+        const matchesSearch = 
+            item.empleados?.nombreCompleto?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.planta?.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchesPlanta = selectedPlanta === 'all' || item.planta === selectedPlanta;
+        
+        return matchesSearch && matchesPlanta;
+    });
+
+    const handleUpdateEstado = async (id: string | number, estado: string) => {
+        try {
+            const { error } = await (supabase as any)
+                .from('hilu_programacion')
+                .update({ estado })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            // Update local state immediately for instant feedback
+            setEntrenamientos(prev => prev.map(item =>
+                item.id === id ? { ...item, estado } : item
+            ));
+        } catch (err) {
+            console.error('Error updating estado:', err);
+        }
+    };
+
+    const handleExport = () => {
+        if (filteredData.length === 0) return;
+
+        const headers = ["Colaborador", "Cargo", "Planta", "Fecha", "Hora Inicio", "Hora Fin", "Instructor", "Fase", "Formado"];
+        const csvContent = [
+            headers.join(","),
+            ...filteredData.map(item => [
+                `"${item.empleados?.nombreCompleto || ''}"`,
+                `"${item.empleados?.cargo || ''}"`,
+                `"${item.planta || ''}"`,
+                item.fecha_programada,
+                item.hora_inicio,
+                item.hora_fin,
+                `"${item.instructor || ''}"`,
+                item.fase_hilu,
+                item.formado ? "SÍ" : "NO"
+            ].join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `consolidado_entrenamientos_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
         <div className="min-h-screen bg-[#f8fafc]">
@@ -66,20 +181,18 @@ export default function HistorialEntrenamientosPage() {
                 >
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <div className="flex-1 text-center font-medium text-lg tracking-wide uppercase">
-                    Consolidado de Entrenamientos
-                </div>
+                <div className="flex-1" />
                 <div className="w-8" />
             </div>
 
             <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Historial HILU</h1>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Consolidado de Entrenamientos</h1>
                         <p className="text-gray-500 font-medium">Registro histórico de todas las sesiones de entrenamiento.</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="relative flex-1 md:w-80">
                             <Input
                                 value={searchQuery}
@@ -89,10 +202,20 @@ export default function HistorialEntrenamientosPage() {
                             />
                             <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
                         </div>
-                        <button className="h-12 w-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl shadow-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                            <Filter className="h-5 w-5" />
-                        </button>
-                        <button className="h-12 px-6 flex items-center justify-center bg-[#1e2f3d] rounded-2xl shadow-lg shadow-blue-900/10 text-white font-bold hover:bg-[#2c4558] transition-all">
+                        <select
+                            value={selectedPlanta}
+                            onChange={(e) => setSelectedPlanta(e.target.value)}
+                            className="h-12 px-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-sm font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                        >
+                            <option value="all">Todas las plantas</option>
+                            {plantas.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                            ))}
+                        </select>
+                        <button 
+                            onClick={handleExport}
+                            className="h-12 px-6 flex items-center justify-center bg-[#1e2f3d] rounded-2xl shadow-lg shadow-blue-900/10 text-white font-bold hover:bg-[#2c4558] transition-all"
+                        >
                             <Download className="h-5 w-5 mr-2" />
                             EXPORTAR
                         </button>
@@ -151,7 +274,7 @@ export default function HistorialEntrenamientosPage() {
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Instructor</span>
-                                                <span className="text-sm font-bold text-gray-700 truncate max-w-[120px]">
+                                                <span className="text-sm font-bold text-gray-700">
                                                     {item.instructor || 'N/A'}
                                                 </span>
                                             </div>
@@ -167,24 +290,61 @@ export default function HistorialEntrenamientosPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between lg:justify-end gap-4">
-                                            <div className="flex flex-col items-end">
-                                                <span className={`text-xs font-black uppercase tracking-widest mb-1 ${
-                                                    item.formado ? 'text-green-500' : 'text-gray-400'
-                                                }`}>
-                                                    {item.formado ? 'Formado' : 'Pendiente'}
-                                                </span>
-                                                <div className="flex gap-1">
-                                                    {item.formado ? (
-                                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                                    ) : (
-                                                        <XCircle className="h-5 w-5 text-gray-200" />
-                                                    )}
-                                                </div>
+                                            <div className="flex items-center justify-between lg:justify-end gap-3">
+                                            <div className="flex flex-col items-end mr-2">
+                                                {item.estado === 'Entrenamiento Realizado' ? (
+                                                    <>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest mb-1 text-green-600">Realizado</span>
+                                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                    </>
+                                                ) : item.estado === 'No Realizado' ? (
+                                                    <>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest mb-1 text-red-500">No Realizado</span>
+                                                        <XCircle className="h-4 w-4 text-red-400" />
+                                                    </>
+                                                ) : item.formado ? (
+                                                    <>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest mb-1 text-green-500">Formado</span>
+                                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest mb-1 text-gray-400">Pendiente</span>
+                                                        <XCircle className="h-4 w-4 text-gray-200" />
+                                                    </>
+                                                )}
                                             </div>
-                                            <button className="p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                                                <ChevronRight className="h-6 w-6 text-gray-300 group-hover:text-[#1e2f3d] group-hover:translate-x-1 transition-all" />
-                                            </button>
+                                            
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={async () => {
+                                                        await handleUpdateEstado(item.id, 'Entrenamiento Realizado');
+                                                        router.push(`/entrenamiento/${item.empleado_id}`);
+                                                    }}
+                                                    title="Entrenamiento Realizado → Ver HILU"
+                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors shadow-sm ${
+                                                        item.estado === 'Entrenamiento Realizado'
+                                                            ? 'bg-green-500 text-white'
+                                                            : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                                    }`}
+                                                >
+                                                    <CheckCircle2 className="h-5 w-5" />
+                                                </button>
+                                                <button 
+                                                    onClick={async () => {
+                                                        await handleUpdateEstado(item.id, 'No Realizado');
+                                                        router.push(`/programar-entrenamiento?tab=form&empleadoId=${item.empleado_id}`);
+                                                    }}
+                                                    title="No Realizado → Programar nuevo entrenamiento"
+                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors shadow-sm ${
+                                                        item.estado === 'No Realizado'
+                                                            ? 'bg-red-500 text-white'
+                                                            : 'bg-red-50 text-red-500 hover:bg-red-100'
+                                                    }`}
+                                                >
+                                                    <XCircle className="h-5 w-5" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
