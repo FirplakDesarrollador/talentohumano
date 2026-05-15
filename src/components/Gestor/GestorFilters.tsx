@@ -28,7 +28,6 @@ export const PLANTAS = [
     'CEDI',
     'Moldes',
     'I+D+I',
-    'Produccion',
     'RR Moldes',
     'Fibra de vidrio',
     'Legal',
