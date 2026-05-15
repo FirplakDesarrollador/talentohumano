@@ -18,7 +18,7 @@ type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
 // Areas that belong to the "Administrativa" virtual group
 const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'I+D+i', 'Servicios', 'Logistica'
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I'
 ]
 
 export default function BuscadorHiluPage() {
@@ -169,16 +169,22 @@ export default function BuscadorHiluPage() {
             // Filter by Area (with special Administrativa group)
             if (selectedPlanta && selectedPlanta !== 'all') {
                 if (selectedPlanta === 'Administrativa') {
-                    // Show all employees belonging to administrative areas
-                    const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
-                    query = query.or(adminFilter)
+                    if (AREAS_ADMINISTRATIVAS.length > 0) {
+                        const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
+                        query = query.or(adminFilter)
+                    } else {
+                        // If no admin areas defined, show nothing for this group
+                        query = query.eq('area', '___NONE___')
+                    }
                 } else {
                     query = query.eq('area', selectedPlanta)
                 }
             } else {
                 // By default, exclude administrative areas — only show operational/plant staff
-                for (const area of AREAS_ADMINISTRATIVAS) {
-                    query = query.neq('area', area)
+                if (AREAS_ADMINISTRATIVAS.length > 0) {
+                    for (const area of AREAS_ADMINISTRATIVAS) {
+                        query = query.neq('area', area)
+                    }
                 }
             }
 
@@ -313,6 +319,7 @@ export default function BuscadorHiluPage() {
                                 onChange={(e) => setSelectedPlanta(e.target.value)}
                             >
                                 <option value="all">Todas las áreas</option>
+                                <option value="Administrativa">Administrativa</option>
                                 {plantas.map((area) => (
                                     <option key={area} value={area}>{area}</option>
                                 ))}

@@ -37,7 +37,7 @@ const FASES_HILU = ['I', 'L', 'U'];
 // Areas that belong to the "Administrativa" virtual group
 const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'I+D+i', 'Logistica',
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'I+D+I', 'Logistica',
     'Manufactura', 'Comercial'
 ];
 
