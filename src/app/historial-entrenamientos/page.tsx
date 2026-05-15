@@ -21,11 +21,13 @@ import {
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { CalendarioTeams } from '@/components/Programacion/CalendarioTeams';
+import { LayoutGrid, List } from 'lucide-react';
 
 // Same exclusion list as buscador HILU
 const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'I+D+i', 'Servicios', 'Logistica'
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I'
 ];
 
 export default function HistorialEntrenamientosPage() {
@@ -36,6 +38,7 @@ export default function HistorialEntrenamientosPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPlanta, setSelectedPlanta] = useState('all');
     const [plantas, setPlantas] = useState<string[]>([]);
+    const [activeTab, setActiveTab] = useState('list');
 
     // Fetch plants dynamically (same as HILU buscador)
     useEffect(() => {
@@ -118,7 +121,8 @@ export default function HistorialEntrenamientosPage() {
             item.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.planta?.toLowerCase().includes(searchQuery.toLowerCase());
         
-        const matchesPlanta = selectedPlanta === 'all' || item.planta === selectedPlanta;
+        const matchesPlanta = selectedPlanta === 'all' || 
+            (selectedPlanta === 'Administrativa' ? AREAS_ADMINISTRATIVAS.includes(item.planta) : item.planta === selectedPlanta);
         
         return matchesSearch && matchesPlanta;
     });
@@ -207,7 +211,8 @@ export default function HistorialEntrenamientosPage() {
                             onChange={(e) => setSelectedPlanta(e.target.value)}
                             className="h-12 px-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-sm font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                         >
-                            <option value="all">Todas las plantas</option>
+                            <option value="all">Todas las áreas</option>
+                            <option value="Administrativa">Administrativa</option>
                             {plantas.map(p => (
                                 <option key={p} value={p}>{p}</option>
                             ))}
@@ -222,7 +227,36 @@ export default function HistorialEntrenamientosPage() {
                     </div>
                 </div>
 
-                {loading ? (
+                <div className="flex bg-gray-200/50 p-1.5 rounded-2xl w-fit mx-auto md:mx-0">
+                    <button
+                        onClick={() => setActiveTab('list')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                            activeTab === 'list' 
+                                ? 'bg-white text-blue-600 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                        }`}
+                    >
+                        <List className="h-4 w-4" />
+                        Vista de Lista
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('calendar')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                            activeTab === 'calendar' 
+                                ? 'bg-white text-blue-600 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                        }`}
+                    >
+                        <LayoutGrid className="h-4 w-4" />
+                        Vista de Calendario
+                    </button>
+                </div>
+
+                {activeTab === 'calendar' ? (
+                    <div className="bg-white rounded-[32px] p-2 md:p-6 shadow-sm border border-gray-100">
+                        <CalendarioTeams />
+                    </div>
+                ) : loading ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                         <p className="text-gray-500 font-bold animate-pulse">Cargando registros...</p>

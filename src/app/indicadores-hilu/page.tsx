@@ -7,14 +7,23 @@ import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import { ArrowLeft, Loader2, Users, CheckCircle2, Clock, TrendingUp } from 'lucide-react'
 import type { Database } from '@/lib/supabase/types'
 
 type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
 
+// Areas that belong to the "Administrativa" virtual group
+const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I'
+]
+
 export default function IndicadoresHiluPage() {
     const router = useRouter()
-    const [empleados, setEmpleados] = useState<EmpleadoHILU[]>([])
+    const [allEmpleados, setAllEmpleados] = useState<EmpleadoHILU[]>([])
+    const [plantas, setPlantas] = useState<string[]>([])
+    const [selectedPlanta, setSelectedPlanta] = useState<string>('all')
     const [loading, setLoading] = useState(true)
     const [userLevel, setUserLevel] = useState<string>('')
     const [userEmail, setUserEmail] = useState<string>('')
@@ -68,24 +77,18 @@ export default function IndicadoresHiluPage() {
 
                 if (error) throw error
 
-                // Filter out management positions
-                const filteredData = (data || []).filter((emp: EmpleadoHILU) => {
-                    const cargo = emp.cargo?.toLowerCase() || ''
-                    const excludedRoles = [
-                        ROLES.JEFE,
-                        ROLES.DIRECTOR,
-                        ROLES.COORDINADOR,
-                        ROLES.ANALISTA,
-                        ROLES.SUPERVISOR,
-                        ROLES.GERENTE,
-                        'practicante',
-                        'senior',
-                        'aprendiz'
-                    ]
-                    return !excludedRoles.some(role => cargo.includes(role))
-                })
+                const rawData = (data as any[]) || []
+                
+                // Fetch unique areas for filters
+                const uniqueAreas = Array.from(new Set(rawData.map(p => p.area).filter(Boolean))) as string[]
+                setPlantas(uniqueAreas
+                    .filter(a => !AREAS_ADMINISTRATIVAS.includes(a))
+                    .filter(a => !a.startsWith('{'))
+                    .filter(a => a !== 'Produccion' && a !== 'Todos')
+                    .sort()
+                )
 
-                setEmpleados(filteredData as EmpleadoHILU[])
+                setAllEmpleados(rawData as EmpleadoHILU[])
             } catch (error) {
                 console.error('Error fetching data:', error)
             } finally {
@@ -98,6 +101,37 @@ export default function IndicadoresHiluPage() {
 
     const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
     const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
+
+    // Filter logic synchronized with BuscadorHilu
+    const filteredEmpleados = allEmpleados.filter((emp: EmpleadoHILU) => {
+        // First, filter out management positions globally for Indicators
+        const cargo = emp.cargo?.toLowerCase() || ''
+        const excludedRoles = [
+            ROLES.JEFE,
+            ROLES.DIRECTOR,
+            ROLES.COORDINADOR,
+            ROLES.ANALISTA,
+            ROLES.SUPERVISOR,
+            ROLES.GERENTE,
+            'practicante',
+            'senior',
+            'aprendiz'
+        ]
+        const isExcludedCargo = excludedRoles.some(role => cargo.includes(role))
+        if (isExcludedCargo) return false
+
+        // Then apply Area Filter
+        if (selectedPlanta === 'all') {
+            // Default: show operational staff only (exclude admin areas)
+            return !AREAS_ADMINISTRATIVAS.includes(emp.area || '')
+        }
+        
+        if (selectedPlanta === 'Administrativa') {
+            return AREAS_ADMINISTRATIVAS.includes(emp.area || '')
+        }
+
+        return emp.area === selectedPlanta
+    })
 
     if (loading) {
         return (
@@ -134,13 +168,13 @@ export default function IndicadoresHiluPage() {
     }
 
     // Calculate statistics
-    const totalEmpleados = empleados.length
-    const faseHCompletada = empleados.filter(e => e.fh_completado).length
-    const faseICompletada = empleados.filter(e => e.fi_completado).length
-    const faseLCompletada = empleados.filter(e => e.fl_completado).length
-    const faseUCompletada = empleados.filter(e => e.fu_completado).length
-    const todosCompletos = empleados.filter(e => e.fh_completado && e.fi_completado && e.fl_completado && e.fu_completado).length
-    const ultimaAuditoriaAprobada = empleados.filter(e => e.ultima_auditoria === true).length
+    const totalEmpleados = filteredEmpleados.length
+    const faseHCompletada = filteredEmpleados.filter(e => e.fh_completado).length
+    const faseICompletada = filteredEmpleados.filter(e => e.fi_completado).length
+    const faseLCompletada = filteredEmpleados.filter(e => e.fl_completado).length
+    const faseUCompletada = filteredEmpleados.filter(e => e.fu_completado).length
+    const todosCompletos = filteredEmpleados.filter(e => e.fh_completado && e.fi_completado && e.fl_completado && e.fu_completado).length
+    const ultimaAuditoriaAprobada = filteredEmpleados.filter(e => e.ultima_auditoria === true).length
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -148,179 +182,188 @@ export default function IndicadoresHiluPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
-                <div className="mb-6">
-                    <Button
-                        variant="outline"
-                        onClick={() => router.push('/buscador-hilu')}
-                        className="mb-4"
-                    >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Volver al buscador
-                    </Button>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+                    <div>
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push('/buscador-hilu')}
+                            className="mb-4"
+                        >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Volver al buscador
+                        </Button>
 
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Indicadores HILU
-                    </h1>
-                    <p className="text-gray-600">
-                        Métricas y estadísticas del proceso de entrenamiento
-                    </p>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            Indicadores HILU
+                        </h1>
+                        <p className="text-gray-600">
+                            Métricas y estadísticas del proceso de entrenamiento
+                        </p>
+                    </div>
+
+                    <div className="w-full md:w-64">
+                        <Label className="mb-2 block text-xs font-bold text-gray-500 pl-1 uppercase tracking-wider">Filtrar por Área</Label>
+                        <select
+                            className="flex h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer transition-all"
+                            value={selectedPlanta}
+                            onChange={(e) => setSelectedPlanta(e.target.value)}
+                        >
+                            <option value="all">Personal Operativo (Todas)</option>
+                            <option value="Administrativa">Personal Administrativo</option>
+                            {plantas.map((area) => (
+                                <option key={area} value={area}>{area}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">
-                                Total Empleados
+                    <Card className="border-none shadow-sm bg-white overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gray-50/50">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-500">
+                                Total Colaboradores
                             </CardTitle>
                             <Users className="h-5 w-5 text-blue-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold text-gray-900">{totalEmpleados}</div>
-                            <p className="text-xs text-gray-500 mt-1">Empleados activos en entrenamiento</p>
+                        <CardContent className="pt-4">
+                            <div className="text-4xl font-black text-[#1e2f3d]">{totalEmpleados}</div>
+                            <p className="text-xs text-gray-400 mt-1 font-medium italic">Sujetos a entrenamiento</p>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">
-                                HILU Completo
+                    <Card className="border-none shadow-sm bg-white overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gray-50/50">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-500">
+                                HILU Certificado
                             </CardTitle>
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold text-gray-900">{todosCompletos}</div>
-                            <p className="text-xs text-gray-500 mt-1">
-                                {totalEmpleados > 0 ? ((todosCompletos / totalEmpleados) * 100).toFixed(1) : 0}% del total
+                        <CardContent className="pt-4">
+                            <div className="text-4xl font-black text-[#1e2f3d]">{todosCompletos}</div>
+                            <p className="text-xs text-gray-400 mt-1 font-medium">
+                                {totalEmpleados > 0 ? ((todosCompletos / totalEmpleados) * 100).toFixed(1) : 0}% efectividad total
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">
-                                Auditorías Aprobadas
+                    <Card className="border-none shadow-sm bg-white overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gray-50/50">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-500">
+                                Auditorías OK
                             </CardTitle>
                             <TrendingUp className="h-5 w-5 text-yellow-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold text-gray-900">{ultimaAuditoriaAprobada}</div>
-                            <p className="text-xs text-gray-500 mt-1">
-                                {totalEmpleados > 0 ? ((ultimaAuditoriaAprobada / totalEmpleados) * 100).toFixed(1) : 0}% del total
+                        <CardContent className="pt-4">
+                            <div className="text-4xl font-black text-[#1e2f3d]">{ultimaAuditoriaAprobada}</div>
+                            <p className="text-xs text-gray-400 mt-1 font-medium">
+                                {totalEmpleados > 0 ? ((ultimaAuditoriaAprobada / totalEmpleados) * 100).toFixed(1) : 0}% cumplimiento
                             </p>
                         </CardContent>
                     </Card>
                 </div>
 
                 {/* Phase Completion Statistics */}
-                <Card className="mb-8">
-                    <CardHeader>
-                        <CardTitle>Progreso por Fase</CardTitle>
+                <Card className="mb-8 border-none shadow-sm overflow-hidden bg-white">
+                    <CardHeader className="border-b border-gray-50 py-5">
+                        <CardTitle className="text-base font-black uppercase tracking-tight text-[#1e2f3d]">Progreso por Fase</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-6">
+                    <CardContent className="pt-8 pb-8">
+                        <div className="space-y-8">
                             {/* Fase H */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">Fase H - Inducción</span>
-                                    <span className="text-sm font-semibold text-gray-900">
-                                        {faseHCompletada} / {totalEmpleados}
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">Fase H - Inducción</span>
+                                    <span className="text-sm font-black text-[#1e2f3d]">
+                                        {faseHCompletada} <span className="text-gray-300 mx-1">/</span> {totalEmpleados}
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden border border-gray-50 p-1">
                                     <div
-                                        className="bg-blue-600 h-3 rounded-full transition-all"
+                                        className="bg-blue-600 h-full rounded-full transition-all duration-1000 shadow-sm"
                                         style={{ width: `${totalEmpleados > 0 ? (faseHCompletada / totalEmpleados) * 100 : 0}%` }}
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {totalEmpleados > 0 ? ((faseHCompletada / totalEmpleados) * 100).toFixed(1) : 0}% completado
-                                </p>
                             </div>
 
                             {/* Fase I */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">Fase I - Entrenamiento Intensivo</span>
-                                    <span className="text-sm font-semibold text-gray-900">
-                                        {faseICompletada} / {totalEmpleados}
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">Fase I - Entrenamiento Intensivo</span>
+                                    <span className="text-sm font-black text-[#1e2f3d]">
+                                        {faseICompletada} <span className="text-gray-300 mx-1">/</span> {totalEmpleados}
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden border border-gray-50 p-1">
                                     <div
-                                        className="bg-green-600 h-3 rounded-full transition-all"
+                                        className="bg-green-600 h-full rounded-full transition-all duration-1000 shadow-sm"
                                         style={{ width: `${totalEmpleados > 0 ? (faseICompletada / totalEmpleados) * 100 : 0}%` }}
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {totalEmpleados > 0 ? ((faseICompletada / totalEmpleados) * 100).toFixed(1) : 0}% completado
-                                </p>
                             </div>
 
                             {/* Fase L */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">Fase L - Logro</span>
-                                    <span className="text-sm font-semibold text-gray-900">
-                                        {faseLCompletada} / {totalEmpleados}
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">Fase L - Logro</span>
+                                    <span className="text-sm font-black text-[#1e2f3d]">
+                                        {faseLCompletada} <span className="text-gray-300 mx-1">/</span> {totalEmpleados}
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden border border-gray-50 p-1">
                                     <div
-                                        className="bg-yellow-600 h-3 rounded-full transition-all"
+                                        className="bg-yellow-600 h-full rounded-full transition-all duration-1000 shadow-sm"
                                         style={{ width: `${totalEmpleados > 0 ? (faseLCompletada / totalEmpleados) * 100 : 0}%` }}
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {totalEmpleados > 0 ? ((faseLCompletada / totalEmpleados) * 100).toFixed(1) : 0}% completado
-                                </p>
                             </div>
 
                             {/* Fase U */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">Fase U - Utilización</span>
-                                    <span className="text-sm font-semibold text-gray-900">
-                                        {faseUCompletada} / {totalEmpleados}
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">Fase U - Utilización</span>
+                                    <span className="text-sm font-black text-[#1e2f3d]">
+                                        {faseUCompletada} <span className="text-gray-300 mx-1">/</span> {totalEmpleados}
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden border border-gray-50 p-1">
                                     <div
-                                        className="bg-purple-600 h-3 rounded-full transition-all"
+                                        className="bg-purple-600 h-full rounded-full transition-all duration-1000 shadow-sm"
                                         style={{ width: `${totalEmpleados > 0 ? (faseUCompletada / totalEmpleados) * 100 : 0}%` }}
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {totalEmpleados > 0 ? ((faseUCompletada / totalEmpleados) * 100).toFixed(1) : 0}% completado
-                                </p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Additional Info */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Información Adicional</CardTitle>
+                <Card className="border-none shadow-sm bg-white">
+                    <CardHeader className="border-b border-gray-50">
+                        <CardTitle className="text-base font-black uppercase tracking-tight text-[#1e2f3d]">Resumen de Estatus</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-start gap-3">
-                                <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <CardContent className="pt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="flex items-start gap-4 p-4 rounded-2xl bg-blue-50/30 border border-blue-50">
+                                <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
+                                    <Clock className="h-5 w-5" />
+                                </div>
                                 <div>
-                                    <p className="font-medium text-gray-900">En Proceso</p>
-                                    <p className="text-sm text-gray-600">
-                                        {totalEmpleados - todosCompletos} empleados aún en entrenamiento
+                                    <p className="font-black text-[#1e2f3d] uppercase text-xs tracking-widest mb-1">En Proceso</p>
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        <span className="text-blue-600 font-bold">{totalEmpleados - todosCompletos}</span> colaboradores aún en ciclo de formación activa.
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-start gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                            <div className="flex items-start gap-4 p-4 rounded-2xl bg-green-50/30 border border-green-50">
+                                <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600 shadow-sm">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                </div>
                                 <div>
-                                    <p className="font-medium text-gray-900">Completados</p>
-                                    <p className="text-sm text-gray-600">
-                                        {todosCompletos} empleados han completado todas las fases
+                                    <p className="font-black text-[#1e2f3d] uppercase text-xs tracking-widest mb-1">Certificados</p>
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        <span className="text-green-600 font-bold">{todosCompletos}</span> colaboradores han cerrado satisfactoriamente el ciclo HILU.
                                     </p>
                                 </div>
                             </div>

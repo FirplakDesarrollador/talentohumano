@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
 export const PLANTAS = [
-    'Administrativa ',
+    'Administrativa',
     'Talento y Cultura',
     'TI',
     'Calidad',
