@@ -57,7 +57,7 @@ export default function BuscadorHiluPage() {
             }
         }
         if (savedBusqueda) setBusqueda(savedBusqueda)
-        
+
         setIsInitialized(true)
     }, [])
 
@@ -91,7 +91,7 @@ export default function BuscadorHiluPage() {
                         .select('rol')
                         .eq('correo', user.email!)
                         .maybeSingle()
-                    
+
                     if ((profile as any)?.rol) {
                         const dbRole = (profile as any).rol.toLowerCase()
                         const roleMap: Record<string, string> = {
@@ -337,8 +337,8 @@ export default function BuscadorHiluPage() {
                             className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-300 font-medium"
                         >
                             <span className="truncate">
-                                {selectedNiveles.length === 0 
-                                    ? 'Todos los niveles' 
+                                {selectedNiveles.length === 0
+                                    ? 'Todos los niveles'
                                     : `${selectedNiveles.length} seleccionado(s)`}
                             </span>
                             <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isNivelOpen ? 'rotate-180' : ''}`} />
@@ -353,16 +353,14 @@ export default function BuscadorHiluPage() {
                                         onClick={() => toggleNivel(nivel)}
                                         className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
                                     >
-                                        <div className={`h-4 w-4 rounded flex items-center justify-center border transition-colors ${
-                                            selectedNiveles.includes(nivel)
+                                        <div className={`h-4 w-4 rounded flex items-center justify-center border transition-colors ${selectedNiveles.includes(nivel)
                                                 ? 'bg-blue-600 border-blue-600 text-white'
                                                 : 'bg-white border-gray-300'
-                                        }`}>
+                                            }`}>
                                             {selectedNiveles.includes(nivel) && <Check className="h-3 w-3" />}
                                         </div>
-                                        <span className={`text-xs font-medium ${
-                                            selectedNiveles.includes(nivel) ? 'text-blue-600' : 'text-gray-600'
-                                        }`}>
+                                        <span className={`text-xs font-medium ${selectedNiveles.includes(nivel) ? 'text-blue-600' : 'text-gray-600'
+                                            }`}>
                                             {nivel}
                                         </span>
                                     </button>
