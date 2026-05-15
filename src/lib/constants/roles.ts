@@ -253,7 +253,7 @@ export const APPROVER_ROLES = APPROVER_LEVELS;
  * Returns null if the user has no plant-based restrictions.
  */
 export function getPlantasPermitidas(email: string): string[] | null {
-    if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com' || email === 'hector.chinchilla@firplak.com') return null;
+    if (email === 'hector.chinchilla@firplak.com') return null;
     if (SUPERVISORES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
     if (SUPERVISORES_CALIDAD.includes(email)) return ['Calidad'];
     if (SUPERVISORES_MARMOL.includes(email)) return ['Marmol sintetico'];
