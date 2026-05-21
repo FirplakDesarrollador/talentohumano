@@ -19,7 +19,8 @@ import {
     Search,
     Filter,
     FileDown, 
-    Loader2
+    Loader2,
+    Bell
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Database } from '@/lib/supabase/types'
@@ -433,6 +434,7 @@ export default function EntrenamientoDetailPage() {
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
                 <h1 className="text-xl font-black uppercase tracking-widest flex-1">HILU</h1>
+
                 <div className="flex items-center gap-2 pr-2">
                     <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-[10px] font-bold uppercase text-gray-400">En línea</span>
@@ -545,7 +547,10 @@ export default function EntrenamientoDetailPage() {
                     <div className="flex justify-center">
                         <div className="inline-flex bg-white/50 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-xl ring-1 ring-black/[0.03]">
                             <button
-                                onClick={() => setActiveTab('actual')}
+                                onClick={() => {
+                                    setActiveTab('actual')
+                                    setSelectedCargo(titularCargoName)
+                                }}
                                 className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${
                                     activeTab === 'actual'
                                     ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
@@ -650,32 +655,44 @@ export default function EntrenamientoDetailPage() {
                 </div>
 
                 {/* Training Details Section */}
-                <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
-                    <HiluComponent
-                        key={currentRecord.cargo || 'default'}
-                        empleado={currentRecord}
-                        onUpdate={fetchEmpleadoData}
-                        currentUser={currentUser}
-                    />
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
-                        <AuditoriaCard
-                            empleadoId={currentRecord.cedula}
-                            cargo={currentRecord.cargo || 'N/A'}
-                            auditorias={auditorias}
+                {activeTab === 'actual' || (activeTab === 'otros' && selectedCargo !== titularCargoName) ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
+                        <HiluComponent
+                            key={currentRecord.cargo || 'default'}
+                            empleado={currentRecord}
                             onUpdate={fetchEmpleadoData}
                             currentUser={currentUser}
                         />
 
-                        <ReentrenamientoCard
-                            empleadoId={currentRecord.cedula}
-                            cargo={currentRecord.cargo || 'N/A'}
-                            reentrenamientos={reentrenamientos}
-                            onUpdate={fetchEmpleadoData}
-                            currentUser={currentUser}
-                        />
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
+                            <AuditoriaCard
+                                empleadoId={currentRecord.cedula}
+                                cargo={currentRecord.cargo || 'N/A'}
+                                auditorias={auditorias}
+                                onUpdate={fetchEmpleadoData}
+                                currentUser={currentUser}
+                            />
+
+                            <ReentrenamientoCard
+                                empleadoId={currentRecord.cedula}
+                                cargo={currentRecord.cargo || 'N/A'}
+                                reentrenamientos={reentrenamientos}
+                                onUpdate={fetchEmpleadoData}
+                                currentUser={currentUser}
+                            />
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="mt-8 bg-white/50 border-2 border-dashed border-gray-200 rounded-[3rem] p-20 text-center space-y-4 animate-in fade-in">
+                        <div className="inline-flex p-6 rounded-full bg-blue-50 text-blue-300 shadow-inner">
+                            <Briefcase className="h-12 w-12" />
+                        </div>
+                        <div className="space-y-1">
+                            <h4 className="text-xl font-black text-[#1e2f3d] uppercase tracking-tight">Selecciona un desempeño</h4>
+                            <p className="text-sm text-gray-500 font-medium">Haz clic en una de las tarjetas superiores para cargar y visualizar los detalles de su formación en ese cargo.</p>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     )

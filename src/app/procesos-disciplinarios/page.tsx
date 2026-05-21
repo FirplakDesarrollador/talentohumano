@@ -41,7 +41,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
     const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
     // 2. Fetch Empleados
-    const fetchEmpleados = useCallback(async (plantas: string[]) => {
+    const fetchEmpleados = useCallback(async (userProfile: any) => {
         setLoading(true)
         try {
             let query = supabase
@@ -49,8 +49,28 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 .select('*')
                 .eq('activo', true)
 
-            if (plantas && plantas.length > 0) {
-                query = query.in('planta', plantas)
+            if (userProfile) {
+                const isAdmin = ADMIN_EMAILS.includes(userProfile.correo) || (ADMIN_LEVELS as any).includes(userProfile.nivelCargo);
+                const isAnalyst = ANALISTAS_CON_ACCESO.includes(userProfile.correo);
+                
+                if (!isAdmin && !isAnalyst) {
+                    const plantas = getPlantasPermitidas(userProfile.correo);
+                    // For specific users like estiven.londono or hector.chinchilla, getPlantasPermitidas returns null 
+                    // meaning they have access to all plants (null means no restriction for them in Gestor).
+                    const fullAccessEmails = ['hector.chinchilla@firplak.com', 'estiven.londono@firplak.com'];
+                    
+                    if (!fullAccessEmails.includes(userProfile.correo)) {
+                        const nombreABuscar = userProfile.nombre || userProfile.nombreCompleto || '';
+                        
+                        if (plantas && plantas.length > 0) {
+                            // Can see specific plants OR direct reports OR themselves
+                            query = query.or(`planta.in.(${plantas.map(p => `"${p}"`).join(',')}),jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
+                        } else {
+                            // If no plants allowed, ONLY see direct reports OR themselves
+                            query = query.or(`jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
+                        }
+                    }
+                }
             }
 
             const { data, error } = await query
@@ -133,12 +153,11 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 setIsAnalista(analistaAcceso)
                 
                 // If authorized, fetch data
-                const userPlants = getPlantasPermitidas(email)
-                fetchEmpleados(userPlants || [])
+                fetchEmpleados(userProfile)
 
             } catch (error) {
                 console.error('Error fetching user data:', error)
-                fetchEmpleados([]) 
+                fetchEmpleados(null) 
             }
         }
         fetchUserData()
@@ -238,7 +257,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         variant="ghost"
                         onClick={() => {
                             setBusqueda('')
-                            fetchEmpleados(getPlantasPermitidas(currentUser?.correo || '') || [])
+                            fetchEmpleados(currentUser)
                         }}
                         className="h-[42px] px-4 rounded-lg text-gray-500 hover:text-[#1D3557] hover:bg-white border border-gray-200 shadow-sm"
                         title="Refrescar datos"

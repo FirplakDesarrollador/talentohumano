@@ -8,7 +8,7 @@ import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO } from '@/lib/constants/roles
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser, Calendar, ChevronDown, Check, User } from 'lucide-react'
+import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser, Calendar, ChevronDown, Check, User, Bell, Clock, ShieldCheck } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { EmpleadoCardHILU } from '@/components/HILU/EmpleadoCardHILU'
 import type { Database } from '@/lib/supabase/types'
@@ -37,6 +37,8 @@ export default function BuscadorHiluPage() {
     const nivelDropdownRef = useRef<HTMLDivElement>(null)
     const [userLevel, setUserLevel] = useState<string>('')
     const [userEmail, setUserEmail] = useState<string>('')
+    const [programaciones, setProgramaciones] = useState<any[]>([])
+    const [showProgramaciones, setShowProgramaciones] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
 
@@ -106,6 +108,34 @@ export default function BuscadorHiluPage() {
                         }
                         setUserLevel(roleMap[dbRole] || (profile as any).rol)
                     }
+                }
+                
+                // Fetch Programaciones
+                const todayStr = new Date().toISOString().split('T')[0];
+                const { data: progData } = await supabase
+                    .from('hilu_programacion')
+                    .select('*, empleados(nombreCompleto)')
+                    .gte('fecha_programada', todayStr)
+                    .order('fecha_programada', { ascending: true })
+                    .limit(30);
+                    
+                // If we want to filter by user's plants or instructor, we can do it here.
+                // For now, let's just get the upcoming ones. If the user is an instructor, we prioritize those.
+                // Let's try to find their name from the profile or employee record
+                let userName = '';
+                if ((empleado as any)?.nombreCompleto) userName = (empleado as any).nombreCompleto;
+                else if ((empleado as any)?.nombre) userName = (empleado as any).nombre;
+                
+                if (progData) {
+                    // Si encontramos su nombre, ponemos primero donde ellos son el instructor
+                    const sortedProg = progData.sort((a: any, b: any) => {
+                        const aIsMe = userName && a.instructor?.toLowerCase().includes(userName.toLowerCase());
+                        const bIsMe = userName && b.instructor?.toLowerCase().includes(userName.toLowerCase());
+                        if (aIsMe && !bIsMe) return -1;
+                        if (!aIsMe && bIsMe) return 1;
+                        return 0;
+                    });
+                    setProgramaciones(sortedProg);
                 }
             }
             setLoading(false)
@@ -289,7 +319,73 @@ export default function BuscadorHiluPage() {
                     <ArrowLeft className="h-6 w-6" />
                 </button>
                 <div className="flex-1" />
-                <div className="w-8" /> {/* Spacer for balance */}
+                
+                {/* NOTIFICATIONS BELL */}
+                <div className="relative mr-2">
+                    <Button 
+                        onClick={() => setShowProgramaciones(!showProgramaciones)}
+                        variant="ghost" 
+                        className="text-white hover:bg-white/10 rounded-full h-10 w-10 p-0 relative focus:outline-none"
+                    >
+                        <Bell className="h-5 w-5" />
+                        {programaciones.length > 0 && (
+                            <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-[#1e2f3d] animate-pulse"></span>
+                        )}
+                    </Button>
+                    
+                    {showProgramaciones && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowProgramaciones(false)} />
+                            <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4">
+                                <div className="bg-gradient-to-r from-[#1e2f3d] to-[#2c4255] p-4 text-white flex justify-between items-center">
+                                    <h3 className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                                        <Bell className="h-4 w-4 text-amber-400" /> Mis Entrenamientos
+                                    </h3>
+                                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full font-black">{programaciones.length}</span>
+                                </div>
+                                <div className="max-h-[400px] overflow-y-auto p-2 bg-gray-50/50">
+                                    {programaciones.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {programaciones.map((p, i) => {
+                                                const evtDate = new Date(p.fecha_programada + 'T00:00:00');
+                                                const dateStr = evtDate.toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' });
+                                                return (
+                                                    <div key={i} className="p-3.5 bg-white rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                                                {p.fase_hilu ? `FASE ${p.fase_hilu}` : p.tipo}
+                                                            </span>
+                                                            <span className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                                                                <Calendar className="h-3 w-3" /> {dateStr}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm font-black text-[#1e2f3d] leading-tight group-hover:text-blue-600 transition-colors">
+                                                            {p.empleados?.nombreCompleto || 'Colaborador'}
+                                                        </p>
+                                                        <div className="mt-2.5 flex items-center justify-between">
+                                                            <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg">
+                                                                <Clock className="h-3 w-3 text-blue-500" /> 
+                                                                {p.hora_inicio.substring(0, 5)} - {p.hora_fin.substring(0, 5)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="py-12 px-6 text-center">
+                                            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <ShieldCheck className="h-8 w-8 text-gray-300" />
+                                            </div>
+                                            <p className="text-sm font-bold text-gray-800">Todo al día</p>
+                                            <p className="text-xs text-gray-500 mt-1">No tienes entrenamientos programados próximos.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="max-w-[1400px] mx-auto px-4 py-8">
