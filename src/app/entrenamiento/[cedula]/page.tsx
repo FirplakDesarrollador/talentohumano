@@ -19,7 +19,6 @@ import {
     Search,
     Filter,
     FileDown, 
-    Newspaper,
     Loader2
 } from 'lucide-react'
 import Image from 'next/image'
@@ -483,9 +482,6 @@ export default function EntrenamientoDetailPage() {
                                 </div>
 
                                 <div className="mt-10 flex flex-wrap justify-center md:justify-start gap-4">
-                                    <Button onClick={() => router.push(`/novedades-nomina/${currentRecord.cedula}`)} className="bg-[#1e2f3d] hover:bg-[#1e2f3d]/90 text-white flex items-center gap-3 rounded-2xl px-8 py-6 font-bold uppercase text-xs shadow-xl transition-all hover:-translate-y-1 active:scale-95">
-                                        <Newspaper className="h-5 w-5" />Registrar Novedad
-                                    </Button>
                                     <Button onClick={async () => {
                                         setGeneratingPdf(true);
                                         try { await generateTrainingCertificatePDF(currentRecord); toast.success('Certificado generado correctamente'); }
