@@ -237,18 +237,49 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         polivalenciasSeleccionadas: [] as string[]
     });
 
+    const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.85): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+            const img = new window.Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                let { width, height } = img;
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject(new Error('No canvas context'));
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(
+                    (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+                    'image/jpeg',
+                    quality
+                );
+            };
+            img.onerror = reject;
+            img.src = url;
+        });
+    };
+
     const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
         const file = e.target.files[0];
         setUploadingFoto(true);
 
         try {
-            const fileName = `foto_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+            // Comprimir imagen antes de subir para evitar error de tamaño máximo en Storage
+            const compressedBlob = await compressImage(file);
+            const fileName = `foto_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.jpg`;
             const filePath = `fotos_perfil/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('hilu')
-                .upload(filePath, file);
+                .upload(filePath, compressedBlob, { contentType: 'image/jpeg' });
 
             if (uploadError) throw uploadError;
 
