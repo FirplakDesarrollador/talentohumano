@@ -152,7 +152,7 @@ export default function GestorPersonalPage() {
         // General Restricted Supervisors + Coordinadores + Jefes con acceso (centralized helper)
         if (user?.email) {
             // Always allow users to see their own profile
-            if (empleado.correo_electronico === user.email) return true;
+            if (empleado.correo === user.email) return true;
             
             const permittedPlants = getPlantasPermitidas(user.email)
             if (permittedPlants) {
