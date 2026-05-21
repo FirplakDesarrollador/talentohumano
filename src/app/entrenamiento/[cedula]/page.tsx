@@ -19,7 +19,6 @@ import {
     Search,
     Filter,
     FileDown, 
-    Newspaper,
     Loader2
 } from 'lucide-react'
 import Image from 'next/image'
@@ -249,7 +248,7 @@ export default function EntrenamientoDetailPage() {
 
             // 1.5 Fetch Polyvalencias
             const { data: polyData } = await (supabase.from('polivalencia') as any)
-                .select('Puesto polivalencia')
+                .select('"Puesto polivalencia"')
                 .eq('Cedula', resolvedCedula.toString())
 
             const polyList = Array.from(new Set(polyData?.map((p: any) => p['Puesto polivalencia'] as string).filter(Boolean) || [])) as string[]
@@ -271,28 +270,26 @@ export default function EntrenamientoDetailPage() {
             let recordsAdded = false
 
             for (const cargo of cargosToInitialize) {
-                const existingRecord = allRecords.find(r => r.cargo === cargo)
-                if (!existingRecord) {
-                    console.log(`[DEBUG] Initializing phases for cargo: ${cargo}`)
-                    const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
-                    let numericCreatorId = currentUserData.id
+                console.log(`[DEBUG] Checking phases for cargo: ${cargo}`)
+                const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
+                let numericCreatorId = currentUserData.id
 
-                    for (const table of phases) {
-                        const { count } = await supabase
-                            .from(table)
-                            .select('*', { count: 'exact', head: true })
-                            .eq('empleado_id', resolvedId)
-                            .eq('cargo', cargo)
+                for (const table of phases) {
+                    const { count } = await supabase
+                        .from(table)
+                        .select('*', { count: 'exact', head: true })
+                        .eq('empleado_id', resolvedId)
+                        .eq('cargo', cargo)
 
-                        if (count === 0) {
-                            await (supabase.from(table) as any).insert({
-                                empleado_id: resolvedId,
-                                cargo: cargo,
-                                created_by: numericCreatorId,
-                                modified_by: numericCreatorId
-                            })
-                            recordsAdded = true
-                        }
+                    if (count === 0) {
+                        console.log(`[DEBUG] Initializing ${table} for cargo: ${cargo}`)
+                        await (supabase.from(table) as any).insert({
+                            empleado_id: resolvedId,
+                            cargo: cargo,
+                            created_by: numericCreatorId,
+                            modified_by: numericCreatorId
+                        })
+                        recordsAdded = true
                     }
                 }
             }
@@ -485,9 +482,6 @@ export default function EntrenamientoDetailPage() {
                                 </div>
 
                                 <div className="mt-10 flex flex-wrap justify-center md:justify-start gap-4">
-                                    <Button onClick={() => router.push(`/novedades-nomina/${currentRecord.cedula}`)} className="bg-[#1e2f3d] hover:bg-[#1e2f3d]/90 text-white flex items-center gap-3 rounded-2xl px-8 py-6 font-bold uppercase text-xs shadow-xl transition-all hover:-translate-y-1 active:scale-95">
-                                        <Newspaper className="h-5 w-5" />Registrar Novedad
-                                    </Button>
                                     <Button onClick={async () => {
                                         setGeneratingPdf(true);
                                         try { await generateTrainingCertificatePDF(currentRecord); toast.success('Certificado generado correctamente'); }

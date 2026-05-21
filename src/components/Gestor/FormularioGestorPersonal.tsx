@@ -32,7 +32,10 @@ import {
     Users,
     Upload,
     AlertCircle,
-    X
+    X,
+    Maximize2,
+    Check,
+    ArrowRightLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
@@ -141,6 +144,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [fetching, setFetching] = useState(!!id);
     const [showPhotoEdit, setShowPhotoEdit] = useState(false);
     const [uploadingFoto, setUploadingFoto] = useState(false);
+    const [removingFoto, setRemovingFoto] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showPhotoZoom, setShowPhotoZoom] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isRestrictedSupervisor, setIsRestrictedSupervisor] = useState(false);
@@ -241,13 +247,13 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             const filePath = `fotos_perfil/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('evidencias-hilu')
+                .from('hilu')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabase.storage
-                .from('evidencias-hilu')
+                .from('hilu')
                 .getPublicUrl(filePath);
 
             updateField('foto', publicUrl);
@@ -261,11 +267,28 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         }
     };
 
+    const handleRemoveFoto = async () => {
+        setRemovingFoto(true);
+        try {
+            // We clear the field in the form
+            updateField('foto', '');
+            setShowDeleteConfirm(false);
+            setShowPhotoEdit(false);
+            toast.success('Foto eliminada correctamente');
+        } catch (err: any) {
+            console.error('Error al eliminar foto:', err);
+            toast.error('Error al eliminar la imagen');
+        } finally {
+            setRemovingFoto(false);
+        }
+    };
+
     // Helper State for Dropdowns
     const [existingJefes, setExistingJefes] = useState<string[]>([]);
     const [existingCargos, setExistingCargos] = useState<string[]>([]);
     const [availablePolivalencias, setAvailablePolivalencias] = useState<string[]>([]);
     const [polyToDelete, setPolyToDelete] = useState<string | null>(null);
+    const [selectedPolyToSwap, setSelectedPolyToSwap] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchHelpers = async () => {
@@ -389,6 +412,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 tipo_sangre: formData.tipo_sangre || null,
                 cargo: formData.cargo || null,
                 planta: formData.planta || null,
+                area: formData.planta || null,
                 jefe: formData.jefe || null,
                 empresa: formData.empresa || null,
                 primer_ingreso: formData.primer_ingreso || null,
@@ -495,13 +519,110 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
             <div className="flex flex-col items-center py-8 bg-white rounded-3xl border border-gray-100 shadow-sm">
                 <h1 className="text-[#1D3557] font-black text-2xl uppercase tracking-[0.2em] mb-8">Información Personal</h1>
                 <div className="relative group mb-6">
-                    <div className="w-48 h-56 rounded-2xl bg-gray-50 shadow-2xl border-4 border-white overflow-hidden">
-                        {formData.foto ? <Image src={formData.foto} alt="Foto" fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-100"><User className="h-24 w-24" /></div>}
-                        {!isRestrictedSupervisor && !isRestrictedCoordinator && !isRestrictedJefe && !isRestrictedDirector && (
-                            <div onClick={() => setShowPhotoEdit(!showPhotoEdit)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer"><Camera className="h-8 w-8 text-white" /></div>
+                    <div className="w-48 h-56 rounded-2xl bg-gray-50 shadow-2xl border-4 border-white overflow-hidden relative">
+                        {formData.foto ? (
+                            <Image src={formData.foto} alt="Foto" fill className="object-cover transition-transform duration-500 group-hover:scale-110" unoptimized />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-100">
+                                <User className="h-24 w-24" />
+                            </div>
                         )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-3 transition-all duration-300">
+                            {formData.foto && (
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowPhotoZoom(true)}
+                                    className="p-3 bg-blue-500/20 hover:bg-blue-500/60 rounded-full backdrop-blur-md text-white transition-all hover:scale-110"
+                                    title="Ampliar foto"
+                                >
+                                    <Maximize2 className="h-6 w-6" />
+                                </button>
+                            )}
+                            {!isRestrictedSupervisor && !isRestrictedCoordinator && !isRestrictedJefe && !isRestrictedDirector && (
+                                <>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPhotoEdit(!showPhotoEdit)}
+                                        className="p-3 bg-white/20 hover:bg-white/40 rounded-full backdrop-blur-md text-white transition-all hover:scale-110"
+                                        title="Cambiar foto"
+                                    >
+                                        <Camera className="h-6 w-6" />
+                                    </button>
+                                    {formData.foto && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            className="p-3 bg-red-500/20 hover:bg-red-500/60 rounded-full backdrop-blur-md text-white transition-all hover:scale-110"
+                                            title="Eliminar foto"
+                                        >
+                                            <X className="h-6 w-6" />
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
+
+                {/* Delete Confirmation Overlay */}
+                {showDeleteConfirm && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
+                            <div className="flex flex-col items-center text-center space-y-4">
+                                <div className="h-16 w-16 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                    <AlertCircle className="h-8 w-8" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-xl font-black text-[#1e2f3d] uppercase tracking-tight">¿Quitar foto?</h3>
+                                    <p className="text-sm text-gray-500 font-medium">Esta acción eliminará la foto de perfil del empleado.</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="flex-1 h-12 rounded-xl font-bold text-gray-500 border-gray-100"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleRemoveFoto}
+                                    disabled={removingFoto}
+                                    className="flex-1 h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg shadow-red-100"
+                                >
+                                    {removingFoto ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirmar'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Photo Zoom Overlay */}
+                {showPhotoZoom && formData.foto && (
+                    <div 
+                        className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md cursor-zoom-out animate-in fade-in duration-300"
+                        onClick={() => setShowPhotoZoom(false)}
+                    >
+                        <button 
+                            className="absolute top-8 right-8 p-4 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+                            onClick={() => setShowPhotoZoom(false)}
+                        >
+                            <X className="h-8 w-8" />
+                        </button>
+                        <div className="relative w-[90vw] h-[85vh] animate-in zoom-in-95 duration-300">
+                            <Image 
+                                src={formData.foto} 
+                                alt="Foto Ampliada" 
+                                fill 
+                                className="object-contain" 
+                                unoptimized 
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {showPhotoEdit && (
                     <div className="w-full max-w-md px-6 mb-6">
                         <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
@@ -564,75 +685,70 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
             <FormSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField label="Cargo / Puesto" icon={<Briefcase className="h-3 w-3" />}>
-                        <Input list="cargos-list" value={formData.cargo} onChange={(e) => updateField('cargo', e.target.value)} className={inputClass} />
-                        <datalist id="cargos-list">{existingCargos.map(c => <option key={c} value={c} />)}</datalist>
-                    </FormField>
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
+                        <FormField label="Cargo Actual" icon={<Briefcase className="h-3 w-3" />}>
+                            <Input list="cargos-list" value={formData.cargo} onChange={(e) => updateField('cargo', e.target.value)} className={inputClass} />
+                            <datalist id="cargos-list">{existingCargos.map(c => <option key={c} value={c} />)}</datalist>
+                        </FormField>
 
-                    <div className="md:col-span-2 space-y-4">
-                        <FormField label="Polivalencias (Múltiples)" icon={<Users className="h-3 w-3" />}>
-                            <div className="flex flex-wrap gap-2 mb-3">
-                                {formData.polivalenciasSeleccionadas.map((poly) => (
-                                    <div key={poly} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border border-blue-100 shadow-sm animate-in zoom-in-95">
-                                        {poly}
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setPolyToDelete(poly)}
-                                            className="hover:bg-red-100 hover:text-red-600 rounded-full p-0.5 transition-all"
-                                            title="Eliminar"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
-                                {formData.polivalenciasSeleccionadas.length === 0 && (
-                                    <p className="text-[10px] text-gray-400 font-medium italic">No se han seleccionado polivalencias</p>
-                                )}
-                            </div>
-                            <div className="flex gap-2">
-                                <Input 
-                                    className={inputClass}
-                                    placeholder="Escriba o seleccione para añadir..."
-                                    list="polivalencias-options"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            const val = (e.target as HTMLInputElement).value.trim();
-                                            if (val && !formData.polivalenciasSeleccionadas.includes(val)) {
-                                                updateField('polivalenciasSeleccionadas', [...formData.polivalenciasSeleccionadas, val]);
-                                                (e.target as HTMLInputElement).value = '';
-                                            }
-                                        }
-                                    }}
-                                    onChange={(e) => {
-                                        const val = e.target.value.trim();
-                                        // If the value matches an option exactly, add it
-                                        if (availablePolivalencias.includes(val) && !formData.polivalenciasSeleccionadas.includes(val)) {
-                                            updateField('polivalenciasSeleccionadas', [...formData.polivalenciasSeleccionadas, val]);
-                                            e.target.value = '';
-                                        }
-                                    }}
-                                />
-                                <datalist id="polivalencias-options">
-                                    {availablePolivalencias
-                                        .filter(p => !formData.polivalenciasSeleccionadas.includes(p))
-                                        .map(p => <option key={p} value={p} />)
+                        <div className="hidden md:flex flex-col items-center justify-center pb-2">
+                            <button 
+                                type="button"
+                                title="Intercambiar cargo actual por polivalencia"
+                                onClick={() => {
+                                    const polyToSwap = selectedPolyToSwap || formData.polivalenciasSeleccionadas[0];
+                                    if (polyToSwap) {
+                                        updateField('cargo', polyToSwap);
+                                        toast.success(`Cargo actualizado a ${polyToSwap}`);
                                     }
-                                </datalist>
-                                <Button 
-                                    type="button" 
-                                    onClick={(e) => {
-                                        const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                        const val = input.value.trim();
-                                        if (val && !formData.polivalenciasSeleccionadas.includes(val)) {
-                                            updateField('polivalenciasSeleccionadas', [...formData.polivalenciasSeleccionadas, val]);
-                                            input.value = '';
+                                }}
+                                disabled={formData.polivalenciasSeleccionadas.length === 0}
+                                className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all text-slate-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ArrowRightLeft className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <FormField label="Polivalencia" icon={<Users className="h-3 w-3" />}>
+                            <div className="flex gap-2">
+                                <div className={`${inputClass} flex-1 overflow-x-auto whitespace-nowrap flex items-center gap-2 py-1.5 px-2`}>
+                                    {formData.polivalenciasSeleccionadas.length > 0 ? (
+                                        formData.polivalenciasSeleccionadas.map(p => {
+                                            const isSelected = (selectedPolyToSwap || formData.polivalenciasSeleccionadas[0]) === p;
+                                            return (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    onClick={() => setSelectedPolyToSwap(p)}
+                                                    className={`px-3 py-1 text-sm rounded-lg transition-colors border ${
+                                                        isSelected 
+                                                            ? 'bg-slate-100 text-slate-800 border-slate-200 shadow-sm font-medium' 
+                                                            : 'bg-transparent text-gray-500 hover:bg-gray-50 border-transparent hover:border-gray-200'
+                                                    }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            );
+                                        })
+                                    ) : (
+                                        <span className="text-gray-400 italic text-sm px-2">Sin polivalencias</span>
+                                    )}
+                                </div>
+                                <button 
+                                    type="button"
+                                    title="Intercambiar cargo actual por polivalencia"
+                                    onClick={() => {
+                                        const polyToSwap = selectedPolyToSwap || formData.polivalenciasSeleccionadas[0];
+                                        if (polyToSwap) {
+                                            updateField('cargo', polyToSwap);
+                                            toast.success(`Cargo actualizado a ${polyToSwap}`);
                                         }
                                     }}
-                                    className="h-11 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 border-none shadow-none"
+                                    disabled={formData.polivalenciasSeleccionadas.length === 0}
+                                    className="md:hidden flex p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all text-slate-600 active:scale-95 items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <UserPlus className="h-4 w-4" />
-                                </Button>
+                                    <ArrowRightLeft className="h-5 w-5" />
+                                </button>
                             </div>
                         </FormField>
                     </div>

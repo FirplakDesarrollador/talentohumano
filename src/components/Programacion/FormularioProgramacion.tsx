@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Save,
@@ -16,7 +15,7 @@ import {
     Briefcase,
     MapPin,
     Clock,
-    CheckCircle2,
+    Check,
     Search,
     Loader2,
     BookOpen,
@@ -28,12 +27,21 @@ import { format } from 'date-fns';
 
 interface FormularioProgramacionProps {
     onSuccess?: () => void;
+    editId?: string | null;
+    preselectedEmpleadoId?: string | null;
 }
 
 const TIPOS_ENTRENAMIENTO = ['Entrenamiento', 'Reentrenamiento'];
 const FASES_HILU = ['I', 'L', 'U'];
 
-export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ onSuccess }) => {
+// Areas that belong to the "Administrativa" virtual group
+const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'I+D+I', 'Logistica',
+    'Manufactura', 'Comercial'
+];
+
+export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ onSuccess, editId, preselectedEmpleadoId }) => {
     const router = useRouter();
     const supabase = React.useMemo(() => createClient(), []);
     const [loading, setLoading] = useState(false);
@@ -44,6 +52,12 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
     const [employees, setEmployees] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showResults, setShowResults] = useState(false);
+
+    // Instructor search state
+    const [instructors, setInstructors] = useState<any[]>([]);
+    const [instructorSearchQuery, setInstructorSearchQuery] = useState('');
+    const [showInstructorResults, setShowInstructorResults] = useState(false);
+    const [fetchingInstructors, setFetchingInstructors] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -63,16 +77,110 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
     // Fetch plants for dropdown
     useEffect(() => {
         const fetchPlantas = async () => {
-            const { data, error } = await supabase
-                .from('plantas')
-                .select('planta')
-                .order('planta');
-            if (!error && data) {
-                setPlantas(data);
+            const { data: areasData } = await supabase
+                .from('query_estado_hilu')
+                .select('area')
+                .not('area', 'is', null);
+
+            if (areasData) {
+                const uniqueAreas = Array.from(new Set(areasData.map(p => (p as any).area).filter(Boolean))) as string[];
+                const filteredAreas = uniqueAreas
+                    .filter(a => !AREAS_ADMINISTRATIVAS.includes(a))
+                    .filter(a => !a.startsWith('{'))
+                    .filter(a => a !== 'Produccion' && a !== 'Todos')
+                    .sort();
+                
+                const formatted = [
+                    { planta: 'Todas las áreas' },
+                    { planta: 'Administrativa' }, 
+                    ...filteredAreas.map(a => ({ planta: a }))
+                ];
+                setPlantas(formatted);
             }
         };
         fetchPlantas();
     }, [supabase]);
+
+    // Fetch data for edit mode
+    useEffect(() => {
+        const fetchEditData = async () => {
+            if (!editId) return;
+            
+            setLoading(true);
+            try {
+                const { data, error } = await (supabase as any)
+                    .from('hilu_programacion')
+                    .select('*, empleados(nombreCompleto, cargo, planta)')
+                    .eq('id', editId)
+                    .single();
+
+                if (error) throw error;
+                if (data) {
+                    const d: any = data;
+                    setFormData({
+                        empleado_id: d.empleado_id.toString(),
+                        nombreCompleto: d.empleados?.nombreCompleto || '',
+                        planta: d.planta || '',
+                        fecha_programada: d.fecha_programada,
+                        tipo: d.tipo || 'Entrenamiento',
+                        instructor: d.instructor || '',
+                        hora_inicio: d.hora_inicio || '08:00',
+                        hora_fin: d.hora_fin || '10:00',
+                        formado: d.formado || false,
+                        empleado_entrenamiento: d.empleado_entrenamiento || false,
+                        fase_hilu: d.fase_hilu || 'I'
+                    });
+                    setSearchQuery(d.empleados?.nombreCompleto || '');
+                    setInstructorSearchQuery(d.instructor || '');
+                }
+            } catch (err) {
+                console.error('Error fetching edit data:', err);
+                toast.error('Error al cargar datos para editar');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchEditData();
+    }, [editId, supabase]);
+
+    const selectEmployee = useCallback((emp: any) => {
+        let plantToSet = emp.planta || '';
+        if (AREAS_ADMINISTRATIVAS.includes(plantToSet)) {
+            plantToSet = 'Administrativa';
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            empleado_id: emp.id.toString(),
+            nombreCompleto: emp.nombreCompleto || '',
+            planta: plantToSet
+        }));
+        setSearchQuery(emp.nombreCompleto || '');
+        setShowResults(false);
+    }, []);
+
+    // Fetch employee data if preselected
+    useEffect(() => {
+        const fetchPreselectedEmployee = async () => {
+            if (!preselectedEmpleadoId || editId) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('empleados')
+                    .select('id, nombreCompleto, cargo, planta')
+                    .eq('id', preselectedEmpleadoId)
+                    .single();
+
+                if (error) throw error;
+                if (data) {
+                    selectEmployee(data);
+                }
+            } catch (err) {
+                console.error('Error fetching preselected employee:', err);
+            }
+        };
+        fetchPreselectedEmployee();
+    }, [preselectedEmpleadoId, editId, supabase, selectEmployee]);
 
     // Fetch employees for autocomplete
     useEffect(() => {
@@ -86,7 +194,8 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
             try {
                 const { data, error } = await supabase
                     .from('empleados')
-                    .select('id, nombreCompleto, cargo, planta, jefe')
+                    .select('id, nombreCompleto, cargo, planta')
+                    .eq('activo', true)
                     .ilike('nombreCompleto', `%${searchQuery}%`)
                     .limit(5);
 
@@ -102,15 +211,42 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
         return () => clearTimeout(handler);
     }, [searchQuery, supabase]);
 
-    const selectEmployee = (emp: any) => {
+    // Fetch instructors for autocomplete
+    useEffect(() => {
+        const handler = setTimeout(async () => {
+            if (instructorSearchQuery.length < 3) {
+                setInstructors([]);
+                return;
+            }
+
+            setFetchingInstructors(true);
+            try {
+                const { data, error } = await supabase
+                    .from('empleados')
+                    .select('id, nombreCompleto, cargo, planta')
+                    .eq('activo', true)
+                    .ilike('nombreCompleto', `%${instructorSearchQuery}%`)
+                    .limit(5);
+
+                if (error) throw error;
+                setInstructors(data || []);
+            } catch (err: any) {
+                console.error('Error searching instructors:', err);
+            } finally {
+                setFetchingInstructors(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(handler);
+    }, [instructorSearchQuery, supabase]);
+
+    const selectInstructor = (emp: any) => {
         setFormData({
             ...formData,
-            empleado_id: emp.id.toString(),
-            nombreCompleto: emp.nombreCompleto || '',
-            planta: emp.planta || ''
+            instructor: emp.nombreCompleto || ''
         });
-        setSearchQuery(emp.nombreCompleto || '');
-        setShowResults(false);
+        setInstructorSearchQuery(emp.nombreCompleto || '');
+        setShowInstructorResults(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -136,10 +272,21 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                 estado: 'Programado'
             };
 
-            const { error } = await (supabase as any).from('hilu_programacion').insert(dataToSave);
-            if (error) throw error;
+            if (editId) {
+                const { error } = await (supabase as any)
+                    .from('hilu_programacion')
+                    .update(dataToSave)
+                    .eq('id', editId);
+                if (error) throw error;
+                toast.success('Entrenamiento actualizado correctamente');
+            } else {
+                const { error } = await (supabase as any)
+                    .from('hilu_programacion')
+                    .insert(dataToSave);
+                if (error) throw error;
+                toast.success('Entrenamiento programado correctamente');
+            }
 
-            toast.success('Entrenamiento programado correctamente');
             if (onSuccess) onSuccess();
             else router.push('/programacion-entrenamientos');
         } catch (err: any) {
@@ -151,7 +298,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-10 px-4 md:px-0">
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 space-y-8">
                 
                 {/* Section 1: Colaborador */}
@@ -268,14 +415,47 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                             </select>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 relative">
                             <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Instructor / Encargado</Label>
-                            <Input
-                                value={formData.instructor}
-                                onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
-                                placeholder="Nombre del instructor..."
-                                className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold"
-                            />
+                            <div className="relative">
+                                <Input
+                                    value={instructorSearchQuery}
+                                    onChange={(e) => {
+                                        setInstructorSearchQuery(e.target.value);
+                                        setShowInstructorResults(true);
+                                    }}
+                                    onFocus={() => setShowInstructorResults(true)}
+                                    placeholder="Nombre del instructor..."
+                                    className="pl-10 h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold"
+                                />
+                                <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                                {fetchingInstructors && (
+                                    <div className="absolute right-3.5 top-3.5">
+                                        <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {showInstructorResults && instructors.length > 0 && (
+                                <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden py-2 animate-in fade-in zoom-in-95 duration-200">
+                                    {instructors.map((ins) => (
+                                        <button
+                                            key={ins.id}
+                                            type="button"
+                                            onClick={() => selectInstructor(ins)}
+                                            className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3 transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                                                {ins.nombreCompleto?.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900 leading-none mb-1">{ins.nombreCompleto}</p>
+                                                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{ins.cargo} • {ins.planta}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -319,38 +499,77 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Estatus y Fase</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-xs font-bold text-gray-800">¿Formado?</span>
-                                <span className="text-[10px] text-gray-500 font-medium">Si / No</span>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div className="md:col-span-3 flex flex-col justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md h-[90px]">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">¿Formado?</span>
+                            <div className="flex bg-gray-200/50 p-1 rounded-xl w-full">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, formado: true })}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${
+                                        formData.formado 
+                                        ? 'bg-white text-blue-600 shadow-sm' 
+                                        : 'text-gray-400 hover:text-gray-500'
+                                    }`}
+                                >
+                                    SÍ
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, formado: false })}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${
+                                        !formData.formado 
+                                        ? 'bg-white text-gray-600 shadow-sm' 
+                                        : 'text-gray-400 hover:text-gray-500'
+                                    }`}
+                                >
+                                    NO
+                                </button>
                             </div>
-                            <Switch
-                                checked={formData.formado}
-                                onCheckedChange={(val) => setFormData({ ...formData, formado: val })}
-                            />
                         </div>
 
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-xs font-bold text-gray-800">¿Entrenado?</span>
-                                <span className="text-[10px] text-gray-500 font-medium">Emp. con entrenamiento</span>
+                        <div className="md:col-span-5 flex flex-col justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md h-[90px]">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Colaborador con entrenamiento</span>
+                            <div className="flex bg-gray-200/50 p-1 rounded-xl w-full">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, empleado_entrenamiento: true })}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${
+                                        formData.empleado_entrenamiento 
+                                        ? 'bg-white text-blue-600 shadow-sm' 
+                                        : 'text-gray-400 hover:text-gray-500'
+                                    }`}
+                                >
+                                    SÍ
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, empleado_entrenamiento: false })}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${
+                                        !formData.empleado_entrenamiento 
+                                        ? 'bg-white text-gray-600 shadow-sm' 
+                                        : 'text-gray-400 hover:text-gray-500'
+                                    }`}
+                                >
+                                    NO
+                                </button>
                             </div>
-                            <Switch
-                                checked={formData.empleado_entrenamiento}
-                                onCheckedChange={(val) => setFormData({ ...formData, empleado_entrenamiento: val })}
-                            />
                         </div>
 
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Fase HILU</Label>
+                        <div className="md:col-span-4 flex flex-col justify-center p-4 bg-gray-50/50 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md h-[90px] relative overflow-hidden">
+                            <Label className="text-[9px] font-black text-gray-400 uppercase tracking-widest absolute top-2 left-4">Fase de entrenamiento</Label>
                             <select
                                 value={formData.fase_hilu}
                                 onChange={(e) => setFormData({ ...formData, fase_hilu: e.target.value })}
-                                className="flex h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all font-bold text-gray-700"
+                                className="w-full bg-transparent border-none p-0 pt-6 text-[11px] font-black text-gray-700 cursor-pointer appearance-none focus:outline-none"
                             >
-                                {FASES_HILU.map(f => <option key={f} value={f}>Fase {f}</option>)}
+                                {FASES_HILU.map(f => (
+                                    <option key={f} value={f} className="font-bold">Fase {f}</option>
+                                ))}
                             </select>
+                            <div className="absolute right-4 top-[55%] -translate-y-1/2 pointer-events-none">
+                                <Layers className="h-4 w-4 text-gray-300" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -377,7 +596,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                     ) : (
                         <>
                             <Save className="h-5 w-5 mr-2" />
-                            Programar Entrenamiento
+                            {editId ? 'Guardar Cambios' : 'Programar Entrenamiento'}
                         </>
                     )}
                 </Button>

@@ -205,8 +205,11 @@ export default function GestorPersonalPage() {
 
             // Apply Planta Filter
             if (selectedPlanta !== 'Todos') {
-                if (selectedPlanta === 'Administrativa ') {
-                    const adminAreas = ['I+D+I', 'Ingenieria', 'Servicios', 'TI', 'Talento y Cultura', 'Comercial', 'Contabilidad', 'Financiera', 'Negociacion y compras', 'Legal']
+                if (selectedPlanta === 'Administrativa') {
+                    const adminAreas = [
+                        'I+D+I', 'Ingenieria', 'Servicios', 'TI', 'Talento y Cultura', 
+                        'Comercial', 'Contabilidad', 'Financiera', 'Negociacion y compras', 'Legal'
+                    ]
                     filtered = filtered.filter(e => adminAreas.includes(e.planta || ''))
                 } else {
                     filtered = filtered.filter(e => e.planta === selectedPlanta)

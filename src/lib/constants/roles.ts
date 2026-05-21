@@ -232,7 +232,7 @@ export const ANALISTAS_CON_ACCESO = [
  * These emails override the 'nivelCargo' logic.
  */
 export const ADMIN_EMAILS = [
-    'aprendiz.desarrollo@firplak.com',
+    'milton.rendon@firplak.com',
     'angie.zapata@firplak.com',
     'talentos@firplak.com',
     'camila.jimenez@firplak.com',
@@ -253,7 +253,9 @@ export const APPROVER_ROLES = APPROVER_LEVELS;
  * Returns null if the user has no plant-based restrictions.
  */
 export function getPlantasPermitidas(email: string): string[] | null {
-    if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com' || email === 'hector.chinchilla@firplak.com') return null;
+    if (email === 'hector.chinchilla@firplak.com') return null;
+    // estiven.londono tiene visibilidad total para ver coordinadores, directores y jefes de todas las plantas
+    if (email === 'estiven.londono@firplak.com') return null;
     if (SUPERVISORES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
     if (SUPERVISORES_CALIDAD.includes(email)) return ['Calidad'];
     if (SUPERVISORES_MARMOL.includes(email)) return ['Marmol sintetico'];
