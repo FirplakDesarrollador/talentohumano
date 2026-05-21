@@ -57,18 +57,17 @@ export default function BuscadorProcesosDisciplinariosPage() {
                     const plantas = getPlantasPermitidas(userProfile.correo);
                     // For specific users like estiven.londono or hector.chinchilla, getPlantasPermitidas returns null 
                     // meaning they have access to all plants (null means no restriction for them in Gestor).
-                    // BUT for regular supervisors not in the list, it also returns null. 
-                    // Wait, getPlantasPermitidas returns null for BOTH full access AND no access.
-                    // Let's explicitly check if they are in the full access list.
                     const fullAccessEmails = ['hector.chinchilla@firplak.com', 'estiven.londono@firplak.com'];
                     
                     if (!fullAccessEmails.includes(userProfile.correo)) {
+                        const nombreABuscar = userProfile.nombre || userProfile.nombreCompleto || '';
+                        
                         if (plantas && plantas.length > 0) {
-                            // Can see specific plants OR direct reports
-                            query = query.or(`planta.in.(${plantas.map(p => `"${p}"`).join(',')}),jefe.eq."${userProfile.nombre || userProfile.nombreCompleto}"`)
+                            // Can see specific plants OR direct reports OR themselves
+                            query = query.or(`planta.in.(${plantas.map(p => `"${p}"`).join(',')}),jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
                         } else {
-                            // If no plants allowed, ONLY see direct reports
-                            query = query.eq('jefe', userProfile.nombre || userProfile.nombreCompleto)
+                            // If no plants allowed, ONLY see direct reports OR themselves
+                            query = query.or(`jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
                         }
                     }
                 }
