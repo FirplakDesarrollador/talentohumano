@@ -350,7 +350,11 @@ export default function BuscadorHiluPage() {
                                                 const evtDate = new Date(p.fecha_programada + 'T00:00:00');
                                                 const dateStr = evtDate.toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' });
                                                 return (
-                                                    <div key={i} className="p-3.5 bg-white rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group">
+                                                    <div 
+                                                        key={i} 
+                                                        onClick={() => router.push('/programacion-entrenamientos')}
+                                                        className="p-3.5 bg-white rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer"
+                                                    >
                                                         <div className="flex justify-between items-start mb-2">
                                                             <span className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
                                                                 {p.fase_hilu ? `FASE ${p.fase_hilu}` : p.tipo}
