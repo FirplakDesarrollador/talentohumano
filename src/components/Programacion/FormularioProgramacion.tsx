@@ -291,80 +291,36 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
 
                 // Try to create Microsoft Teams meeting
                 try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    const { data: { user: currentUser } } = await supabase.auth.getUser();
-                    // Use session provider_token first, fallback to stored user_metadata token
-                    const providerToken = session?.provider_token || currentUser?.user_metadata?.microsoft_provider_token;
-
-                    if (providerToken) {
+                    if (formData.instructor_correo) {
                         const startDateTimeStr = `${formData.fecha_programada}T${formData.hora_inicio}:00`;
                         const endDateTimeStr = `${formData.fecha_programada}T${formData.hora_fin}:00`;
 
-                        const eventData = {
-                            subject: `Entrenamiento: ${formData.tipo} - Fase ${formData.fase_hilu}`,
-                            body: {
-                                contentType: "HTML",
-                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}<br><b>Instructor:</b> ${formData.instructor}`
-                            },
-                            start: {
-                                dateTime: startDateTimeStr,
-                                timeZone: "America/Bogota"
-                            },
-                            end: {
-                                dateTime: endDateTimeStr,
-                                timeZone: "America/Bogota"
-                            },
-                            isOnlineMeeting: true,
-                            onlineMeetingProvider: "teamsForBusiness",
-                            // This ensures the meeting doesn't block the calendar of the person creating it
-                            showAs: "free",
-                            // Add instructor as attendee so they receive the Teams invitation
-                            attendees: formData.instructor_correo ? [
-                                {
-                                    emailAddress: {
-                                        address: formData.instructor_correo,
-                                        name: formData.instructor
-                                    },
-                                    type: "required"
-                                }
-                            ] : []
-                        };
-
-                        const graphResponse = await fetch("https://graph.microsoft.com/v1.0/me/events", {
+                        const apiResponse = await fetch("/api/teams", {
                             method: "POST",
                             headers: {
-                                "Authorization": `Bearer ${providerToken}`,
                                 "Content-Type": "application/json"
                             },
-                            body: JSON.stringify(eventData)
+                            body: JSON.stringify({
+                                instructor_correo: formData.instructor_correo,
+                                subject: `Entrenamiento: ${formData.tipo} - Fase ${formData.fase_hilu}`,
+                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}<br><b>Instructor:</b> ${formData.instructor}`,
+                                startDateTime: startDateTimeStr,
+                                endDateTime: endDateTimeStr
+                            })
                         });
 
-                        if (graphResponse.ok) {
-                            toast.success('Reunión agendada en Microsoft Teams');
+                        if (apiResponse.ok) {
+                            toast.success('Reunión agendada en Microsoft Teams del instructor');
                         } else {
-                            const errorText = await graphResponse.text();
-                            console.warn('Error Graph API:', errorText);
-                            
-                            // Check if the token has expired
-                            if (graphResponse.status === 401 || errorText.includes('InvalidAuthenticationToken')) {
-                                toast.error('Tu sesión de Microsoft Teams expiró. Debes volver a conectarte desde el Menú.', {
-                                    duration: 6000
-                                });
-                                // Clear the expired token from user metadata
-                                await supabase.auth.updateUser({
-                                    data: {
-                                        microsoft_provider_token: null
-                                    }
-                                });
-                            } else {
-                                toast.warning('Guardado local, pero no se pudo agendar en Teams.');
-                            }
+                            const errorData = await apiResponse.json();
+                            console.warn('Error backend API Teams:', errorData);
+                            toast.warning('Guardado local, pero no se pudo agendar en Teams. Verifica permisos en Azure.');
                         }
                     } else {
-                        // We intentionally don't spam the user if they haven't connected
+                        toast.info('Guardado local. (Sin instructor con correo para agendar en Teams)');
                     }
-                } catch (graphErr) {
-                    console.error('Network error calling Graph API:', graphErr);
+                } catch (apiErr) {
+                    console.error('Network error calling backend Teams API:', apiErr);
                 }
             }
 
