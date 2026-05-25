@@ -5,7 +5,16 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') ?? '/'
+  const next = requestUrl.searchParams.get('next') ?? '/menu'
+  const error_desc = requestUrl.searchParams.get('error_description')
+  const error_code = requestUrl.searchParams.get('error')
+
+  console.log('OAuth Callback hit:', requestUrl.toString())
+
+  if (error_desc || error_code) {
+    console.error('OAuth Error:', error_code, error_desc)
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error_desc || 'Error de autenticación')}`, request.url))
+  }
 
   if (code) {
     const response = NextResponse.redirect(new URL(next, request.url))
@@ -29,10 +38,15 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
+      console.log('Session exchanged successfully!')
       return response
+    } else {
+      console.error('Exchange code error:', error)
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url))
     }
   }
 
+  console.log('No code found in URL')
   // Return the user to an error page with instructions
-  return NextResponse.redirect(new URL('/login?error=Could not authenticate user', request.url))
+  return NextResponse.redirect(new URL('/login?error=No+se+recibió+código+de+autorización', request.url))
 }
