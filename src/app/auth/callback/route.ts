@@ -51,10 +51,27 @@ export async function GET(request: NextRequest) {
       }
     )
     
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: exchangeData, error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
       console.log('Session exchanged successfully!')
+
+      // If this was a Microsoft OAuth, persist the provider_token in user_metadata
+      // so it's available after page refreshes (Supabase SSR doesn't persist provider_token in cookies)
+      if (exchangeData.session?.provider_token) {
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              microsoft_provider_token: exchangeData.session.provider_token,
+              microsoft_token_updated_at: new Date().toISOString()
+            }
+          })
+          console.log('Microsoft provider_token stored in user_metadata')
+        } catch (updateErr) {
+          console.warn('Could not store provider_token:', updateErr)
+        }
+      }
+
       return response
     } else {
       console.error('Exchange code error:', error)
