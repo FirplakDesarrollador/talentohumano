@@ -67,6 +67,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
         fecha_programada: format(new Date(), 'yyyy-MM-dd'),
         tipo: 'Entrenamiento',
         instructor: '',
+        instructor_correo: '',
         hora_inicio: '08:00',
         hora_fin: '10:00',
         formado: false,
@@ -124,6 +125,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         fecha_programada: d.fecha_programada,
                         tipo: d.tipo || 'Entrenamiento',
                         instructor: d.instructor || '',
+                        instructor_correo: '', // Keep empty as it's only needed for new Teams invites
                         hora_inicio: d.hora_inicio || '08:00',
                         hora_fin: d.hora_fin || '10:00',
                         formado: d.formado || false,
@@ -223,7 +225,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
             try {
                 const { data, error } = await supabase
                     .from('empleados')
-                    .select('id, nombreCompleto, cargo, planta')
+                    .select('id, nombreCompleto, cargo, planta, correo_electronico')
                     .eq('activo', true)
                     .ilike('nombreCompleto', `%${instructorSearchQuery}%`)
                     .limit(5);
@@ -243,7 +245,8 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
     const selectInstructor = (emp: any) => {
         setFormData({
             ...formData,
-            instructor: emp.nombreCompleto || ''
+            instructor: emp.nombreCompleto || '',
+            instructor_correo: emp.correo_electronico || ''
         });
         setInstructorSearchQuery(emp.nombreCompleto || '');
         setShowInstructorResults(false);
@@ -312,7 +315,19 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                                 timeZone: "America/Bogota"
                             },
                             isOnlineMeeting: true,
-                            onlineMeetingProvider: "teamsForBusiness"
+                            onlineMeetingProvider: "teamsForBusiness",
+                            // This ensures the meeting doesn't block the calendar of the person creating it
+                            showAs: "free",
+                            // Add instructor as attendee so they receive the Teams invitation
+                            attendees: formData.instructor_correo ? [
+                                {
+                                    emailAddress: {
+                                        address: formData.instructor_correo,
+                                        name: formData.instructor
+                                    },
+                                    type: "required"
+                                }
+                            ] : []
                         };
 
                         const graphResponse = await fetch("https://graph.microsoft.com/v1.0/me/events", {
