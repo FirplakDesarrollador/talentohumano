@@ -32,12 +32,18 @@ export default function MenuPage() {
     const [userLevel, setUserLevel] = useState<string>('')
     const [userName, setUserName] = useState<string>('')
     const [loading, setLoading] = useState(true)
+    const [isMicrosoftConnected, setIsMicrosoftConnected] = useState(false)
     const router = useRouter()
     const supabase = createClient()
 
     useEffect(() => {
         const fetchUserData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
+            // Check if Microsoft is connected via provider_token
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.provider_token) {
+                setIsMicrosoftConnected(true)
+            }
             if (user) {
                 setUser(user)
                 
@@ -198,6 +204,7 @@ export default function MenuPage() {
                     {(isSystemAdmin || ['Coordinador', 'Jefe', 'Supervisor', 'Director'].includes(userLevel)) && (
                         <Button
                             onClick={async () => {
+                                if (isMicrosoftConnected) return
                                 const { error } = await supabase.auth.signInWithOAuth({
                                     provider: 'azure',
                                     options: {
@@ -209,7 +216,12 @@ export default function MenuPage() {
                                     console.error('Error connecting to Microsoft:', error)
                                 }
                             }}
-                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs px-4 h-8 flex items-center gap-2 rounded-md transition-all shadow-sm"
+                            title={isMicrosoftConnected ? 'Ya conectado con Microsoft Teams' : 'Conectar con Microsoft Teams'}
+                            className={`text-xs px-4 h-8 flex items-center gap-2 rounded-md transition-all shadow-sm border ${
+                                isMicrosoftConnected
+                                    ? 'bg-green-50 hover:bg-green-50 text-green-700 border-green-200 cursor-default'
+                                    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 cursor-pointer'
+                            }`}
                         >
                             <svg className="h-4 w-4 shrink-0" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
@@ -217,7 +229,9 @@ export default function MenuPage() {
                                 <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
                                 <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
                             </svg>
-                            <span className="hidden sm:inline">Conectar Teams</span>
+                            <span className="hidden sm:inline">
+                                {isMicrosoftConnected ? '✓ Teams Conectado' : 'Conectar Teams'}
+                            </span>
                         </Button>
                     )}
 
