@@ -194,8 +194,8 @@ export default function MenuPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {/* Microsoft Connect Button */}
-                    {user && !user.app_metadata?.providers?.includes('azure') && (
+                    {/* Microsoft Connect Button - only for authorized roles */}
+                    {(isSystemAdmin || ['Coordinador', 'Jefe', 'Supervisor', 'Director'].includes(userLevel)) && (
                         <Button
                             onClick={async () => {
                                 const { error } = await supabase.auth.signInWithOAuth({
@@ -211,7 +211,7 @@ export default function MenuPage() {
                             }}
                             className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs px-4 h-8 flex items-center gap-2 rounded-md transition-all shadow-sm"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg className="h-4 w-4 shrink-0" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
                                 <path d="M21 0H11V10H21V0Z" fill="#7FBA00"/>
                                 <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
