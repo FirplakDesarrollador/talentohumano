@@ -342,11 +342,26 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         if (graphResponse.ok) {
                             toast.success('Reunión agendada en Microsoft Teams');
                         } else {
-                            console.warn('Error Graph API:', await graphResponse.text());
-                            toast.warning('Guardado local, pero no se pudo agendar en Teams. (Verifica si el token Microsoft expiró)');
+                            const errorText = await graphResponse.text();
+                            console.warn('Error Graph API:', errorText);
+                            
+                            // Check if the token has expired
+                            if (graphResponse.status === 401 || errorText.includes('InvalidAuthenticationToken')) {
+                                toast.error('Tu sesión de Microsoft Teams expiró. Debes volver a conectarte desde el Menú.', {
+                                    duration: 6000
+                                });
+                                // Clear the expired token from user metadata
+                                await supabase.auth.updateUser({
+                                    data: {
+                                        microsoft_provider_token: null
+                                    }
+                                });
+                            } else {
+                                toast.warning('Guardado local, pero no se pudo agendar en Teams.');
+                            }
                         }
                     } else {
-                        toast.info('Para agendar en Teams automáticamente, inicie sesión con Microsoft.');
+                        // We intentionally don't spam the user if they haven't connected
                     }
                 } catch (graphErr) {
                     console.error('Network error calling Graph API:', graphErr);
