@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
+
+export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
@@ -18,6 +20,17 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const cookieStore = await cookies()
+    const origin = requestUrl.origin
+    const forwardedHost = request.headers.get('x-forwarded-host') 
+    const isLocalEnv = process.env.NODE_ENV === 'development'
+    
+    let redirectUrl = `${origin}${next}`
+    if (!isLocalEnv && forwardedHost) {
+      redirectUrl = `https://${forwardedHost}${next}`
+    }
+
+    const response = NextResponse.redirect(redirectUrl)
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -28,7 +41,10 @@ export async function GET(request: NextRequest) {
           },
           setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
+              // Set in Next.js cookie store
+              try { cookieStore.set(name, value, options) } catch (e) {}
+              // Set in the actual response object
+              response.cookies.set(name, value, options)
             })
           },
         },
@@ -39,17 +55,7 @@ export async function GET(request: NextRequest) {
     
     if (!error) {
       console.log('Session exchanged successfully!')
-      const origin = requestUrl.origin
-      const forwardedHost = request.headers.get('x-forwarded-host') 
-      const isLocalEnv = process.env.NODE_ENV === 'development'
-      
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        return NextResponse.redirect(`${origin}${next}`)
-      }
+      return response
     } else {
       console.error('Exchange code error:', error)
       return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url))
