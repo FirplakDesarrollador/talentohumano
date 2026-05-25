@@ -138,7 +138,6 @@ function LoginForm() {
                             </Link>
                         </div>
 
-                        </div>
                     </form>
 
                     {/* Footer Links */}
