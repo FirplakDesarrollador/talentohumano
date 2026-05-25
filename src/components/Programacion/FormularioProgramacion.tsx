@@ -125,6 +125,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         fecha_programada: d.fecha_programada,
                         tipo: d.tipo || 'Entrenamiento',
                         instructor: d.instructor || '',
+                        instructor_correo: '', // Keep empty as it's only needed for new Teams invites
                         hora_inicio: d.hora_inicio || '08:00',
                         hora_fin: d.hora_fin || '10:00',
                         formado: d.formado || false,
