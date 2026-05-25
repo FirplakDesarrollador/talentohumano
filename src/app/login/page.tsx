@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,11 +9,12 @@ import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginForm() {
+    const searchParams = useSearchParams()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(searchParams.get('error'))
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const supabase = createClient()
@@ -136,6 +137,43 @@ export default function LoginPage() {
                                 Crear usuario
                             </Link>
                         </div>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-gray-300" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-white px-2 text-gray-500">O continuar con</span>
+                            </div>
+                        </div>
+
+                        <Button
+                            type="button"
+                            disabled={loading}
+                            onClick={async () => {
+                                setLoading(true)
+                                const { error } = await supabase.auth.signInWithOAuth({
+                                    provider: 'azure',
+                                    options: {
+                                        scopes: 'email Calendars.ReadWrite OnlineMeetings.ReadWrite',
+                                        redirectTo: `${window.location.origin}/auth/callback`,
+                                    },
+                                })
+                                if (error) {
+                                    setError(error.message)
+                                    setLoading(false)
+                                }
+                            }}
+                            className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 h-12 rounded-lg text-base font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
+                                <path d="M21 0H11V10H21V0Z" fill="#7FBA00"/>
+                                <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
+                                <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
+                            </svg>
+                            Microsoft
+                        </Button>
                     </form>
                 </div>
             </div>
@@ -153,5 +191,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex bg-white" />}>
+            <LoginForm />
+        </Suspense>
     )
 }

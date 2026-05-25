@@ -285,6 +285,55 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                     .insert(dataToSave);
                 if (error) throw error;
                 toast.success('Entrenamiento programado correctamente');
+
+                // Try to create Microsoft Teams meeting
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const providerToken = session?.provider_token;
+
+                    if (providerToken) {
+                        const startDateTimeStr = `${formData.fecha_programada}T${formData.hora_inicio}:00`;
+                        const endDateTimeStr = `${formData.fecha_programada}T${formData.hora_fin}:00`;
+
+                        const eventData = {
+                            subject: `Entrenamiento: ${formData.tipo} - Fase ${formData.fase_hilu}`,
+                            body: {
+                                contentType: "HTML",
+                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}<br><b>Instructor:</b> ${formData.instructor}`
+                            },
+                            start: {
+                                dateTime: startDateTimeStr,
+                                timeZone: "America/Bogota"
+                            },
+                            end: {
+                                dateTime: endDateTimeStr,
+                                timeZone: "America/Bogota"
+                            },
+                            isOnlineMeeting: true,
+                            onlineMeetingProvider: "teamsForBusiness"
+                        };
+
+                        const graphResponse = await fetch("https://graph.microsoft.com/v1.0/me/events", {
+                            method: "POST",
+                            headers: {
+                                "Authorization": `Bearer ${providerToken}`,
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify(eventData)
+                        });
+
+                        if (graphResponse.ok) {
+                            toast.success('Reunión agendada en Microsoft Teams');
+                        } else {
+                            console.warn('Error Graph API:', await graphResponse.text());
+                            toast.warning('Guardado local, pero no se pudo agendar en Teams. (Verifica si el token Microsoft expiró)');
+                        }
+                    } else {
+                        toast.info('Para agendar en Teams automáticamente, inicie sesión con Microsoft.');
+                    }
+                } catch (graphErr) {
+                    console.error('Network error calling Graph API:', graphErr);
+                }
             }
 
             if (onSuccess) onSuccess();
