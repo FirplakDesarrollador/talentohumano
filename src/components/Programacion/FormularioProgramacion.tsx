@@ -315,6 +315,8 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                             },
                             isOnlineMeeting: true,
                             onlineMeetingProvider: "teamsForBusiness",
+                            // This ensures the meeting doesn't block the calendar of the person creating it
+                            showAs: "free",
                             // Add instructor as attendee so they receive the Teams invitation
                             attendees: formData.instructor_correo ? [
                                 {
