@@ -289,7 +289,9 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                 // Try to create Microsoft Teams meeting
                 try {
                     const { data: { session } } = await supabase.auth.getSession();
-                    const providerToken = session?.provider_token;
+                    const { data: { user: currentUser } } = await supabase.auth.getUser();
+                    // Use session provider_token first, fallback to stored user_metadata token
+                    const providerToken = session?.provider_token || currentUser?.user_metadata?.microsoft_provider_token;
 
                     if (providerToken) {
                         const startDateTimeStr = `${formData.fecha_programada}T${formData.hora_inicio}:00`;

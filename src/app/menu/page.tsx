@@ -39,13 +39,12 @@ export default function MenuPage() {
     useEffect(() => {
         const fetchUserData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            // Check if Microsoft is connected via provider_token
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session?.provider_token) {
-                setIsMicrosoftConnected(true)
-            }
             if (user) {
                 setUser(user)
+                // Check if Microsoft is connected via stored user_metadata token
+                if (user.user_metadata?.microsoft_provider_token) {
+                    setIsMicrosoftConnected(true)
+                }
                 
                 const { data: empleado } = await supabase
                     .from('empleados')
