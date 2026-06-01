@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { 
-  X, Search, Edit2, Check, Loader2, Award, Briefcase, Plus
+  X, Search, Edit2, Check, Loader2, Award, Briefcase, Plus, Trash2, AlertTriangle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
   const [editingCargo, setEditingCargo] = useState<number | null>(null)
   const [newName, setNewName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingCargo, setDeletingCargo] = useState<number | null>(null)
   
   // New Cargo state
   const [showAdd, setShowAdd] = useState(false)
@@ -109,6 +110,39 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
       fetchCargos()
     } catch (error: any) {
       toast.error('Error al actualizar: ' + error.message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteCargo = async (id: number, cargoName: string) => {
+    setIsSaving(true)
+    try {
+      // 1. Eliminar de tabla maestra
+      const { error: masterError } = await (supabase as any)
+        .from('cargos')
+        .delete()
+        .eq('id', id)
+
+      if (masterError) throw masterError
+
+      // 2. Limpiar el cargo en los empleados que lo tengan asignado
+      const { error: empError } = await (supabase as any)
+        .from('empleados')
+        .update({ cargo: null })
+        .eq('cargo', cargoName)
+
+      if (empError) {
+        console.error('Error limpiando cargo de empleados:', empError)
+        // No lanzamos error para que no falle la UI si ya se borró de la maestra,
+        // pero sí lo registramos.
+      }
+      
+      toast.success(`Cargo "${cargoName}" eliminado y desasignado de empleados`)
+      setDeletingCargo(null)
+      fetchCargos()
+    } catch (error: any) {
+      toast.error('Error al eliminar: ' + error.message)
     } finally {
       setIsSaving(false)
     }
@@ -250,6 +284,36 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
                       </Button>
                     </div>
                   </div>
+                ) : deletingCargo === item.id ? (
+                  <div className="flex-1 flex gap-3 items-center justify-between">
+                    <div className="flex items-center gap-3 text-red-600">
+                      <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                      <span className="font-bold text-xs uppercase tracking-wide">
+                        ¿Eliminar este cargo?
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="icon" 
+                        className="h-10 w-10 rounded-xl bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200"
+                        onClick={() => handleDeleteCargo(item.id, item.cargo)}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-5 w-5" />}
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        className="h-10 w-10 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        onClick={() => setDeletingCargo(null)}
+                        disabled={isSaving}
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <div className="flex items-center gap-4">
@@ -260,17 +324,31 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
                         {item.cargo}
                       </span>
                     </div>
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="h-10 w-10 rounded-xl text-blue-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-100/50"
-                      onClick={() => {
-                        setEditingCargo(item.id)
-                        setNewName(item.cargo)
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-10 w-10 rounded-xl text-blue-500 hover:bg-blue-100/50"
+                        onClick={() => {
+                          setEditingCargo(item.id)
+                          setNewName(item.cargo)
+                          setDeletingCargo(null)
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-10 w-10 rounded-xl text-red-500 hover:bg-red-100/50"
+                        onClick={() => {
+                          setDeletingCargo(item.id)
+                          setEditingCargo(null)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>

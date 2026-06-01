@@ -265,6 +265,14 @@ export default function EntrenamientoDetailPage() {
 
             let allRecords = (hiluRecordsList || []) as QueryHiluRow[]
 
+            // Helper to normalize strings for comparison (removes accents, trims, upper cases, and common filler words)
+            const normalizeStr = (str: string) => {
+                if (!str) return '';
+                let s = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                s = s.replace(/\b(DE|LA|EL|LOS|LAS|EN|Y|DEL|AL)\b/g, ' ');
+                return s.replace(/\s+/g, ' ').trim();
+            };
+
             // 3. Initialize missing phases if needed
             // We check for the titular cargo and all polyvalences
             const cargosToInitialize = Array.from(new Set([cargoTitular, ...polyList].filter(Boolean))).map(c => c.trim())
@@ -272,6 +280,43 @@ export default function EntrenamientoDetailPage() {
 
             for (const cargo of cargosToInitialize) {
                 console.log(`[DEBUG] Checking phases for cargo: ${cargo}`)
+                
+                // Fuzzy check to avoid creating ghost rows if a similar cargo already exists
+                const cargoNormalized = normalizeStr(cargo);
+                const existingRecord = allRecords.find(r => {
+                    const rCargo = normalizeStr(r.fh_cargo || r.cargo || '');
+                    return rCargo === cargoNormalized || 
+                           (rCargo.length > 3 && cargoNormalized.length > 3 && (rCargo.includes(cargoNormalized) || cargoNormalized.includes(rCargo)));
+                });
+
+                if (existingRecord) {
+                    console.log(`[DEBUG] Phase already exists or is equivalent for cargo: ${cargo} (Matched: ${existingRecord.fh_cargo})`);
+                    // Ensure all tables exist for this matched cargo
+                    const targetCargo = existingRecord.fh_cargo || cargo;
+                    const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const;
+                    let numericCreatorId = currentUserData.id;
+                    
+                    for (const table of phases) {
+                        const { count } = await supabase
+                            .from(table)
+                            .select('*', { count: 'exact', head: true })
+                            .eq('empleado_id', resolvedId)
+                            .eq('cargo', targetCargo);
+                            
+                        if (count === 0) {
+                            console.log(`[DEBUG] Initializing missing ${table} for existing equivalent cargo: ${targetCargo}`);
+                            await (supabase.from(table) as any).insert({
+                                empleado_id: resolvedId,
+                                cargo: targetCargo,
+                                created_by: numericCreatorId,
+                                modified_by: numericCreatorId
+                            });
+                            recordsAdded = true;
+                        }
+                    }
+                    continue;
+                }
+
                 const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
                 let numericCreatorId = currentUserData.id
 
@@ -317,14 +362,60 @@ export default function EntrenamientoDetailPage() {
             setIsAuthorized(true)
             
             // Map records and inject photo, ensuring UNIQUE CARGOS to avoid React key errors
-            // Use fh_cargo as the primary identifier for the training record's cargo
+            const cargoTitularNormalized = normalizeStr(cargoTitular);
+            
+            // Identify the BEST match for titular cargo to handle ghost duplicates
+            let bestTitularScore = -1;
+            let bestTitularCargoDbStr = '';
+            
+            allRecords.forEach(r => {
+                const rCargo = (r.fh_cargo || r.cargo || '');
+                const rCargoNormalized = normalizeStr(rCargo);
+                
+                let score = -1;
+                if (rCargoNormalized === cargoTitularNormalized) score = 4;
+                else if (rCargoNormalized.length > 3 && cargoTitularNormalized.length > 3 && rCargoNormalized.includes(cargoTitularNormalized)) score = 3;
+                else if (rCargoNormalized.length > 3 && cargoTitularNormalized.length > 3 && cargoTitularNormalized.includes(rCargoNormalized)) score = 2;
+                
+                if (score > -1) {
+                    if (r.fh_completado) score += 10;
+                    if (r.fi_completado) score += 10;
+                    if (r.fl_completado) score += 10;
+                    if (r.fu_completado) score += 10;
+                    
+                    if (score > bestTitularScore) {
+                        bestTitularScore = score;
+                        bestTitularCargoDbStr = rCargo;
+                    }
+                }
+            });
+
             const uniqueCargosSet = new Set();
             const finalRecords = allRecords
+                .filter(r => {
+                    // Filter out ghost rows (empty rows that fuzzy-match but aren't the best match)
+                    const rCargo = (r.fh_cargo || r.cargo || '');
+                    const rCargoNormalized = normalizeStr(rCargo);
+                    
+                    const isFuzzyMatch = rCargoNormalized === cargoTitularNormalized || 
+                                         (rCargoNormalized.length > 3 && cargoTitularNormalized.length > 3 && (rCargoNormalized.includes(cargoTitularNormalized) || cargoTitularNormalized.includes(rCargoNormalized)));
+                                         
+                    if (isFuzzyMatch && rCargo !== bestTitularCargoDbStr) {
+                        // This is a worse match or a ghost row, ignore it
+                        return false;
+                    }
+                    return true;
+                })
                 .map(r => {
                     // El cargo real del registro es fh_cargo (o fi_cargo, etc.)
-                    // cargo es el actual de la tabla empleados
                     const recordCargo = r.fh_cargo || r.cargo;
-                    return { ...r, displayCargo: recordCargo, foto: emp.foto || null };
+                    
+                    // If it's the best titular match, force displayCargo to be exactly cargoTitular 
+                    // so it shows up in the "Cargo Titular" tab correctly.
+                    const isTitular = recordCargo === bestTitularCargoDbStr;
+                    const finalDisplayCargo = isTitular ? cargoTitular : recordCargo;
+                    
+                    return { ...r, displayCargo: finalDisplayCargo, foto: emp.foto || null };
                 })
                 .filter(r => {
                     if (uniqueCargosSet.has(r.displayCargo)) return false;
