@@ -174,7 +174,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [retiroData, setRetiroData] = useState({
         motivo: '',
         comentarios: '',
-        fecha_retiro: new Date().toISOString().split('T')[0]
+        fecha_retiro: ''
     });
 
     // Complete Form State
@@ -518,9 +518,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 const retirementEntry = {
                     empleado_id: dataToSave.id,
                     nombre: dataToSave.nombreCompleto,
-                    motivo: retiroData.motivo || 'No registrado',
-                    fecha_retiro: retiroData.fecha_retiro || new Date().toISOString().split('T')[0],
-                    comentarios: retiroData.comentarios || '',
+                    motivo: retiroData.motivo || null,
+                    fecha_retiro: retiroData.fecha_retiro || null,
+                    comentarios: retiroData.comentarios || null,
                     updated_at: new Date().toISOString()
                 };
 
@@ -862,16 +862,16 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-red-600/70">Motivo de Retiro</p>
-                                    <p className="text-sm font-bold text-gray-800 bg-white px-3 py-2 rounded-lg border border-red-100">{retiroData.motivo || 'No registrado'}</p>
+                                    <p className="text-sm font-bold text-gray-800 bg-white px-3 py-2 rounded-lg border border-red-100 min-h-[38px]">{retiroData.motivo}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-red-600/70">Fecha de Retiro</p>
-                                    <p className="text-sm font-bold text-gray-800 bg-white px-3 py-2 rounded-lg border border-red-100">{retiroData.fecha_retiro || 'No registrada'}</p>
+                                    <p className="text-sm font-bold text-gray-800 bg-white px-3 py-2 rounded-lg border border-red-100 min-h-[38px]">{retiroData.fecha_retiro}</p>
                                 </div>
                                 <div className="md:col-span-2 space-y-1">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-red-600/70">Comentarios Adicionales</p>
                                     <p className="text-sm font-medium text-gray-700 bg-white px-3 py-2 rounded-lg border border-red-100 min-h-[60px] whitespace-pre-wrap">
-                                        {retiroData.comentarios || 'Sin comentarios adicionales.'}
+                                        {retiroData.comentarios}
                                     </p>
                                 </div>
                             </div>
