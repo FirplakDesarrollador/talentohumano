@@ -1343,7 +1343,6 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     <option value="Despido sin justa causa">Despido sin justa causa</option>
                                     <option value="Despido con justa causa">Despido con justa causa</option>
                                     <option value="Terminación de contrato obra o labor">Terminación de contrato obra o labor</option>
-                                    <option value="Vencimiento de términos">Vencimiento de términos</option>
                                     <option value="Otro">Otro</option>
                                 </select>
                             </FormField>
