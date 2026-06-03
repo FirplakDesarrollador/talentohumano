@@ -58,23 +58,44 @@ export default function AumentosSalarialesPage() {
             // Fetch users with roles for approver dropdown
             // We'll search in employees table first if possible, but the 'usuarios' table contains the app users
             // For now, we continue using 'usuarios' table for the list of approvers but mapping levels
-            const { data: usersData } = await supabase
-                .from('usuarios')
-                .select('id, nombre, rol, empleado_id')
-                .order('nombre')
+            const { data: empleadosData, error: empError } = await supabase
+                .from('empleados')
+                .select('id, nombreCompleto, cargo, nivelCargo, activo')
+                .eq('activo', true)
+                .order('nombreCompleto')
 
-            // Filter users that have an approver level
-            const approverList = (usersData as any[])?.filter((u: any) => {
-                const roleMap: Record<string, string> = {
-                    'admin': 'Jefe',
-                    'jefe': 'Jefe',
-                    'gerente': 'Gerente',
-                    'director': 'Director',
-                    'coordinador': 'Coordinador'
+            if (empError) {
+                console.error('Error fetching empleados:', empError);
+            }
+
+            // Filter employees based on specific approver requirements
+            const approverList = (empleadosData as any[])?.filter((emp: any) => {
+                const role = emp.nivelCargo?.toLowerCase() || '';
+                // Normalizar para quitar tildes y facilitar la búsqueda
+                const name = (emp.nombreCompleto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                
+                // Todos los directores
+                if (role === 'director') return true;
+                
+                // Gerentes específicos
+                if (role === 'gerente') {
+                    return name.includes('ismael');
                 }
-                const level = roleMap[u.rol?.toLowerCase()] || u.rol
-                return (APPROVER_LEVELS as any).includes(level)
-            })
+                
+                // Jefes específicos
+                if (role === 'jefe' || role === 'admin') {
+                    return name.includes('isabel') || 
+                           name.includes('camila') || 
+                           name.includes('esteban');
+                }
+                
+                return false;
+            }).map((emp: any) => ({
+                id: emp.id,
+                nombre: emp.nombreCompleto,
+                rol: emp.nivelCargo || emp.cargo,
+                empleado_id: emp.id
+            }))
 
             if (approverList) setApprovers(approverList)
 
@@ -217,13 +238,41 @@ export default function AumentosSalarialesPage() {
             }
 
             if (combinedData.length > 0) {
-                if (combinedData.length === 1) {
-                    await selectEmpleado(combinedData[0])
+                // Filtrar para mostrar solo los empleados activos
+                const activosData = combinedData.filter(emp => emp.activo === true)
+
+                if (activosData.length > 0) {
+                    // Validar permisos: un usuario normal solo puede ver a los empleados donde él figura como jefe
+                    const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(currentUser?.nivelCargo as any)
+                    
+                    const permitidosData = activosData.filter(emp => {
+                        if (isSystemAdmin) return true;
+    
+                        const empJefe = (emp.jefe || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const myName = (currentUser?.nombre || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+                        if (!empJefe || !myName || empJefe.length < 3 || myName.length < 3) return false;
+    
+                        return empJefe.includes(myName) || myName.includes(empJefe);
+                    })
+
+                    if (permitidosData.length > 0) {
+                        if (permitidosData.length === 1) {
+                            await selectEmpleado(permitidosData[0])
+                        } else {
+                            setSearchResults(permitidosData)
+                        }
+                    } else {
+                        setError('No tienes permisos para gestionar a este empleado. Solo puedes buscar al personal a tu cargo.')
+                        return
+                    }
                 } else {
-                    setSearchResults(combinedData)
+                    setError('El empleado existe pero se encuentra retirado (inactivo)')
+                    return
                 }
             } else {
-                throw new Error('No se encontró ningún empleado con ese nombre o cédula')
+                setError('No se encontró ningún empleado con ese nombre o cédula')
+                return
             }
         } catch (err: any) {
             console.error('Search full error:', err)
@@ -411,6 +460,14 @@ export default function AumentosSalarialesPage() {
                                 </Button>
                             </div>
                         </form>
+
+                        {/* Mensaje de aviso/error en búsqueda */}
+                        {error && !empleado && !error.includes('pendiente') && (
+                            <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-3">
+                                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                                <p className="text-sm font-medium">{error}</p>
+                            </div>
+                        )}
 
                         {/* Search Results List */}
                         {searchResults.length > 0 && !empleado && (
