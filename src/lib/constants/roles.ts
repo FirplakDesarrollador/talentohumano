@@ -243,6 +243,16 @@ export const ADMIN_EMAILS = [
     'juan.bedoya@firplak.com'
 ];
 
+/**
+ * Emails of super administrators with access to sensitive modules
+ * like the Admin Planner Dashboard integration.
+ * Subset of ADMIN_EMAILS.
+ */
+export const SUPER_ADMIN_EMAILS = [
+    'milton.rendon@firplak.com',
+    'angie.zapata@firplak.com',
+];
+
 // For backward compatibility during migration
 export const ROLES = NIVELES_CARGO;
 export const ADMIN_ROLES = ADMIN_LEVELS;
