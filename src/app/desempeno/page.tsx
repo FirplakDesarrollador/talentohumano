@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
+import { ADMIN_EMAILS, ADMIN_LEVELS, SUPER_ADMIN_EMAILS } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CompetenciaCard } from '@/components/Desempeno/CompetenciaCard'
@@ -16,7 +16,8 @@ import {
     Users,
     Building2,
     UserCircle,
-    ShieldAlert
+    ShieldAlert,
+    CalendarRange
 } from 'lucide-react'
 import {
     Select,
@@ -150,6 +151,7 @@ export default function DesempenoBuscadorPage() {
     }
 
     const isSuperAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail))
+    const isPlannerAdmin = (userEmail && SUPER_ADMIN_EMAILS.includes(userEmail))
 
     if (!authLoading && !isSuperAdmin) {
         return (
@@ -187,11 +189,22 @@ export default function DesempenoBuscadorPage() {
             <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
                 {/* Search and Filters Card */}
                 <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-col gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-600 p-2 rounded-xl text-white">
-                            <Search className="h-5 w-5" />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 p-2 rounded-xl text-white">
+                                <Search className="h-5 w-5" />
+                            </div>
+                            <h2 className="text-xl font-bold text-[#2d4356]">Buscador de Personal</h2>
                         </div>
-                        <h2 className="text-xl font-bold text-[#2d4356]">Buscador de Personal</h2>
+                        {isPlannerAdmin && (
+                            <Button 
+                                onClick={() => router.push('/desempeno/planner-dashboard')}
+                                className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl"
+                            >
+                                <CalendarRange className="mr-2 h-4 w-4" />
+                                Admin Planner
+                            </Button>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

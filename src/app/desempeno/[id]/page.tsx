@@ -13,7 +13,7 @@ import {
     Award,
     TrendingUp,
     CalendarRange,
-    LayoutDashboard
+    Lightbulb
 } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -22,13 +22,13 @@ import { Button } from '@/components/ui/button'
 import { CompetenciasTab } from '@/components/Desempeno/CompetenciasTab'
 import { KPIView } from '@/components/Desempeno/KPIView'
 import { PlannerView } from '@/components/Desempeno/PlannerView'
-import { KanbanView } from '@/components/Desempeno/KanbanView'
+import { PotencialTab } from '@/components/Desempeno/PotencialTab'
 
 const TABS = [
     { id: 'competencias', label: 'Competencias', icon: Award, color: 'blue' },
     { id: 'kpis', label: 'KPIs', icon: TrendingUp, color: 'green' },
     { id: 'planner', label: 'Planner', icon: CalendarRange, color: 'orange' },
-    { id: 'kanban', label: 'BI Kanban', icon: LayoutDashboard, color: 'purple' },
+    { id: 'potencial', label: 'Potencial', icon: Lightbulb, color: 'purple' },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -113,9 +113,9 @@ export default function DesempenoDetailPage() {
             case 'kpis':
                 return <KPIView cedula={cedula} nombre={nombreEmpleado} />
             case 'planner':
-                return <PlannerView />
-            case 'kanban':
-                return <KanbanView />
+                return <PlannerView empleadoEmail={empleado.correo_electronico} nombre={nombreEmpleado} />
+            case 'potencial':
+                return <PotencialTab cedula={cedula} nombre={nombreEmpleado} cargo={cargo} />
             default:
                 return null
         }
