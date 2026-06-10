@@ -63,7 +63,7 @@ export function ProcesoCard({ proceso, onEdit }: ProcesoCardProps) {
 
     return (
         <Card className="overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 relative group">
-            <div className={`h-1 w-full ${proceso.tipo === 'Descargos' ? 'bg-red-500' :
+            <div className={`h-1 w-full ${proceso.tipo === 'Descargo' ? 'bg-red-500' :
                     proceso.tipo === 'Llamado de atencion' ? 'bg-orange-500' : 'bg-blue-500'
                 }`} />
             

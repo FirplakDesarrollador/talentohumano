@@ -170,7 +170,7 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
                                 <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
                                     <SelectItem value="Compromiso" className="rounded-xl py-3 font-semibold text-[#1D3557]">Compromiso</SelectItem>
                                     <SelectItem value="Llamado de atencion" className="rounded-xl py-3 font-semibold text-[#1D3557]">Llamado de atención</SelectItem>
-                                    <SelectItem value="Descargos" className="rounded-xl py-3 font-semibold text-[#1D3557]">Descargos</SelectItem>
+                                    <SelectItem value="Descargo" className="rounded-xl py-3 font-semibold text-[#1D3557]">Descargos</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
