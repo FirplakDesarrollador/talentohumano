@@ -35,7 +35,8 @@ import {
     X,
     Maximize2,
     Check,
-    ArrowRightLeft
+    ArrowRightLeft,
+    ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
@@ -136,6 +137,78 @@ const FormField: React.FC<{
 
 const inputClass = "h-11 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-medium text-sm";
 const selectClass = "flex h-11 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium";
+
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled }: { options: string[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filteredOptions = options.filter((opt) => opt.toLowerCase().includes(search.toLowerCase()));
+
+    return (
+        <div ref={containerRef} className="relative w-full">
+            <div 
+                className={`flex h-11 w-full items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm font-medium transition-all ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer hover:bg-white'}`}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+            >
+                <span className="truncate">{value || placeholder}</span>
+                <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+            {isOpen && (
+                <div className="absolute z-[100] mt-1 w-full rounded-xl border border-gray-100 bg-white shadow-2xl animate-in fade-in zoom-in-95">
+                    <div className="p-2 border-b border-gray-50">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full px-2 py-1.5 text-sm bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            placeholder="Buscar..."
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1.5">
+                        <div
+                            className={`cursor-pointer px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${!value ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-gray-50'}`}
+                            onClick={() => {
+                                onChange("");
+                                setIsOpen(false);
+                                setSearch("");
+                            }}
+                        >
+                            Seleccione un jefe
+                        </div>
+                        {filteredOptions.length > 0 ? filteredOptions.map((opt) => (
+                            <div
+                                key={opt}
+                                className={`cursor-pointer px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors ${value === opt ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-gray-50'}`}
+                                onClick={() => {
+                                    onChange(opt);
+                                    setIsOpen(false);
+                                    setSearch("");
+                                }}
+                            >
+                                {opt}
+                                {value === opt && <Check className="h-4 w-4" />}
+                            </div>
+                        )) : (
+                            <div className="px-3 py-2 text-sm text-gray-500 text-center">No hay resultados</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> = ({ id, onSuccess }) => {
     const router = useRouter();
@@ -791,8 +864,12 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         </select>
                     </FormField>
                     <FormField label="Jefe / Supervisor" icon={<User className="h-3 w-3" />}>
-                        <Input list="jefes-list" value={formData.jefe} onChange={(e) => updateField('jefe', e.target.value)} className={inputClass} />
-                        <datalist id="jefes-list">{existingJefes.map(j => <option key={j} value={j} />)}</datalist>
+                        <SearchableSelect
+                            options={existingJefes}
+                            value={formData.jefe}
+                            onChange={(val) => updateField('jefe', val)}
+                            placeholder="Seleccione un jefe"
+                        />
                     </FormField>
                     <FormField label="Empresa" icon={<Building2 className="h-3 w-3" />}>
                         <select value={formData.empresa} onChange={(e) => updateField('empresa', e.target.value)} className={selectClass}>
@@ -806,6 +883,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             value={formData.primer_ingreso}
                             onChange={(e) => updateField('primer_ingreso', e.target.value)}
                             className={inputClass}
+                            disabled={!isAdmin}
                         />
                     </FormField>
                     <FormField label="Nivel del Cargo" icon={<Users className="h-3 w-3" />}>
