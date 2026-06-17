@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -128,11 +128,11 @@ export default function MenuPage() {
             title: 'Procesos Disciplinarios',
             href: '/procesos-disciplinarios',
             icon: Gavel,
-            visible: isSystemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(userLevel as any)
+            visible: isSystemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(userLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(user?.email)
         },
         {
             title: 'HILU',
-            href: '/buscador-hilu',
+            href: '/seleccion-hilu',
             icon: Monitor,
             visible: isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
         },

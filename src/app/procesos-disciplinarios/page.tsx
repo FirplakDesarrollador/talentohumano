@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
-import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS } from '@/lib/constants/roles'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -140,7 +140,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 setCurrentUser(userProfile)
 
                 // 3. Authorization Check
-                const authorized = systemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(currentLevel as any)
+                const authorized = systemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(currentLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(email)
                 setIsAuthorized(authorized)
 
                 if (!authorized) {
