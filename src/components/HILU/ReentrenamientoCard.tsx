@@ -27,7 +27,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     const [loading, setLoading] = useState(false)
     const supabase = createClient()
 
-    const filteredReentrenamientos = useMemo(() => 
+    const filteredReentrenamientos = useMemo(() =>
         reentrenamientos.filter(r => r.cargo === cargo),
         [reentrenamientos, cargo]
     )
@@ -42,17 +42,17 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     const canEdit = () => {
         if (!currentUser) return false
         const email = currentUser.email || ''
-        
+
         // Estiven Londono and Coordinacion Calidad have full permissions
         if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
-        
+
         // Hector specifically CAN edit reentrenamientos
         if (email === 'hector.chinchilla@firplak.com') return true
 
         // Restricted users cannot edit reentrenamientos
         if (
-            email === 'david.ramirez@firplak.com' || 
-            SUPERVISORES_MARMOL.includes(email) || 
+            email === 'david.ramirez@firplak.com' ||
+            SUPERVISORES_MARMOL.includes(email) ||
             SUPERVISORES_CALIDAD.includes(email) ||
             SUPERVISORES_MUEBLES_CEFI.includes(email) ||
             email === 'jakeline.chaverra@firplak.com' ||
@@ -61,7 +61,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
             email === 'sara.aguilar@firplak.com' ||
             email === 'analistaabastecimiento@firplak.com'
         ) return false
-        
+
         return true
     }
 
@@ -145,9 +145,8 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                         variant="outline"
                         size="sm"
                         onClick={() => setIsAdding(!isAdding)}
-                        className={`font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all ${
-                            isAdding ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-[#1e2f3d] border-gray-200 hover:bg-gray-50'
-                        }`}
+                        className={`font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all ${isAdding ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-[#1e2f3d] border-gray-200 hover:bg-gray-50'
+                            }`}
                     >
                         {isAdding ? 'Cancelar' : <><Plus className="h-3 w-3 mr-2" /> Nuevo Registro</>}
                     </Button>
@@ -190,7 +189,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                 <Input
                                     id="motivo"
                                     required
-                                    placeholder="Ej: Cambio de estándar, Problema de calidad..."
+                                    placeholder="Ej: Ajuste en el proceso, nuevo procedimiento..."
                                     value={motivo}
                                     onChange={(e) => setMotivo(e.target.value)}
                                     className="rounded-xl border-gray-200"
@@ -255,7 +254,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                                 <h4 className="text-sm font-black text-[#1e2f3d] uppercase tracking-tight">{item.motivo}</h4>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="flex items-center gap-4">
                                             <div className="flex flex-col">
                                                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Estado</p>
@@ -299,7 +298,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                         <p className="text-xs text-gray-600 leading-relaxed italic">&quot;{item.comentarios}&quot;</p>
                                     </div>
                                 )}
-                                
+
                                 <div className="absolute -bottom-4 -right-4 text-gray-50 opacity-20 transform -rotate-12">
                                     <RotateCcw className="h-24 w-24" />
                                 </div>

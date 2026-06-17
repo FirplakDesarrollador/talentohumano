@@ -80,6 +80,14 @@ export const PROCESOS_DISCIPLINARIOS_LEVELS: NivelCargo[] = [
 ];
 
 /**
+ * Emails explicitly permitted to access the Procesos Disciplinarios module,
+ * regardless of their nivelCargo.
+ */
+export const PROCESOS_DISCIPLINARIOS_EMAILS = [
+    'luz.echeverri@firplak.com',
+];
+
+/**
  * Levels with access to the Gestor de Personal module.
  * Roles NOT included will not see the module at all.
  * Excluded: Operario, Gerente, Auxiliar, Especialista, Practicante, Tecnico, Promotor, Asesor

@@ -21,7 +21,7 @@ const AREAS_ADMINISTRATIVAS = [
     'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial'
 ]
 
-export default function BuscadorHiluPage() {
+export default function BuscadorHiluAdminPage() {
     const router = useRouter()
     const [empleados, setEmpleados] = useState<EmpleadoHILU[]>([])
     const [busqueda, setBusqueda] = useState('')
@@ -156,27 +156,11 @@ export default function BuscadorHiluPage() {
 
     const fetchFilters = useCallback(async () => {
         try {
-            // Fetch unique areas
-            const { data: areasData } = await supabase
-                .from('query_estado_hilu')
-                .select('area')
-                .not('area', 'is', null) as { data: { area: string | null }[] | null }
-
-            if (areasData) {
-                const uniqueAreas = Array.from(new Set(areasData.map(p => p.area).filter(Boolean))) as string[]
-                // Exclude Administrativa sub-areas (they appear under the "Administrativa" group)
-                // and filter out JSON/Object strings from SharePoint
-                setPlantas(uniqueAreas
-                    .filter(a => !AREAS_ADMINISTRATIVAS.includes(a))
-                    .filter(a => !a.startsWith('{'))
-                    .filter(a => a !== 'Produccion' && a !== 'Todos')
-                    .sort()
-                )
-            }
+            setPlantas([...AREAS_ADMINISTRATIVAS].sort())
         } catch (error) {
-            console.error('Error fetching filters:', error)
+            console.error('Error setting filters:', error)
         }
-    }, [supabase])
+    }, [])
 
     const fetchEmpleados = useCallback(async () => {
         if (!isInitialized) return;
@@ -196,25 +180,15 @@ export default function BuscadorHiluPage() {
                 query = query.in('nivelCargo', selectedNiveles)
             }
 
-            // Filter by Area (with special Administrativa group)
+            // Filter by Area (only Administrative areas)
             if (selectedPlanta && selectedPlanta !== 'all') {
-                if (selectedPlanta === 'Administrativa') {
-                    if (AREAS_ADMINISTRATIVAS.length > 0) {
-                        const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
-                        query = query.or(adminFilter)
-                    } else {
-                        // If no admin areas defined, show nothing for this group
-                        query = query.eq('area', '___NONE___')
-                    }
-                } else {
-                    query = query.eq('area', selectedPlanta)
-                }
+                query = query.eq('area', selectedPlanta)
             } else {
-                // By default, exclude administrative areas — only show operational/plant staff
                 if (AREAS_ADMINISTRATIVAS.length > 0) {
-                    for (const area of AREAS_ADMINISTRATIVAS) {
-                        query = query.neq('area', area)
-                    }
+                    const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
+                    query = query.or(adminFilter)
+                } else {
+                    query = query.eq('area', '___NONE___')
                 }
             }
 
@@ -288,7 +262,7 @@ export default function BuscadorHiluPage() {
     }
 
     const handleEmpleadoClick = (empleado: EmpleadoHILU) => {
-        router.push(`/entrenamiento/${empleado.id}`)
+        router.push(`/hilu-administrativa/${empleado.id}`)
     }
 
     const handleClearFilters = () => {
@@ -419,7 +393,6 @@ export default function BuscadorHiluPage() {
                                 onChange={(e) => setSelectedPlanta(e.target.value)}
                             >
                                 <option value="all">Todas las áreas</option>
-                                <option value="Administrativa">Administrativa</option>
                                 {plantas.map((area) => (
                                     <option key={area} value={area}>{area}</option>
                                 ))}
