@@ -289,46 +289,48 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         await checkPhaseCompletion(phase, localEmpleado)
     }
 
-    const handleSavePhase = async (phase: 'I' | 'L' | 'U') => {
+    const handleSavePhase = async (phase: 'I' | 'L' | 'U', customState?: QueryHiluRow, additionalData: any = {}) => {
+        const stateToUse = customState || localEmpleado;
         const tableMap = { 'I': 'fase_I', 'L': 'fase_L', 'U': 'fase_U' } as const
         const idMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_id', 'L': 'fl_id', 'U': 'fu_id' }
         const fieldMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_detalles', 'L': 'fl_detalles', 'U': 'fu_detalles' }
         
-        const id = localEmpleado[idMap[phase]] as number
+        const id = stateToUse[idMap[phase]] as number
         if (!id) {
             toast.error('No se encontró el ID de la fase')
             return
         }
 
         const dataToSave: any = {
-            detalles: localEmpleado[fieldMap[phase]]
+            detalles: stateToUse[fieldMap[phase]],
+            ...additionalData
         }
         
         if (phase === 'I') {
-            dataToSave.estandar_hdt = localEmpleado.fi_estandar_hdt
-            dataToSave.entrenamiento_calidad = localEmpleado.fi_entrenamiento_calidad
-            dataToSave.hace_acompanado = localEmpleado.fi_hace_acompanado
-            dataToSave.hace_solo = localEmpleado.fi_hace_solo
-            dataToSave.curso_5s = localEmpleado.fi_curso_5s
-            dataToSave.actitud = localEmpleado.fi_actitud
-            dataToSave.aprendizaje = localEmpleado.fi_aprendizaje
-            dataToSave.destreza = localEmpleado.fi_destreza
-            dataToSave.conocimiento = localEmpleado.fi_conocimiento
-            dataToSave.comentario = localEmpleado.fi_comentario
+            dataToSave.estandar_hdt = stateToUse.fi_estandar_hdt
+            dataToSave.entrenamiento_calidad = stateToUse.fi_entrenamiento_calidad
+            dataToSave.hace_acompanado = stateToUse.fi_hace_acompanado
+            dataToSave.hace_solo = stateToUse.fi_hace_solo
+            dataToSave.curso_5s = stateToUse.fi_curso_5s
+            dataToSave.actitud = stateToUse.fi_actitud
+            dataToSave.aprendizaje = stateToUse.fi_aprendizaje
+            dataToSave.destreza = stateToUse.fi_destreza
+            dataToSave.conocimiento = stateToUse.fi_conocimiento
+            dataToSave.comentario = stateToUse.fi_comentario
         } else if (phase === 'L') {
-            dataToSave.cumple_calidad = localEmpleado.fl_cumple_calidad
-            dataToSave.cumple_estandar = localEmpleado.fl_cumple_estandar
-            dataToSave.cumple_tiempo = localEmpleado.fl_cumple_tiempo
-            dataToSave.comentario = localEmpleado.fl_comentario
+            dataToSave.cumple_calidad = stateToUse.fl_cumple_calidad
+            dataToSave.cumple_estandar = stateToUse.fl_cumple_estandar
+            dataToSave.cumple_tiempo = stateToUse.fl_cumple_tiempo
+            dataToSave.comentario = stateToUse.fl_comentario
         } else if (phase === 'U') {
-            dataToSave.capacitado_para_entrenar = localEmpleado.fu_capacitado_para_entrenar
-            dataToSave.entrena_solo = localEmpleado.fu_entrena_solo
-            dataToSave.acompana_entrenamientos = localEmpleado.fu_acompana_entrenamientos
-            dataToSave.comentario = localEmpleado.fu_comentario
+            dataToSave.capacitado_para_entrenar = stateToUse.fu_capacitado_para_entrenar
+            dataToSave.entrena_solo = stateToUse.fu_entrena_solo
+            dataToSave.acompana_entrenamientos = stateToUse.fu_acompana_entrenamientos
+            dataToSave.comentario = stateToUse.fu_comentario
         }
         
         await updatePhase(tableMap[phase], id, dataToSave)
-        await checkPhaseCompletion(phase, localEmpleado)
+        await checkPhaseCompletion(phase, stateToUse)
     }
 
     // Tool Logic Helpers
@@ -833,8 +835,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fi_firma_empleado: firma }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { firma_empleado: firma })
-                                                .then(() => checkPhaseCompletion('I', next))
+                                            handleSavePhase('I', next, { firma_empleado: firma })
                                         }}
                                     />
                                 </div>
@@ -845,8 +846,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fi_firma_supervisor: firma }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_I', localEmpleado.fi_id!, { firma_supervisor: firma })
-                                                .then(() => checkPhaseCompletion('I', next))
+                                            handleSavePhase('I', next, { firma_supervisor: firma })
                                         }}
                                     />
                                 </div>
@@ -973,8 +973,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fl_firma_empleado: firma }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_L', localEmpleado.fl_id!, { firma_empleado: firma })
-                                                .then(() => checkPhaseCompletion('L', next))
+                                            handleSavePhase('L', next, { firma_empleado: firma })
                                         }}
                                     />
                                 </div>
@@ -985,8 +984,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fl_firma_supervisor: firma }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_L', localEmpleado.fl_id!, { firma_supervisor: firma })
-                                                .then(() => checkPhaseCompletion('L', next))
+                                            handleSavePhase('L', next, { firma_supervisor: firma })
                                         }}
                                     />
                                 </div>
@@ -1105,8 +1103,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fu_firma_empleado: firma }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_U', localEmpleado.fu_id!, { firma_empleado: firma })
-                                                .then(() => checkPhaseCompletion('U', next))
+                                            handleSavePhase('U', next, { firma_empleado: firma })
                                         }}
                                     />
                                 </div>
@@ -1117,8 +1114,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fu_firma_supervisor: firma }
                                             setLocalEmpleado(next)
-                                            updatePhase('fase_U', localEmpleado.fu_id!, { firma_supervisor: firma })
-                                                .then(() => checkPhaseCompletion('U', next))
+                                            handleSavePhase('U', next, { firma_supervisor: firma })
                                         }}
                                     />
                                 </div>
