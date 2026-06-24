@@ -53,7 +53,7 @@ export default function DesempenoBuscadorPage() {
             // Fetch all active employees
             const { data: empData, error: empError } = await supabase
                 .from('empleados')
-                .select('id, nombreCompleto, cargo, planta, jefe, foto, activo')
+                .select('id, nombreCompleto, cargo, planta, jefe, foto, activo, correo_electronico')
                 .eq('activo', true)
                 .order('nombreCompleto', { ascending: true })
 
