@@ -20,6 +20,11 @@ const PREGUNTAS_POTENCIAL = [
         id: 'q3',
         categoria: 'Influencia y Liderazgo',
         pregunta: '¿Influye positivamente en su equipo o compañeros, incluso sin tener un cargo de liderazgo formal?',
+    },
+    {
+        id: 'q4',
+        categoria: 'Ejecución y Resultados',
+        pregunta: 'Capacidad de cumplimiento de tareas en planner',
     }
 ]
 

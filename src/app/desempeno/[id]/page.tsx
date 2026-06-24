@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { useDesempenoScore } from '@/lib/hooks/useDesempenoScore'
 
 // Tab components
 import { CompetenciasTab } from '@/components/Desempeno/CompetenciasTab'
@@ -41,6 +42,15 @@ export default function DesempenoDetailPage() {
     const [empleado, setEmpleado] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<TabId>('competencias')
+
+    // ── Score ponderado: se declara antes de cualquier early return ──────────
+    const cedula = empleado ? (empleado.cedula || empleado.id) : 0
+    const cargo  = empleado?.cargo || ''
+    const desempenoScore = useDesempenoScore(
+        cedula,
+        cargo,
+        empleado?.correo_electronico || undefined
+    )
 
     const fetchData = useCallback(async () => {
         if (!empId) return
@@ -102,9 +112,8 @@ export default function DesempenoDetailPage() {
         )
     }
 
-    const cedula = empleado.cedula || empleado.id
-    const cargo = empleado.cargo || ''
-    const nombreEmpleado = empleado.nombreCompleto || ''
+    const nombreEmpleado = empleado?.nombreCompleto || ''
+
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -113,7 +122,7 @@ export default function DesempenoDetailPage() {
             case 'kpis':
                 return <KPIView cedula={cedula} nombre={nombreEmpleado} />
             case 'planner':
-                return <PlannerView empleadoEmail={empleado.correo_electronico} nombre={nombreEmpleado} />
+                return <PlannerView empleadoEmail={empleado?.correo_electronico} nombre={nombreEmpleado} />
             case 'potencial':
                 return <PotencialTab cedula={cedula} nombre={nombreEmpleado} cargo={cargo} />
             default:
@@ -189,6 +198,25 @@ export default function DesempenoDetailPage() {
                                     <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Área / Planta</p>
                                     <p className="text-[#2d4356] font-semibold">{empleado.planta || 'N/A'}</p>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* ── Score Total ── */}
+                        <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                            <TrendingUp className="h-5 w-5 text-blue-500" />
+                            <div className="flex-1">
+                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Score Desempeño</p>
+                                {desempenoScore.loading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-gray-400 mt-1" />
+                                ) : (
+                                    <p className={`text-lg font-black ${
+                                        desempenoScore.scoreFinal === null ? 'text-gray-400' :
+                                        desempenoScore.scoreFinal >= 80 ? 'text-green-600' :
+                                        desempenoScore.scoreFinal >= 60 ? 'text-yellow-600' : 'text-red-500'
+                                    }`}>
+                                        {desempenoScore.scoreFinal !== null ? `${desempenoScore.scoreFinal}%` : 'Sin datos'}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
