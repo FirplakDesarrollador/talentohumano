@@ -54,6 +54,16 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
     const normalizedName = empleado.nombreCompleto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     const isSupervisorOrHector = (empleado.nivelCargo || '').toLowerCase().includes('supervisor') || normalizedName.includes('hector jose chinchilla') || normalizedName.includes('hector chinchilla')
 
+    const empArea = (empleado as any).area || empleado.planta || '';
+    const empNivel = (empleado.nivelCargo || '').toLowerCase();
+    const isAdministrativo = 
+        ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
+        ['analista', 'jefe', 'gerente', 'director', 'coordinador', 'administrador', 'desarrollador'].includes(empNivel) ||
+        normalizedName.includes('alejo') || normalizedName.includes('alejandro fernandez');
+
+    const showAdminHilu = isAdministrativo || isSupervisorOrHector;
+    const showOperativeHilu = !isAdministrativo || isSupervisorOrHector;
+
     return (
         <div onClick={onClick} className="cursor-pointer">
             <Card className="hover:shadow-md transition-all border border-gray-100 bg-white">
@@ -74,8 +84,8 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
                             </h3>
                             
                             <div className="flex flex-col gap-1 mt-1">
-                                {/* HILU Administrativa (Show if we are in admin context) */}
-                                {isAdminContext && (
+                                {/* HILU Administrativa */}
+                                {showAdminHilu && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Admin</span>
                                         <div className="flex items-center gap-1.5">
@@ -101,10 +111,10 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
                                     </div>
                                 )}
 
-                                {/* HILU Sistema / Operativa (Show if NOT in admin context, OR if they are Supervisor/Hector in admin context) */}
-                                {(!isAdminContext || isSupervisorOrHector) && (
+                                {/* HILU Sistema / Operativa */}
+                                {showOperativeHilu && (
                                     <div className="flex items-center gap-2">
-                                        {isAdminContext && <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Sist.</span>}
+                                        {showAdminHilu && <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Sist.</span>}
                                         <div className="flex items-center gap-1.5">
                                             {['H', 'I', 'L', 'U'].map((letter) => {
                                                 const fieldPrefix = letter.toLowerCase();
