@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +26,13 @@ export default function HiluAdministrativaPage() {
     const [currentUser, setCurrentUser] = useState<any>(null)
 
     const supabase = createClient()
+
+    const canEdit = () => {
+        if (!currentUser) return false
+        const email = currentUser.email || ''
+        const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
+        return isAdmin || ['Jefe', 'Director', 'Gerente', 'Coordinador'].includes(currentUser.nivelCargo)
+    }
 
     const fetchAuditorias = async (cedula: string) => {
         const { data: auditData } = await supabase.from('auditorias').select('*').eq('empleado_id', cedula).order('created_at', { ascending: false })
