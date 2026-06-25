@@ -9,6 +9,7 @@ import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { CrearFirma, VerFirma } from './FirmaComponents'
+import { EvidenciasComponent } from './EvidenciasComponent'
 
 interface HiluAdminRow {
     id: number;
@@ -38,6 +39,9 @@ interface HiluAdminRow {
     fi_eval_conocimiento: number | null;
     fi_completado: boolean;
     fi_fecha_finalizacion: string | null;
+    fi_plan_entrenamiento?: string[];
+    fi_firma_empleado: boolean;
+    fi_firma_jefe: boolean;
 
     // FASE L
     fl_desempena_autonomia: boolean;
@@ -212,7 +216,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
 
     const checkPhaseI = async (data: HiluAdminRow) => {
         const isDone = data.fi_capacitacion_funciones && data.fi_capacitacion_procesos && data.fi_capacitacion_herramientas && data.fi_acompanamiento_practico &&
-            data.fi_eval_actitud && data.fi_eval_adaptacion && data.fi_eval_aprendizaje && data.fi_eval_conocimiento
+            data.fi_eval_actitud && data.fi_eval_adaptacion && data.fi_eval_aprendizaje && data.fi_eval_conocimiento && data.fi_firma_empleado && data.fi_firma_jefe
         const hasComment = !!(data.fi_comentarios?.trim())
 
         if (isDone && hasComment && !data.fi_completado) {
@@ -245,18 +249,10 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                 {openPhase === 'H' && (
                     <CardContent className={`p-6 space-y-6 bg-[#f8f9fa] ${!canEdit() ? 'opacity-70 pointer-events-none' : ''}`}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <PillCheckbox id="fh_induccion_th" label="Inducción Talento y Cultura" checked={localData.fh_induccion_th} onChange={(c) => {
-                                const next = { ...localData, fh_induccion_th: c }; setLocalData(next); updateDB({ fh_induccion_th: c }).then(() => checkPhaseH(next))
-                            }} />
-                            <PillCheckbox id="fh_induccion_sst" label="Inducción SST" checked={localData.fh_induccion_sst} onChange={(c) => {
-                                const next = { ...localData, fh_induccion_sst: c }; setLocalData(next); updateDB({ fh_induccion_sst: c }).then(() => checkPhaseH(next))
-                            }} />
-                            <PillCheckbox id="fh_presentacion_area" label="Presentación del área y estructura organizacional" checked={localData.fh_presentacion_area} onChange={(c) => {
-                                const next = { ...localData, fh_presentacion_area: c }; setLocalData(next); updateDB({ fh_presentacion_area: c }).then(() => checkPhaseH(next))
-                            }} />
-                            <PillCheckbox id="fh_explicacion_cargo" label="Explicación general del cargo y propósito del área" checked={localData.fh_explicacion_cargo} onChange={(c) => {
-                                const next = { ...localData, fh_explicacion_cargo: c }; setLocalData(next); updateDB({ fh_explicacion_cargo: c }).then(() => checkPhaseH(next))
-                            }} />
+                            <PillCheckbox id="fh_induccion_th" label="Inducción Talento y Cultura" checked={localData.fh_induccion_th} onChange={(c) => setLocalData({ ...localData, fh_induccion_th: c })} />
+                            <PillCheckbox id="fh_induccion_sst" label="Inducción SST" checked={localData.fh_induccion_sst} onChange={(c) => setLocalData({ ...localData, fh_induccion_sst: c })} />
+                            <PillCheckbox id="fh_presentacion_area" label="Presentación del área y estructura organizacional" checked={localData.fh_presentacion_area} onChange={(c) => setLocalData({ ...localData, fh_presentacion_area: c })} />
+                            <PillCheckbox id="fh_explicacion_cargo" label="Explicación general del cargo y propósito del área" checked={localData.fh_explicacion_cargo} onChange={(c) => setLocalData({ ...localData, fh_explicacion_cargo: c })} />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
@@ -265,9 +261,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <textarea
                                     className="w-full h-[100px] p-3 rounded-md border border-gray-200 resize-none text-sm"
                                     defaultValue={localData.fh_comentarios || ''}
-                                    onBlur={(e) => {
-                                        const next = { ...localData, fh_comentarios: e.target.value }; setLocalData(next); updateDB({ fh_comentarios: e.target.value }).then(() => checkPhaseH(next))
-                                    }}
+                                    onBlur={(e) => setLocalData({ ...localData, fh_comentarios: e.target.value })}
                                 />
                             </div>
 
@@ -275,18 +269,26 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <SignatureWidget
                                     label="Firma Empleado"
                                     value={localData.fh_firma_empleado}
-                                    onSave={(firma) => {
-                                        // For simplicity using boolean in UI if firma is base64 string, assuming component accepts string
-                                        const next = { ...localData, fh_firma_empleado: true }; setLocalData(next); updateDB({ fh_firma_empleado: true }).then(() => checkPhaseH(next))
-                                    }}
+                                    onSave={(firma) => setLocalData({ ...localData, fh_firma_empleado: true })}
                                 />
                                 <SignatureWidget
                                     label="Firma Jefe"
                                     value={localData.fh_firma_jefe}
-                                    onSave={(firma) => {
-                                        const next = { ...localData, fh_firma_jefe: true }; setLocalData(next); updateDB({ fh_firma_jefe: true }).then(() => checkPhaseH(next))
-                                    }}
+                                    onSave={(firma) => setLocalData({ ...localData, fh_firma_jefe: true })}
                                 />
+                            </div>
+                            
+                            <div className="lg:col-span-12 flex justify-end mt-4">
+                                <Button 
+                                    className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white px-8"
+                                    onClick={async () => {
+                                        await updateDB(localData)
+                                        checkPhaseH(localData)
+                                    }}
+                                >
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Guardar Etapa H
+                                </Button>
                             </div>
                         </div>
                     </CardContent>
@@ -307,45 +309,64 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                 {openPhase === 'I' && (
                     <CardContent className={`p-6 space-y-6 bg-[#f8f9fa] ${(!faseHComplete || !canEdit()) ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <PillCheckbox id="fi_capacitacion_funciones" label="Capacitación en funciones, actividades y responsabilidades del cargo" checked={localData.fi_capacitacion_funciones} onChange={(c) => {
-                                const next = { ...localData, fi_capacitacion_funciones: c }; setLocalData(next); updateDB({ fi_capacitacion_funciones: c }).then(() => checkPhaseI(next))
-                            }} />
-                            <PillCheckbox id="fi_capacitacion_procesos" label="Capacitación en procesos y procedimientos aplicables al cargo" checked={localData.fi_capacitacion_procesos} onChange={(c) => {
-                                const next = { ...localData, fi_capacitacion_procesos: c }; setLocalData(next); updateDB({ fi_capacitacion_procesos: c }).then(() => checkPhaseI(next))
-                            }} />
-                            <PillCheckbox id="fi_capacitacion_herramientas" label="Capacitación en herramientas, sistemas y formatos requeridos en el cargo" checked={localData.fi_capacitacion_herramientas} onChange={(c) => {
-                                const next = { ...localData, fi_capacitacion_herramientas: c }; setLocalData(next); updateDB({ fi_capacitacion_herramientas: c }).then(() => checkPhaseI(next))
-                            }} />
-                            <PillCheckbox id="fi_acompanamiento_practico" label="Acompañamiento práctico y guiado de actividades asignadas" checked={localData.fi_acompanamiento_practico} onChange={(c) => {
-                                const next = { ...localData, fi_acompanamiento_practico: c }; setLocalData(next); updateDB({ fi_acompanamiento_practico: c }).then(() => checkPhaseI(next))
-                            }} />
+                            <PillCheckbox id="fi_capacitacion_funciones" label="Capacitación en funciones, actividades y responsabilidades del cargo" checked={localData.fi_capacitacion_funciones} onChange={(c) => setLocalData({ ...localData, fi_capacitacion_funciones: c })} />
+                            <PillCheckbox id="fi_capacitacion_procesos" label="Capacitación en procesos y procedimientos aplicables al cargo" checked={localData.fi_capacitacion_procesos} onChange={(c) => setLocalData({ ...localData, fi_capacitacion_procesos: c })} />
+                            <PillCheckbox id="fi_capacitacion_herramientas" label="Capacitación en herramientas, sistemas y formatos requeridos en el cargo" checked={localData.fi_capacitacion_herramientas} onChange={(c) => setLocalData({ ...localData, fi_capacitacion_herramientas: c })} />
+                            <PillCheckbox id="fi_acompanamiento_practico" label="Acompañamiento práctico y guiado de actividades asignadas" checked={localData.fi_acompanamiento_practico} onChange={(c) => setLocalData({ ...localData, fi_acompanamiento_practico: c })} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-gray-100">
-                            <StarRating label="Actitud" value={localData.fi_eval_actitud || 0} onChange={(v) => {
-                                const next = { ...localData, fi_eval_actitud: v }; setLocalData(next); updateDB({ fi_eval_actitud: v }).then(() => checkPhaseI(next))
-                            }} />
-                            <StarRating label="Adaptación" value={localData.fi_eval_adaptacion || 0} onChange={(v) => {
-                                const next = { ...localData, fi_eval_adaptacion: v }; setLocalData(next); updateDB({ fi_eval_adaptacion: v }).then(() => checkPhaseI(next))
-                            }} />
-                            <StarRating label="Aprendizaje" value={localData.fi_eval_aprendizaje || 0} onChange={(v) => {
-                                const next = { ...localData, fi_eval_aprendizaje: v }; setLocalData(next); updateDB({ fi_eval_aprendizaje: v }).then(() => checkPhaseI(next))
-                            }} />
-                            <StarRating label="Conocimiento" value={localData.fi_eval_conocimiento || 0} onChange={(v) => {
-                                const next = { ...localData, fi_eval_conocimiento: v }; setLocalData(next); updateDB({ fi_eval_conocimiento: v }).then(() => checkPhaseI(next))
-                            }} />
+                            <StarRating label="Actitud" value={localData.fi_eval_actitud || 0} onChange={(v) => setLocalData({ ...localData, fi_eval_actitud: v })} />
+                            <StarRating label="Adaptación" value={localData.fi_eval_adaptacion || 0} onChange={(v) => setLocalData({ ...localData, fi_eval_adaptacion: v })} />
+                            <StarRating label="Aprendizaje" value={localData.fi_eval_aprendizaje || 0} onChange={(v) => setLocalData({ ...localData, fi_eval_aprendizaje: v })} />
+                            <StarRating label="Conocimiento" value={localData.fi_eval_conocimiento || 0} onChange={(v) => setLocalData({ ...localData, fi_eval_conocimiento: v })} />
                         </div>
 
-                        <div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100">
-                            <Label className="text-gray-500">Comentarios <span className="text-red-500">*</span></Label>
-                            <textarea
-                                className="w-full h-[100px] p-3 rounded-md border border-gray-200 resize-none text-sm"
-                                placeholder="Comentarios con el registro del plan de entrenamiento y temas abordados del perfil de cargo..."
-                                defaultValue={localData.fi_comentarios || ''}
-                                onBlur={(e) => {
-                                    const next = { ...localData, fi_comentarios: e.target.value }; setLocalData(next); updateDB({ fi_comentarios: e.target.value }).then(() => checkPhaseI(next))
-                                }}
+                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                            <EvidenciasComponent 
+                                evidencias={localData.fi_plan_entrenamiento || []}
+                                onEvidenciasChange={(evs) => setLocalData({ ...localData, fi_plan_entrenamiento: evs })}
+                                path={`hilu-admin/${localData.id}/plan`}
+                                readOnly={!canEdit()}
                             />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                            <div className="lg:col-span-12 space-y-2">
+                                <Label className="text-gray-500">Comentarios <span className="text-red-500">*</span></Label>
+                                <textarea
+                                    className="w-full h-[100px] p-3 rounded-md border border-gray-200 resize-none text-sm"
+                                    placeholder="Comentarios con el registro del plan de entrenamiento y temas abordados del perfil de cargo..."
+                                    defaultValue={localData.fi_comentarios || ''}
+                                    onBlur={(e) => setLocalData({ ...localData, fi_comentarios: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                                <SignatureWidget
+                                    label="Firma Empleado"
+                                    value={localData.fi_firma_empleado}
+                                    onSave={(firma) => setLocalData({ ...localData, fi_firma_empleado: true })}
+                                />
+                                <SignatureWidget
+                                    label="Firma Jefe"
+                                    value={localData.fi_firma_jefe}
+                                    onSave={(firma) => setLocalData({ ...localData, fi_firma_jefe: true })}
+                                />
+                            </div>
+
+                            <div className="lg:col-span-12 flex justify-end mt-4">
+                                <Button 
+                                    className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white px-8"
+                                    onClick={async () => {
+                                        await updateDB(localData)
+                                        checkPhaseI(localData)
+                                    }}
+                                >
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Guardar Etapa I
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 )}
@@ -365,21 +386,11 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                 {openPhase === 'L' && (
                     <CardContent className={`p-6 space-y-6 bg-[#f8f9fa] ${(!faseIComplete || !canEdit()) ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <PillCheckbox id="fl_desempena_autonomia" label="Desempeña sus funciones con autonomía y apropiación del rol" checked={localData.fl_desempena_autonomia} onChange={(c) => {
-                                const next = { ...localData, fl_desempena_autonomia: c }; setLocalData(next); updateDB({ fl_desempena_autonomia: c }).then(() => checkPhaseL(next))
-                            }} />
-                            <PillCheckbox id="fl_cumple_responsabilidades" label="Cumple con las responsabilidades asignadas" checked={localData.fl_cumple_responsabilidades} onChange={(c) => {
-                                const next = { ...localData, fl_cumple_responsabilidades: c }; setLocalData(next); updateDB({ fl_cumple_responsabilidades: c }).then(() => checkPhaseL(next))
-                            }} />
-                            <PillCheckbox id="fl_aplica_procedimientos" label="Aplica correctamente los procedimientos y lineamientos definidos para el cargo" checked={localData.fl_aplica_procedimientos} onChange={(c) => {
-                                const next = { ...localData, fl_aplica_procedimientos: c }; setLocalData(next); updateDB({ fl_aplica_procedimientos: c }).then(() => checkPhaseL(next))
-                            }} />
-                            <PillCheckbox id="fl_ejecuta_sin_acompanamiento" label="Ejecuta las funciones asignadas sin acompañamiento frecuente" checked={localData.fl_ejecuta_sin_acompanamiento} onChange={(c) => {
-                                const next = { ...localData, fl_ejecuta_sin_acompanamiento: c }; setLocalData(next); updateDB({ fl_ejecuta_sin_acompanamiento: c }).then(() => checkPhaseL(next))
-                            }} />
-                            <PillCheckbox id="fl_cumple_resultados" label="Cumple con los resultados esperados y acordados en el perfil de cargo" checked={localData.fl_cumple_resultados} onChange={(c) => {
-                                const next = { ...localData, fl_cumple_resultados: c }; setLocalData(next); updateDB({ fl_cumple_resultados: c }).then(() => checkPhaseL(next))
-                            }} />
+                            <PillCheckbox id="fl_desempena_autonomia" label="Desempeña sus funciones con autonomía y apropiación del rol" checked={localData.fl_desempena_autonomia} onChange={(c) => setLocalData({ ...localData, fl_desempena_autonomia: c })} />
+                            <PillCheckbox id="fl_cumple_responsabilidades" label="Cumple con las responsabilidades asignadas" checked={localData.fl_cumple_responsabilidades} onChange={(c) => setLocalData({ ...localData, fl_cumple_responsabilidades: c })} />
+                            <PillCheckbox id="fl_aplica_procedimientos" label="Aplica correctamente los procedimientos y lineamientos definidos para el cargo" checked={localData.fl_aplica_procedimientos} onChange={(c) => setLocalData({ ...localData, fl_aplica_procedimientos: c })} />
+                            <PillCheckbox id="fl_ejecuta_sin_acompanamiento" label="Ejecuta las funciones asignadas sin acompañamiento frecuente" checked={localData.fl_ejecuta_sin_acompanamiento} onChange={(c) => setLocalData({ ...localData, fl_ejecuta_sin_acompanamiento: c })} />
+                            <PillCheckbox id="fl_cumple_resultados" label="Cumple con los resultados esperados y acordados en el perfil de cargo" checked={localData.fl_cumple_resultados} onChange={(c) => setLocalData({ ...localData, fl_cumple_resultados: c })} />
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
@@ -388,9 +399,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <textarea
                                     className="w-full h-[100px] p-3 rounded-md border border-gray-200 resize-none text-sm"
                                     defaultValue={localData.fl_comentarios || ''}
-                                    onBlur={(e) => {
-                                        const next = { ...localData, fl_comentarios: e.target.value }; setLocalData(next); updateDB({ fl_comentarios: e.target.value }).then(() => checkPhaseL(next))
-                                    }}
+                                    onBlur={(e) => setLocalData({ ...localData, fl_comentarios: e.target.value })}
                                 />
                             </div>
 
@@ -398,17 +407,26 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <SignatureWidget
                                     label="Firma Empleado en formación"
                                     value={localData.fl_firma_empleado}
-                                    onSave={(firma) => {
-                                        const next = { ...localData, fl_firma_empleado: true }; setLocalData(next); updateDB({ fl_firma_empleado: true }).then(() => checkPhaseL(next))
-                                    }}
+                                    onSave={(firma) => setLocalData({ ...localData, fl_firma_empleado: true })}
                                 />
                                 <SignatureWidget
                                     label="Firma Jefe"
                                     value={localData.fl_firma_jefe}
-                                    onSave={(firma) => {
-                                        const next = { ...localData, fl_firma_jefe: true }; setLocalData(next); updateDB({ fl_firma_jefe: true }).then(() => checkPhaseL(next))
-                                    }}
+                                    onSave={(firma) => setLocalData({ ...localData, fl_firma_jefe: true })}
                                 />
+                            </div>
+
+                            <div className="lg:col-span-12 flex justify-end mt-4">
+                                <Button 
+                                    className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white px-8"
+                                    onClick={async () => {
+                                        await updateDB(localData)
+                                        checkPhaseL(localData)
+                                    }}
+                                >
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Guardar Etapa L
+                                </Button>
                             </div>
                         </div>
                     </CardContent>

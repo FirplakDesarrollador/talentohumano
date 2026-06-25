@@ -30,21 +30,21 @@ export function EvidenciasComponent({ evidencias = [], onEvidenciasChange, readO
 
         try {
             const { error: uploadError } = await supabase.storage
-                .from('evidencias-hilu')
+                .from('hilu')
                 .upload(filePath, file)
 
             if (uploadError) throw uploadError
 
             const { data } = supabase.storage
-                .from('evidencias-hilu')
+                .from('hilu')
                 .getPublicUrl(filePath)
 
             const newEvidencias = [...(evidencias || []), data.publicUrl]
             onEvidenciasChange(newEvidencias)
             alert('Archivo subido correctamente')
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error uploading file:', error)
-            alert('Error al subir el archivo')
+            alert(`Error al subir el archivo: ${error?.message || error?.error_description || 'Error desconocido'}`)
         } finally {
             setUploading(false)
         }
@@ -105,8 +105,11 @@ export function EvidenciasComponent({ evidencias = [], onEvidenciasChange, readO
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {evidencias?.map((url, index) => {
-                    if (!url) return null;
+                {evidencias?.map((urlItem, index) => {
+                    if (!urlItem) return null;
+                    const url = typeof urlItem === 'string' ? urlItem : JSON.stringify(urlItem);
+                    if (typeof urlItem !== 'string') return null; // Avoid crashing on old invalid objects
+                    
                     return (
                         <Card key={index} className="overflow-hidden">
                             <CardContent className="p-3 flex items-center justify-between">
@@ -121,7 +124,13 @@ export function EvidenciasComponent({ evidencias = [], onEvidenciasChange, readO
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 text-gray-500 hover:text-blue-600"
-                                        onClick={() => window.open(url, '_blank')}
+                                        onClick={() => {
+                                            if (url.toLowerCase().endsWith('.xlsx') || url.toLowerCase().endsWith('.xls')) {
+                                                window.open(`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`, '_blank')
+                                            } else {
+                                                window.open(url, '_blank')
+                                            }
+                                        }}
                                     >
                                         <Eye className="h-4 w-4" />
                                     </Button>

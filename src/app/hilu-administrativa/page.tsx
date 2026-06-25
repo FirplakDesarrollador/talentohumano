@@ -15,11 +15,8 @@ import type { Database } from '@/lib/supabase/types'
 
 type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
 
-// Areas that belong to the "Administrativa" virtual group
-const AREAS_ADMINISTRATIVAS = [
-    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial'
-]
+// Remove static areas definition
+
 
 export default function BuscadorHiluAdminPage() {
     const router = useRouter()
@@ -156,11 +153,15 @@ export default function BuscadorHiluAdminPage() {
 
     const fetchFilters = useCallback(async () => {
         try {
-            setPlantas([...AREAS_ADMINISTRATIVAS].sort())
+            const { data } = await supabase.from('query_estado_hilu').select('area').not('nivelCargo', 'in', '("Operario","Operario lider")');
+            if (data) {
+                const uniqueAreas = Array.from(new Set((data as any[]).map(d => d.area).filter(Boolean)));
+                setPlantas(uniqueAreas.sort() as string[]);
+            }
         } catch (error) {
             console.error('Error setting filters:', error)
         }
-    }, [])
+    }, [supabase])
 
     const fetchEmpleados = useCallback(async () => {
         if (!isInitialized) return;
@@ -180,16 +181,12 @@ export default function BuscadorHiluAdminPage() {
                 query = query.in('nivelCargo', selectedNiveles)
             }
 
-            // Filter by Area (only Administrative areas)
+            // Filter by "Administrativo"
+            query = query.not('nivelCargo', 'in', '("Operario","Operario lider")');
+
+            // Filter by Area
             if (selectedPlanta && selectedPlanta !== 'all') {
                 query = query.eq('area', selectedPlanta)
-            } else {
-                if (AREAS_ADMINISTRATIVAS.length > 0) {
-                    const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
-                    query = query.or(adminFilter)
-                } else {
-                    query = query.eq('area', '___NONE___')
-                }
             }
 
             // Search by name or cedula
