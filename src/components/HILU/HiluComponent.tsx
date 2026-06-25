@@ -34,15 +34,15 @@ type ToolDetails = Record<string, Record<string, boolean>>
 const getRoleType = (cargo: string | null) => {
     if (!cargo) return 'OPERARIO'
     const cargoLower = cargo.toLowerCase()
-    
+
     // Grupo 10 Herramientas: Jefes, Gerentes, Directores y Coordinadores
     const highLevel = ['jefe', 'gerente', 'director', 'coordinador']
     if (highLevel.some(kw => cargoLower.includes(kw))) return 'JEFE_ALTO'
-    
+
     // Grupo 8 Herramientas: Supervisores, Líderes, Facilitadores e Implementadores
     const midLevel = ['supervisor', 'lider', 'líder', 'facilitador', 'implementador']
     if (midLevel.some(kw => cargoLower.includes(kw))) return 'SUPERVISOR_MEDIO'
-    
+
     return 'OPERARIO'
 }
 
@@ -82,8 +82,8 @@ const StarRating = ({ value, onChange, label, disabled }: { value: number, onCha
                         onClick={() => onChange?.(s)}
                         className={`focus:outline-none transition-all ${!disabled && onChange ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'}`}
                     >
-                        <Star 
-                            className={`h-6 w-6 ${s <= value ? 'text-blue-600 fill-blue-600' : 'text-gray-300'}`} 
+                        <Star
+                            className={`h-6 w-6 ${s <= value ? 'text-blue-600 fill-blue-600' : 'text-gray-300'}`}
                         />
                     </button>
                 ))}
@@ -92,14 +92,14 @@ const StarRating = ({ value, onChange, label, disabled }: { value: number, onCha
     )
 }
 
-const SignatureWidget = ({ 
-    label, 
-    value, 
-    onSave, 
-    date 
-}: { 
-    label: string, 
-    value?: string | null, 
+const SignatureWidget = ({
+    label,
+    value,
+    onSave,
+    date
+}: {
+    label: string,
+    value?: string | null,
     onSave: (firma: string) => void,
     date?: string | null
 }) => (
@@ -164,17 +164,17 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     const canEditPhase = (phase: 'H' | 'I' | 'L' | 'U') => {
         if (!currentUser) return false
         const email = currentUser.email || ''
-        
+
         // Estiven Londono and Coordinacion Calidad have full permissions
         if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
         const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
-        
+
         if (isAdmin) return true
-        
+
         if (
-            email === 'david.ramirez@firplak.com' || 
-            SUPERVISORES_MARMOL.includes(email) || 
-            SUPERVISORES_CALIDAD.includes(email) || 
+            email === 'david.ramirez@firplak.com' ||
+            SUPERVISORES_MARMOL.includes(email) ||
+            SUPERVISORES_CALIDAD.includes(email) ||
             SUPERVISORES_ALMACEN_CEDI.includes(email) ||
             SUPERVISORES_MUEBLES_CEFI.includes(email) ||
             email === 'jakeline.chaverra@firplak.com' ||
@@ -187,8 +187,8 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             if (phase === 'U') return false
             return true
         }
-        
-        return true 
+
+        return true
     }
 
     // Sync local state ONLY when switching to a different employee
@@ -206,7 +206,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 fu_detalles: prev.fu_detalles
             }
         })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado])
 
     // Generic update function (Internal sync)
@@ -221,11 +221,11 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 .eq('id', id)
 
             if (error) throw error
-            
+
             if (onUpdate) {
                 await (onUpdate as any)()
             }
-            
+
             toast.success('Cambios guardados')
         } catch (error: any) {
             console.error('Error updating phase:', JSON.stringify(error, null, 2))
@@ -294,7 +294,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         const tableMap = { 'I': 'fase_I', 'L': 'fase_L', 'U': 'fase_U' } as const
         const idMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_id', 'L': 'fl_id', 'U': 'fu_id' }
         const fieldMap: Record<string, keyof QueryHiluRow> = { 'I': 'fi_detalles', 'L': 'fl_detalles', 'U': 'fu_detalles' }
-        
+
         const id = stateToUse[idMap[phase]] as number
         if (!id) {
             toast.error('No se encontró el ID de la fase')
@@ -305,7 +305,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             detalles: stateToUse[fieldMap[phase]],
             ...additionalData
         }
-        
+
         if (phase === 'I') {
             dataToSave.estandar_hdt = stateToUse.fi_estandar_hdt
             dataToSave.entrenamiento_calidad = stateToUse.fi_entrenamiento_calidad
@@ -328,7 +328,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             dataToSave.acompana_entrenamientos = stateToUse.fu_acompana_entrenamientos
             dataToSave.comentario = stateToUse.fu_comentario
         }
-        
+
         await updatePhase(tableMap[phase], id, dataToSave)
         await checkPhaseCompletion(phase, stateToUse)
     }
@@ -368,17 +368,17 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 currentData.fh_firma_supervisor)
         } else if (role === 'OPERARIO') {
             if (phase === 'I') {
-                isDone = !!(currentData.fi_estandar_hdt && 
-                           currentData.fi_entrenamiento_calidad && 
-                           currentData.fi_hace_acompanado && 
-                           currentData.fi_hace_solo && 
-                           currentData.fi_curso_5s &&
-                           currentData.fi_actitud &&
-                           currentData.fi_aprendizaje &&
-                           currentData.fi_destreza &&
-                           currentData.fi_conocimiento &&
-                           currentData.fi_firma_empleado && 
-                           currentData.fi_firma_supervisor)
+                isDone = !!(currentData.fi_estandar_hdt &&
+                    currentData.fi_entrenamiento_calidad &&
+                    currentData.fi_hace_acompanado &&
+                    currentData.fi_hace_solo &&
+                    currentData.fi_curso_5s &&
+                    currentData.fi_actitud &&
+                    currentData.fi_aprendizaje &&
+                    currentData.fi_destreza &&
+                    currentData.fi_conocimiento &&
+                    currentData.fi_firma_empleado &&
+                    currentData.fi_firma_supervisor)
             } else if (phase === 'L') {
                 isDone = !!(currentData.fl_cumple_calidad && currentData.fl_cumple_estandar && currentData.fl_cumple_tiempo && currentData.fl_firma_empleado && currentData.fl_firma_supervisor)
             } else if (phase === 'U') {
@@ -651,9 +651,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             {/* Signatures & Save */}
                             <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-6 items-start pt-4 border-t border-gray-100">
                                 <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <SignatureWidget 
-                                        label="Firma Empleado" 
-                                        value={localEmpleado.fh_firma_empleado} 
+                                    <SignatureWidget
+                                        label="Firma Empleado"
+                                        value={localEmpleado.fh_firma_empleado}
                                         date={localEmpleado.fh_fecha_finalizacion_fase}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fh_firma_empleado: firma }
@@ -662,9 +662,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                                 .then(() => checkPhaseCompletion('H', next))
                                         }}
                                     />
-                                    <SignatureWidget 
-                                        label="Firma Supervisor" 
-                                        value={localEmpleado.fh_firma_supervisor} 
+                                    <SignatureWidget
+                                        label="Firma Supervisor"
+                                        value={localEmpleado.fh_firma_supervisor}
                                         date={localEmpleado.fh_fecha_finalizacion_fase}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fh_firma_supervisor: firma }
@@ -766,44 +766,44 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         <PillCheckbox id="fi_hace_solo" label="Hace solo" checked={localEmpleado.fi_hace_solo || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_hace_solo: c }))
                                         }} />
-                                        <PillCheckbox id="fi_curso_5s" label="Curso de 5S" checked={localEmpleado.fi_curso_5s || false} onChange={(c) => {
+                                        <PillCheckbox id="fi_curso_5s" label="5S" checked={localEmpleado.fi_curso_5s || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_curso_5s: c }))
                                         }} />
                                     </div>
 
                                     {/* Row 3: Ratings */}
                                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-100">
-                                        <StarRating 
-                                            label="Actitud" 
-                                            value={localEmpleado.fi_actitud || 0} 
+                                        <StarRating
+                                            label="Actitud"
+                                            value={localEmpleado.fi_actitud || 0}
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_actitud: v }))
-                                            }} 
+                                            }}
                                         />
-                                        <StarRating 
-                                            label="Aprendizaje" 
-                                            value={localEmpleado.fi_aprendizaje || 0} 
+                                        <StarRating
+                                            label="Aprendizaje"
+                                            value={localEmpleado.fi_aprendizaje || 0}
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_aprendizaje: v }))
-                                            }} 
+                                            }}
                                         />
-                                        <StarRating 
-                                            label="Destreza" 
-                                            value={localEmpleado.fi_destreza || 0} 
+                                        <StarRating
+                                            label="Destreza"
+                                            value={localEmpleado.fi_destreza || 0}
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_destreza: v }))
-                                            }} 
+                                            }}
                                         />
-                                        <StarRating 
-                                            label="Conocimiento" 
-                                            value={localEmpleado.fi_conocimiento || 0} 
+                                        <StarRating
+                                            label="Conocimiento"
+                                            value={localEmpleado.fi_conocimiento || 0}
                                             onChange={(v) => {
                                                 setLocalEmpleado(prev => ({ ...prev, fi_conocimiento: v }))
-                                            }} 
+                                            }}
                                         />
-                                        <StarRating 
-                                            label="Promedio" 
-                                            value={localEmpleado.fi_promedio || Math.round(((localEmpleado.fi_actitud || 0) + (localEmpleado.fi_aprendizaje || 0) + (localEmpleado.fi_destreza || 0) + (localEmpleado.fi_conocimiento || 0)) / 4) || 0} 
+                                        <StarRating
+                                            label="Promedio"
+                                            value={localEmpleado.fi_promedio || Math.round(((localEmpleado.fi_actitud || 0) + (localEmpleado.fi_aprendizaje || 0) + (localEmpleado.fi_destreza || 0) + (localEmpleado.fi_conocimiento || 0)) / 4) || 0}
                                             disabled
                                         />
                                     </div>
@@ -829,9 +829,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
                             <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
                                 <div className="sm:col-span-4">
-                                    <SignatureWidget 
-                                        label="Empleado" 
-                                        value={localEmpleado.fi_firma_empleado} 
+                                    <SignatureWidget
+                                        label="Empleado"
+                                        value={localEmpleado.fi_firma_empleado}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fi_firma_empleado: firma }
                                             setLocalEmpleado(next)
@@ -840,9 +840,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     />
                                 </div>
                                 <div className="sm:col-span-4">
-                                    <SignatureWidget 
-                                        label="Supervisor" 
-                                        value={localEmpleado.fi_firma_supervisor} 
+                                    <SignatureWidget
+                                        label="Supervisor"
+                                        value={localEmpleado.fi_firma_supervisor}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fi_firma_supervisor: firma }
                                             setLocalEmpleado(next)
@@ -967,9 +967,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
                             <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
                                 <div className="sm:col-span-4">
-                                    <SignatureWidget 
-                                        label="Empleado" 
-                                        value={localEmpleado.fl_firma_empleado} 
+                                    <SignatureWidget
+                                        label="Empleado"
+                                        value={localEmpleado.fl_firma_empleado}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fl_firma_empleado: firma }
                                             setLocalEmpleado(next)
@@ -978,9 +978,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     />
                                 </div>
                                 <div className="sm:col-span-4">
-                                    <SignatureWidget 
-                                        label="Supervisor" 
-                                        value={localEmpleado.fl_firma_supervisor} 
+                                    <SignatureWidget
+                                        label="Supervisor"
+                                        value={localEmpleado.fl_firma_supervisor}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fl_firma_supervisor: firma }
                                             setLocalEmpleado(next)
@@ -1085,21 +1085,21 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                             <div className="lg:col-span-3 space-y-4">
                                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">Comentarios <span className="text-red-500 font-bold">*</span></Label>
-                                    <textarea 
-                                        className="w-full h-[120px] p-4 rounded-lg bg-gray-50/50 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
-                                        defaultValue={localEmpleado.fu_comentario || ''} 
+                                    <textarea
+                                        className="w-full h-[120px] p-4 rounded-lg bg-gray-50/50 border border-gray-100 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                                        defaultValue={localEmpleado.fu_comentario || ''}
                                         onBlur={(e) => {
                                             const next = { ...localEmpleado, fu_comentario: e.target.value }
                                             setLocalEmpleado(next)
-                                        }} 
+                                        }}
                                     />
                                 </div>
                             </div>
                             <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-12 gap-4">
                                 <div className="sm:col-span-4">
-                                    <SignatureWidget 
-                                        label="Firma Empleado" 
-                                        value={localEmpleado.fu_firma_empleado} 
+                                    <SignatureWidget
+                                        label="Firma Empleado"
+                                        value={localEmpleado.fu_firma_empleado}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fu_firma_empleado: firma }
                                             setLocalEmpleado(next)
@@ -1108,9 +1108,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     />
                                 </div>
                                 <div className="sm:col-span-4">
-                                    <SignatureWidget 
-                                        label="Firma Supervisor" 
-                                        value={localEmpleado.fu_firma_supervisor} 
+                                    <SignatureWidget
+                                        label="Firma Supervisor"
+                                        value={localEmpleado.fu_firma_supervisor}
                                         onSave={(firma) => {
                                             const next = { ...localEmpleado, fu_firma_supervisor: firma }
                                             setLocalEmpleado(next)
