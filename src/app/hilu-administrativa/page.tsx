@@ -13,11 +13,13 @@ import { Label } from '@/components/ui/label'
 import { EmpleadoCardHILU } from '@/components/HILU/EmpleadoCardHILU'
 import type { Database } from '@/lib/supabase/types'
 
-type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
+type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row'] & { adminData?: any }
 
-// Remove static areas definition
-
-
+// Areas that belong to the "Administrativa" virtual group
+const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial'
+]
 export default function BuscadorHiluAdminPage() {
     const router = useRouter()
     const [empleados, setEmpleados] = useState<EmpleadoHILU[]>([])
@@ -182,11 +184,22 @@ export default function BuscadorHiluAdminPage() {
             }
 
             // Filter by "Administrativo"
-            query = query.not('nivelCargo', 'in', '("Operario","Operario lider")');
+            // Include if Area in AREAS_ADMINISTRATIVAS OR NivelCargo in ('Jefe', 'Coordinador', 'Director', 'Gerente', 'Supervisor')
+            const adminAreas = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
+            query = query.or(`${adminAreas},nivelCargo.in.("Jefe","Coordinador","Director","Gerente","Supervisor")`)
 
             // Filter by Area
             if (selectedPlanta && selectedPlanta !== 'all') {
-                query = query.eq('area', selectedPlanta)
+                if (selectedPlanta === 'Administrativa') {
+                    if (AREAS_ADMINISTRATIVAS.length > 0) {
+                        const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
+                        query = query.or(adminFilter)
+                    } else {
+                        query = query.eq('area', '___NONE___')
+                    }
+                } else {
+                    query = query.eq('area', selectedPlanta)
+                }
             }
 
             // Search by name or cedula
@@ -206,7 +219,31 @@ export default function BuscadorHiluAdminPage() {
 
             if (error) throw error
 
-            setEmpleados(data as EmpleadoHILU[])
+            const empData = data as any[]
+
+            if (empData.length > 0) {
+                const ids = empData.map(r => r.id)
+                const { data: adminRecords } = await supabase
+                    .from('hilu_administrativa')
+                    .select('empleado_id, fh_completado, fi_completado, fl_completado')
+                    .in('empleado_id', ids)
+
+                const adminMap = new Map()
+                if (adminRecords) {
+                    adminRecords.forEach(ar => {
+                        adminMap.set(ar.empleado_id, ar)
+                    })
+                }
+
+                const merged = empData.map(r => ({
+                    ...r,
+                    adminData: adminMap.get(r.id) || null
+                }))
+                
+                setEmpleados(merged as EmpleadoHILU[])
+            } else {
+                setEmpleados([])
+            }
         } catch (error) {
             console.error('Error fetching empleados:', error)
         } finally {
