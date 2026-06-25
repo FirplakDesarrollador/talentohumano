@@ -218,6 +218,9 @@ export default function BuscadorHiluPage() {
                 }
             }
 
+            // Exclude high-level and administrative roles from Operativa (they go to Administrativa)
+            query = query.not('nivelCargo', 'in', '("Jefe","Coordinador","Director","Gerente","Supervisor")')
+
             // Search by name or cedula
             if (busqueda) {
                 const isNumeric = /^\d+$/.test(busqueda)

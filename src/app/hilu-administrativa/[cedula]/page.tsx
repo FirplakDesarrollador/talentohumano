@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { HiluAdministrativaComponent } from '@/components/HILU/HiluAdministrativaComponent'
 import { FeedbackAdminCard } from '@/components/HILU/FeedbackAdminCard'
 import { ReentrenamientoCard } from '@/components/HILU/ReentrenamientoCard'
+import { HiluComponent } from '@/components/HILU/HiluComponent'
 
 export default function HiluAdministrativaPage() {
     const params = useParams()
@@ -20,10 +21,12 @@ export default function HiluAdministrativaPage() {
 
     const [empleado, setEmpleado] = useState<any>(null)
     const [hiluData, setHiluData] = useState<any>(null)
+    const [operativeHiluRecord, setOperativeHiluRecord] = useState<any>(null)
     const [auditorias, setAuditorias] = useState<any[]>([])
     const [reentrenamientos, setReentrenamientos] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [currentUser, setCurrentUser] = useState<any>(null)
+    const [activeTab, setActiveTab] = useState<'administrativa' | 'sistema'>('administrativa')
 
     const supabase = createClient()
 
@@ -37,7 +40,7 @@ export default function HiluAdministrativaPage() {
     const fetchAuditorias = async (cedula: string) => {
         const { data: auditData } = await supabase.from('auditorias').select('*').eq('empleado_id', cedula).order('created_at', { ascending: false })
         if (auditData) setAuditorias(auditData)
-        
+
         const { data: reentrenData } = await supabase.from('reentrenamientos').select('*').eq('empleado_id', cedula).order('created_at', { ascending: false })
         if (reentrenData) setReentrenamientos(reentrenData)
     }
@@ -73,8 +76,18 @@ export default function HiluAdministrativaPage() {
                 }
 
                 setEmpleado(empRecordAny)
-                
+
                 await fetchAuditorias(empRecordAny.id)
+
+                // Fetch Operative HILU Record (for HILU Sistema)
+                const { data: opHilu } = await supabase
+                    .from('query_hilu')
+                    .select('*')
+                    .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
+                    .eq('cargo', empRecordAny.cargo)
+                    .maybeSingle()
+
+                if (opHilu) setOperativeHiluRecord(opHilu)
 
                 // Fetch or Create HILU Administrativa record
                 const { data: hiluRecord, error: hiluError } = await supabase
@@ -103,7 +116,7 @@ export default function HiluAdministrativaPage() {
                             .eq('empleado_id', empRecordAny.id)
                             .eq('cargo', empRecordAny.cargo)
                             .maybeSingle()
-                            
+
                         if (retryRecord) {
                             setHiluData(retryRecord)
                         } else {
@@ -137,6 +150,8 @@ export default function HiluAdministrativaPage() {
     }
 
     if (!empleado || !hiluData) return null
+
+    const isHighLevel = ['Jefe', 'Gerente', 'Director', 'Coordinador', 'Supervisor'].some(kw => (empleado.nivelCargo || '').toLowerCase().includes(kw.toLowerCase()))
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">
@@ -194,59 +209,148 @@ export default function HiluAdministrativaPage() {
                         </div>
 
                         {/* Progress Bar Footer */}
-                        <div className="bg-[#1e2f3d] p-6 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+                        <div className="bg-[#1e2f3d] p-6 flex flex-col items-start gap-6 overflow-hidden relative">
                             <div className="absolute top-0 left-0 w-full h-1 bg-white/10" />
-                            <div className="flex flex-col gap-1 items-center md:items-start z-10">
-                                <span className="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em] mb-1">Estatus del Programa</span>
-                                <h3 className="text-white font-black text-xl uppercase tracking-widest">CICLO DE FORMACIÓN HILU</h3>
-                            </div>
 
-                            <div className="flex gap-4 z-10 overflow-x-auto max-w-full py-2 px-1">
-                                {['H', 'I', 'L'].map(f => {
-                                    const fieldPrefix = f.toLowerCase();
-                                    const isCompleted = hiluData[`f${fieldPrefix}_completado`];
-                                    return (
-                                        <div key={f} className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-500 shadow-inner ${isCompleted ? 'bg-gradient-to-br from-green-400 to-green-600 text-white shadow-green-900/50 scale-110' : 'bg-[#2c4255] text-gray-500 border border-white/5'}`}>
-                                            {isCompleted ? <Check className="h-6 w-6" /> : f}
+                            <div className="flex flex-col md:flex-row w-full justify-between gap-6 relative z-10">
+                                {/* Administrativa Progress */}
+                                <div className="flex flex-col md:flex-row items-center gap-6">
+                                    <div className="flex flex-col gap-1 items-center md:items-start">
+                                        <span className="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em] mb-1">Estatus del Programa</span>
+                                        <h3 className="text-white font-black text-xl uppercase tracking-widest leading-none">HILU ADMIN</h3>
+                                    </div>
+
+                                    <div className="flex gap-4 overflow-x-auto py-2 px-1">
+                                        {['H', 'I', 'L'].map(f => {
+                                            const fieldPrefix = f.toLowerCase();
+                                            const isCompleted = hiluData[`f${fieldPrefix}_completado`];
+                                            return (
+                                                <div key={`admin-${f}`} className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-500 shadow-inner ${isCompleted ? 'bg-gradient-to-br from-green-400 to-green-600 text-white shadow-green-900/50 scale-110' : 'bg-[#2c4255] text-gray-500 border border-white/5'}`}>
+                                                    {isCompleted ? <Check className="h-6 w-6" /> : f}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Sistema / Operativa Progress (only if high level) */}
+                                {isHighLevel && (
+                                    <>
+                                        <div className="hidden md:block w-px bg-white/10 mx-2 self-stretch" />
+                                        <div className="flex flex-col md:flex-row items-center gap-6 opacity-90">
+                                            <div className="flex flex-col gap-1 items-center md:items-start">
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Herramientas</span>
+                                                <h3 className="text-gray-300 font-black text-xl uppercase tracking-widest leading-none">HILU SISTEMA DE PRODUCCION</h3>
+                                            </div>
+
+                                            <div className="flex gap-4 overflow-x-auto py-2 px-1">
+                                                {['H', 'I', 'L', 'U'].map(f => {
+                                                    const fieldPrefix = f.toLowerCase();
+                                                    const isCompleted = operativeHiluRecord ? operativeHiluRecord[`f${fieldPrefix}_completado`] : false;
+                                                    return (
+                                                        <div key={`sys-${f}`} className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all duration-500 shadow-inner ${isCompleted ? 'bg-gradient-to-br from-green-400 to-green-600 text-white shadow-green-900/50' : 'bg-[#2c4255] text-gray-500 border border-white/5'}`}>
+                                                            {isCompleted ? <Check className="h-5 w-5" /> : f}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                    )
-                                })}
+                                    </>
+                                )}
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <HiluAdministrativaComponent 
-                    empleado={empleado} 
-                    hiluData={hiluData} 
-                    currentUser={currentUser}
-                    onUpdate={async () => {
-                        const { data } = await supabase
-                            .from('hilu_administrativa')
-                            .select('*')
-                            .eq('id', hiluData.id)
-                            .single()
-                        if (data) setHiluData(data)
-                    }} 
-                />
+                {isHighLevel && (
+                    <div className="flex justify-center mb-10">
+                        <div className="inline-flex bg-white/50 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-xl ring-1 ring-black/[0.03]">
+                            <button
+                                onClick={() => setActiveTab('administrativa')}
+                                className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${activeTab === 'administrativa'
+                                        ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                        : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                    }`}
+                            >
+                                HILU Administrativa
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('sistema')}
+                                className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${activeTab === 'sistema'
+                                        ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                        : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                    }`}
+                            >
+                                HILU Sistema de Produccion
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
-                    <FeedbackAdminCard
-                        empleadoId={empleado.id}
-                        cargo={empleado.cargo || 'N/A'}
-                        auditorias={auditorias}
-                        onUpdate={() => fetchAuditorias(empleado.id)}
-                        currentUser={currentUser}
-                    />
+                {activeTab === 'administrativa' ? (
+                    <>
+                        <HiluAdministrativaComponent
+                            empleado={empleado}
+                            hiluData={hiluData}
+                            currentUser={currentUser}
+                            onUpdate={async () => {
+                                const { data } = await supabase
+                                    .from('hilu_administrativa')
+                                    .select('*')
+                                    .eq('id', hiluData.id)
+                                    .single()
+                                if (data) setHiluData(data)
+                            }}
+                        />
 
-                    <ReentrenamientoCard
-                        empleadoId={empleado.id}
-                        cargo={empleado.cargo || 'N/A'}
-                        reentrenamientos={reentrenamientos}
-                        onUpdate={() => fetchAuditorias(empleado.id)}
-                        currentUser={currentUser}
-                    />
-                </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
+                            <FeedbackAdminCard
+                                empleadoId={empleado.id}
+                                cargo={empleado.cargo || 'N/A'}
+                                auditorias={auditorias}
+                                onUpdate={() => fetchAuditorias(empleado.id)}
+                                currentUser={currentUser}
+                            />
+
+                            <ReentrenamientoCard
+                                empleadoId={empleado.id}
+                                cargo={empleado.cargo || 'N/A'}
+                                reentrenamientos={reentrenamientos}
+                                onUpdate={() => fetchAuditorias(empleado.id)}
+                                currentUser={currentUser}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    operativeHiluRecord ? (
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                            <HiluComponent
+                                key={operativeHiluRecord.cargo || 'default'}
+                                empleado={{ ...operativeHiluRecord, foto: empleado.foto, displayCargo: empleado.cargo }}
+                                onUpdate={async () => {
+                                    const { data } = await supabase
+                                        .from('query_hilu')
+                                        .select('*')
+                                        .eq('cedula', Number(empleado.cedula || empleado.id))
+                                        .eq('cargo', empleado.cargo)
+                                        .maybeSingle()
+                                    if (data) setOperativeHiluRecord(data)
+                                }}
+                                currentUser={currentUser}
+                            />
+                        </div>
+                    ) : (
+                        <div className="bg-white border-2 border-dashed border-gray-200 rounded-[2rem] p-16 text-center space-y-4">
+                            <div className="inline-flex p-6 rounded-full bg-blue-50 text-blue-300">
+                                <Briefcase className="h-10 w-10" />
+                            </div>
+                            <div className="space-y-1">
+                                <h4 className="text-xl font-black text-[#1e2f3d] uppercase tracking-tight">Sin registro de herramientas</h4>
+                                <p className="text-sm text-gray-500 font-medium">Este colaborador aún no tiene un registro operativo activo para su cargo actual.</p>
+                            </div>
+                        </div>
+                    )
+                )}
             </div>
         </div>
     )

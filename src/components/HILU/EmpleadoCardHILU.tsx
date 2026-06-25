@@ -10,6 +10,7 @@ interface EmpleadoCardProps {
         id: number
         nombreCompleto: string
         cargo: string | null
+        nivelCargo?: string | null
         planta: string | null
         jefe: string | null
         empresa: string | null
@@ -19,6 +20,11 @@ interface EmpleadoCardProps {
         fl_completado?: boolean | null
         fu_completado?: boolean | null
         ultima_auditoria?: boolean | null
+        adminData?: {
+            fh_completado?: boolean | null
+            fi_completado?: boolean | null
+            fl_completado?: boolean | null
+        } | null
     }
     onClick?: () => void
 }
@@ -38,16 +44,20 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
     }
 
     const photoUrl = isValidUrl(empleado.foto) ? empleado.foto! : defaultPhoto
-    const isAllHiluComplete = empleado.fh_completado && empleado.fi_completado && empleado.fl_completado && empleado.fu_completado
+    
+    // Checks for operative completion (H I L U)
+    const isOperativeComplete = empleado.fh_completado && empleado.fi_completado && empleado.fl_completado && empleado.fu_completado
+    // Checks for administrative completion (H I L)
+    const isAdminComplete = empleado.adminData && empleado.adminData.fh_completado && empleado.adminData.fi_completado && empleado.adminData.fl_completado
 
-
+    const isHighLevel = ['Jefe', 'Gerente', 'Director', 'Coordinador', 'Supervisor'].some(kw => (empleado.nivelCargo || '').toLowerCase().includes(kw.toLowerCase()))
 
     return (
         <div onClick={onClick} className="cursor-pointer">
             <Card className="hover:shadow-md transition-all border border-gray-100 bg-white">
                 <div className="flex flex-col md:flex-row items-center p-3 gap-6">
                     {/* Avatar & Basic Info */}
-                    <div className="flex items-center gap-4 w-full md:w-[30%] min-w-[250px]">
+                    <div className="flex items-center gap-4 w-full md:w-[40%] min-w-[250px]">
                         <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-200">
                             <Image
                                 src={photoUrl}
@@ -56,29 +66,65 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                                 className="object-cover"
                             />
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <h3 className="text-sm font-bold text-gray-700 truncate max-w-[180px]" title={empleado.nombreCompleto}>
+                        <div className="flex flex-col gap-1 w-full">
+                            <h3 className="text-sm font-bold text-gray-700 truncate max-w-[220px]" title={empleado.nombreCompleto}>
                                 {empleado.nombreCompleto}
                             </h3>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                {['H', 'I', 'L', 'U'].map((letter) => {
-                                    const fieldPrefix = letter.toLowerCase();
-                                    const isDone = !!(empleado as any)[`f${fieldPrefix}_completado`];
-                                    
-                                    return (
-                                        <span 
-                                            key={letter}
-                                            className={`text-lg font-black transition-all ${
-                                                isDone 
-                                                ? 'text-[#22c55e] drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' 
-                                                : 'text-gray-300'
-                                            }`}
-                                        >
-                                            {letter}
-                                        </span>
-                                    );
-                                })}
-                                {isAllHiluComplete && <CheckCircle2 className="h-4 w-4 text-[#22c55e] ml-1" />}
+                            
+                            <div className="flex flex-col gap-1 mt-1">
+                                {/* HILU Administrativa (Only if adminData is present, which means we are in the admin context) */}
+                                {empleado.adminData && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Admin</span>
+                                        <div className="flex items-center gap-1.5">
+                                            {['H', 'I', 'L'].map((letter) => {
+                                                const fieldPrefix = letter.toLowerCase();
+                                                const isDone = !!(empleado.adminData as any)[`f${fieldPrefix}_completado`];
+                                                
+                                                return (
+                                                    <span 
+                                                        key={`admin-${letter}`}
+                                                        className={`text-sm font-black transition-all ${
+                                                            isDone 
+                                                            ? 'text-[#22c55e] drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' 
+                                                            : 'text-gray-300'
+                                                        }`}
+                                                    >
+                                                        {letter}
+                                                    </span>
+                                                );
+                                            })}
+                                            {isAdminComplete && <CheckCircle2 className="h-3 w-3 text-[#22c55e] ml-1" />}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* HILU Sistema / Operativa (Show if High Level in Admin context, OR if no adminData meaning we are in operative context) */}
+                                {(isHighLevel || !empleado.adminData) && (
+                                    <div className="flex items-center gap-2">
+                                        {empleado.adminData && <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Sist.</span>}
+                                        <div className="flex items-center gap-1.5">
+                                            {['H', 'I', 'L', 'U'].map((letter) => {
+                                                const fieldPrefix = letter.toLowerCase();
+                                                const isDone = !!(empleado as any)[`f${fieldPrefix}_completado`];
+                                                
+                                                return (
+                                                    <span 
+                                                        key={`op-${letter}`}
+                                                        className={`text-sm font-black transition-all ${
+                                                            isDone 
+                                                            ? 'text-[#22c55e] drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]' 
+                                                            : 'text-gray-300'
+                                                        }`}
+                                                    >
+                                                        {letter}
+                                                    </span>
+                                                );
+                                            })}
+                                            {isOperativeComplete && <CheckCircle2 className="h-3 w-3 text-[#22c55e] ml-1" />}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
