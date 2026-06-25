@@ -55,16 +55,16 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
     const empArea = (empleado as any).area || empleado.planta || '';
     const empNivel = (empleado.nivelCargo || '').toLowerCase();
     
-    const isHighLevel = ['jefe', 'gerente', 'director', 'coordinador', 'supervisor'].some(kw => empNivel.includes(kw));
-    const isHighLevelOrHector = isHighLevel || normalizedName.includes('hector jose chinchilla') || normalizedName.includes('hector chinchilla');
+    // Only Supervisors and Héctor (or others specified) should see both
+    const isSupervisorOrSpecific = empNivel.includes('supervisor') || normalizedName.includes('hector jose chinchilla') || normalizedName.includes('hector chinchilla');
 
     const isAdministrativo = 
         ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
         ['analista', 'jefe', 'gerente', 'director', 'coordinador', 'administrador', 'desarrollador'].includes(empNivel) ||
         normalizedName.includes('alejo') || normalizedName.includes('alejandro fernandez');
 
-    const showAdminHilu = isAdministrativo || isHighLevelOrHector;
-    const showOperativeHilu = !isAdministrativo || isHighLevelOrHector;
+    const showAdminHilu = isAdministrativo || isSupervisorOrSpecific;
+    const showOperativeHilu = !isAdministrativo || isSupervisorOrSpecific;
 
     return (
         <div onClick={onClick} className="cursor-pointer">
