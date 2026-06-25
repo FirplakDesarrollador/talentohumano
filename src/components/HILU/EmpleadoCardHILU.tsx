@@ -56,7 +56,11 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
     const empNivel = (empleado.nivelCargo || '').toLowerCase();
     
     // Only Supervisors and Héctor (or others specified) should see both
-    const isSupervisorOrSpecific = empNivel.includes('supervisor') || normalizedName.includes('hector jose chinchilla') || normalizedName.includes('hector chinchilla');
+    const isSupervisorOrSpecific = 
+        empNivel.includes('supervisor') || 
+        normalizedName.includes('hector jose chinchilla') || 
+        normalizedName.includes('hector chinchilla') ||
+        normalizedName.includes('jakeline chaverra');
 
     const isAdministrativo = 
         ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
