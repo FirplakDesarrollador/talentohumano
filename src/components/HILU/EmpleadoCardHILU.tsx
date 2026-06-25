@@ -67,7 +67,8 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
         normalizedName.includes('hector jose chinchilla') || 
         normalizedName.includes('hector chinchilla') ||
         normalizedName.includes('jakeline chaverra') ||
-        normalizedName.includes('sara maria aguilar');
+        normalizedName.includes('sara maria aguilar') ||
+        normalizedName.includes('carlos jose mier');
 
     const isAdministrativo = 
         ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
