@@ -230,7 +230,7 @@ export default function BuscadorHiluAdminPage() {
 
                 const adminMap = new Map()
                 if (adminRecords) {
-                    adminRecords.forEach(ar => {
+                    adminRecords.forEach((ar: any) => {
                         adminMap.set(ar.empleado_id, ar)
                     })
                 }
