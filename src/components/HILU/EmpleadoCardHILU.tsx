@@ -51,7 +51,13 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
     // Checks for administrative completion (H I L)
     const isAdminComplete = empleado.adminData && empleado.adminData.fh_completado && empleado.adminData.fi_completado && empleado.adminData.fl_completado
 
-    const normalizedName = empleado.nombreCompleto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    // Normalize name to lowercase, remove accents, and collapse multiple spaces into one
+    const normalizedName = empleado.nombreCompleto
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+
     const empArea = (empleado as any).area || empleado.planta || '';
     const empNivel = (empleado.nivelCargo || '').toLowerCase();
     
