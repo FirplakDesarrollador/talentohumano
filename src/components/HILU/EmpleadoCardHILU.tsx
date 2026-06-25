@@ -66,7 +66,8 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
         empNivel.includes('supervisor') || 
         normalizedName.includes('hector jose chinchilla') || 
         normalizedName.includes('hector chinchilla') ||
-        normalizedName.includes('jakeline chaverra');
+        normalizedName.includes('jakeline chaverra') ||
+        normalizedName.includes('sara maria aguilar');
 
     const isAdministrativo = 
         ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
