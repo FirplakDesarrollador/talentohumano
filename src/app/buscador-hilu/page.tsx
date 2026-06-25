@@ -238,7 +238,31 @@ export default function BuscadorHiluPage() {
 
             if (error) throw error
 
-            setEmpleados(data as EmpleadoHILU[])
+            const empData = data as any[]
+
+            if (empData && empData.length > 0) {
+                const ids = empData.map(r => r.id)
+                const { data: adminRecords } = await supabase
+                    .from('hilu_administrativa')
+                    .select('empleado_id, fh_completado, fi_completado, fl_completado')
+                    .in('empleado_id', ids)
+
+                const adminMap = new Map()
+                if (adminRecords) {
+                    adminRecords.forEach((ar: any) => {
+                        adminMap.set(ar.empleado_id, ar)
+                    })
+                }
+
+                const merged = empData.map(r => ({
+                    ...r,
+                    adminData: adminMap.get(r.id) || null
+                }))
+                
+                setEmpleados(merged as EmpleadoHILU[])
+            } else {
+                setEmpleados([])
+            }
         } catch (error) {
             console.error('Error fetching empleados:', error)
         } finally {

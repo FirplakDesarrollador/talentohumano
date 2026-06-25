@@ -27,9 +27,10 @@ interface EmpleadoCardProps {
         } | null
     }
     onClick?: () => void
+    isAdminContext?: boolean
 }
 
-export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
+export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: EmpleadoCardProps) {
     const router = useRouter()
 
     const defaultPhoto = 'https://jdtjtkncptwqdhlxmzds.supabase.co/storage/v1/object/public/publico/assets/perfil.png'
@@ -50,7 +51,33 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
     // Checks for administrative completion (H I L)
     const isAdminComplete = empleado.adminData && empleado.adminData.fh_completado && empleado.adminData.fi_completado && empleado.adminData.fl_completado
 
-    const isHighLevel = ['Jefe', 'Gerente', 'Director', 'Coordinador', 'Supervisor'].some(kw => (empleado.nivelCargo || '').toLowerCase().includes(kw.toLowerCase()))
+    // Normalize name to lowercase, remove accents, and collapse multiple spaces into one
+    const normalizedName = empleado.nombreCompleto
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+
+    const empArea = (empleado as any).area || empleado.planta || '';
+    const empNivel = (empleado.nivelCargo || '').toLowerCase();
+    
+    // Only Supervisors and Héctor (or others specified) should see both
+    const isSupervisorOrSpecific = 
+        empNivel.includes('supervisor') || 
+        normalizedName.includes('hector jose chinchilla') || 
+        normalizedName.includes('hector chinchilla') ||
+        normalizedName.includes('jakeline chaverra') ||
+        normalizedName.includes('sara maria aguilar') ||
+        normalizedName.includes('carlos jose mier') ||
+        normalizedName.includes('ederson estiven');
+
+    const isAdministrativo = 
+        ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
+        ['analista', 'jefe', 'gerente', 'director', 'coordinador', 'administrador', 'desarrollador'].includes(empNivel) ||
+        normalizedName.includes('alejo') || normalizedName.includes('alejandro fernandez');
+
+    const showAdminHilu = isAdministrativo || isSupervisorOrSpecific;
+    const showOperativeHilu = !isAdministrativo || isSupervisorOrSpecific;
 
     return (
         <div onClick={onClick} className="cursor-pointer">
@@ -72,14 +99,14 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                             </h3>
                             
                             <div className="flex flex-col gap-1 mt-1">
-                                {/* HILU Administrativa (Only if adminData is present, which means we are in the admin context) */}
-                                {empleado.adminData && (
+                                {/* HILU Administrativa */}
+                                {showAdminHilu && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Admin</span>
                                         <div className="flex items-center gap-1.5">
                                             {['H', 'I', 'L'].map((letter) => {
                                                 const fieldPrefix = letter.toLowerCase();
-                                                const isDone = !!(empleado.adminData as any)[`f${fieldPrefix}_completado`];
+                                                const isDone = empleado.adminData ? !!(empleado.adminData as any)[`f${fieldPrefix}_completado`] : false;
                                                 
                                                 return (
                                                     <span 
@@ -99,10 +126,10 @@ export function EmpleadoCardHILU({ empleado, onClick }: EmpleadoCardProps) {
                                     </div>
                                 )}
 
-                                {/* HILU Sistema / Operativa (Show if High Level in Admin context, OR if no adminData meaning we are in operative context) */}
-                                {(isHighLevel || !empleado.adminData) && (
+                                {/* HILU Sistema / Operativa */}
+                                {showOperativeHilu && (
                                     <div className="flex items-center gap-2">
-                                        {empleado.adminData && <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Sist.</span>}
+                                        {showAdminHilu && <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none">Sist.</span>}
                                         <div className="flex items-center gap-1.5">
                                             {['H', 'I', 'L', 'U'].map((letter) => {
                                                 const fieldPrefix = letter.toLowerCase();

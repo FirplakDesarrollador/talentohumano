@@ -558,6 +558,7 @@ export default function BuscadorHiluAdminPage() {
                                     key={empleado.id}
                                     empleado={empleado}
                                     onClick={() => handleEmpleadoClick(empleado)}
+                                    isAdminContext={true}
                                 />
                             ))
                         )}
