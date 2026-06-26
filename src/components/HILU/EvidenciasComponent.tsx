@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Upload, FileText, X, Eye } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface EvidenciasComponentProps {
     evidencias: string[]
@@ -17,6 +18,7 @@ interface EvidenciasComponentProps {
 
 export function EvidenciasComponent({ evidencias = [], onEvidenciasChange, readOnly = false, path }: EvidenciasComponentProps) {
     const [uploading, setUploading] = useState(false)
+    const [confirmIndex, setConfirmIndex] = useState<number | null>(null)
     const supabase = createClient()
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,22 +53,29 @@ export function EvidenciasComponent({ evidencias = [], onEvidenciasChange, readO
     }
 
     const handleRemove = (index: number) => {
-        const isConfirmed = window.confirm(
-            '🗑️ ELIMINAR EVIDENCIA\n\n' +
-            '¿Está seguro de que desea quitar este archivo adjunto?\n\n' +
-            'Esta acción no eliminará el archivo del servidor inmediatamente, pero lo desvinculará de este registro.'
-        );
+        setConfirmIndex(index)
+    }
 
-        if (isConfirmed) {
-            const newEvidencias = [...evidencias]
-            newEvidencias.splice(index, 1)
-            onEvidenciasChange(newEvidencias)
-        }
+    const handleConfirmRemove = () => {
+        if (confirmIndex === null) return
+        const newEvidencias = [...evidencias]
+        newEvidencias.splice(confirmIndex, 1)
+        onEvidenciasChange(newEvidencias)
+        setConfirmIndex(null)
     }
 
     return (
         <div className="space-y-4">
-            {/* DEBUG: Remove later */}
+            <ConfirmDialog
+                isOpen={confirmIndex !== null}
+                title="Eliminar evidencia"
+                description="¿Estás seguro de que deseas quitar este archivo adjunto? Esta acción lo desvinculará de este registro."
+                confirmLabel="Sí, eliminar"
+                cancelLabel="Cancelar"
+                variant="danger"
+                onConfirm={handleConfirmRemove}
+                onCancel={() => setConfirmIndex(null)}
+            />
 
 
             <div className="flex items-center justify-between">
