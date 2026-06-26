@@ -10,6 +10,7 @@ import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-
 import { toast } from 'sonner'
 import { CrearFirma, VerFirma } from './FirmaComponents'
 import { EvidenciasComponent } from './EvidenciasComponent'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface HiluAdminRow {
     id: number;
@@ -40,6 +41,7 @@ interface HiluAdminRow {
     fi_completado: boolean;
     fi_fecha_finalizacion: string | null;
     fi_plan_entrenamiento?: string[];
+    fi_link_excel?: string | null;
     fi_firma_empleado: boolean;
     fi_firma_jefe: boolean;
 
@@ -174,9 +176,16 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
     const supabase = createClient()
     const [openPhase, setOpenPhase] = useState<'H' | 'I' | 'L' | null>('H')
     const [localData, setLocalData] = useState<HiluAdminRow>(hiluData)
+    const [confirmDeleteLink, setConfirmDeleteLink] = useState(false)
+    // Estado independiente para el link de Excel - solo cambia por acciones explícitas
+    const [linkedExcelUrl, setLinkedExcelUrl] = useState<string | null>(hiluData.fi_link_excel || null)
+    const [tempLink, setTempLink] = useState('')
+    const [isLinkSaving, setIsLinkSaving] = useState(false)
 
     useEffect(() => {
         setLocalData(hiluData)
+        // Solo sincronizar el URL si cambia desde afuera (ej: primera carga)
+        // NO sobreescribir si el usuario ya vinculó algo en esta sesión
     }, [hiluData])
 
     const canEdit = () => {
@@ -277,9 +286,9 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                     onSave={(firma) => setLocalData({ ...localData, fh_firma_jefe: true })}
                                 />
                             </div>
-                            
+
                             <div className="lg:col-span-12 flex justify-end mt-4">
-                                <Button 
+                                <Button
                                     className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white px-8"
                                     onClick={async () => {
                                         await updateDB(localData)
@@ -322,13 +331,122 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                             <StarRating label="Conocimiento" value={localData.fi_eval_conocimiento || 0} onChange={(v) => setLocalData({ ...localData, fi_eval_conocimiento: v })} />
                         </div>
 
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                            <EvidenciasComponent 
-                                evidencias={localData.fi_plan_entrenamiento || []}
-                                onEvidenciasChange={(evs) => setLocalData({ ...localData, fi_plan_entrenamiento: evs })}
-                                path={`hilu-admin/${localData.id}/plan`}
-                                readOnly={!canEdit()}
-                            />
+                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-6">
+                            <div>
+                                <Label className="text-gray-600 font-bold mb-2 flex items-center gap-2">
+                                    <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Excel</span>
+                                    Plan de Entrenamiento del perfil de cargo (SharePoint)
+                                </Label>
+
+                                {linkedExcelUrl ? (
+                                    <div className="relative group overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 shadow-sm hover:shadow-md transition-all p-5">
+                                        <div className="absolute top-0 left-0 w-1.5 h-full bg-[#107c41]"></div>
+                                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                                <div className="bg-[#107c41]/10 p-3.5 rounded-xl shadow-inner flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#107c41" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M15 18a2 2 0 1 0-4 0 2 2 0 0 0 4 0z"></path><path d="M9 18a2 2 0 1 0-4 0 2 2 0 0 0 4 0z"></path><path d="M13 18l-4-5"></path><path d="M9 13l4 5"></path><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2z"></path></svg>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h4 className="text-base font-black text-gray-800 truncate">Plan de Entrenamiento.xlsx</h4>
+                                                    <p className="text-xs text-gray-500 font-medium">Sincronizado vía SharePoint</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                                                <Button 
+                                                    onClick={() => window.open(linkedExcelUrl, '_blank')}
+                                                    className="w-full md:w-auto bg-[#107c41] hover:bg-[#0c5c30] text-white shadow-lg shadow-green-900/20 rounded-xl px-6 h-11 font-bold transition-all hover:scale-105 active:scale-95"
+                                                    type="button"
+                                                >
+                                                    Abrir Documento
+                                                </Button>
+                                                {canEdit() && (
+                                                    <Button 
+                                                        onClick={() => setConfirmDeleteLink(true)}
+                                                        variant="ghost" 
+                                                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 h-11 w-11 p-0 rounded-xl transition-colors flex-shrink-0"
+                                                        title="Eliminar documento"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex flex-col md:flex-row gap-3">
+                                            <div className="relative flex-1">
+                                                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                                </div>
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Pega aquí el link de SharePoint (https://firplak.sharepoint.com/...)" 
+                                                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-[#107c41] focus:border-[#107c41] outline-none transition-all shadow-sm"
+                                                    value={tempLink}
+                                                    onChange={(e) => setTempLink(e.target.value)}
+                                                    disabled={!canEdit() || isLinkSaving}
+                                                />
+                                            </div>
+                                            {canEdit() && (
+                                                <Button 
+                                                    onClick={async () => {
+                                                        const url = tempLink.trim()
+                                                        if (!url) {
+                                                            toast.error("Pega un link primero")
+                                                            return
+                                                        }
+                                                        setIsLinkSaving(true)
+                                                        try {
+                                                            const { error } = await (supabase as any)
+                                                                .from('hilu_administrativa')
+                                                                .update({ fi_link_excel: url, updated_at: new Date().toISOString() })
+                                                                .eq('id', hiluData.id)
+                                                            if (error) {
+                                                                toast.error('Error al vincular: ' + error.message)
+                                                                console.error(error)
+                                                            } else {
+                                                                setLinkedExcelUrl(url)
+                                                                setTempLink('')
+                                                                toast.success('Documento vinculado correctamente ✅')
+                                                            }
+                                                        } finally {
+                                                            setIsLinkSaving(false)
+                                                        }
+                                                    }}
+                                                    disabled={isLinkSaving}
+                                                    className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white shadow-md rounded-xl h-[50px] px-8 flex-shrink-0 font-bold tracking-wide disabled:opacity-60"
+                                                    type="button"
+                                                >
+                                                    {isLinkSaving ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                            Guardando...
+                                                        </span>
+                                                    ) : 'Vincular Archivo'}
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-400 pl-1 font-medium mt-1">El archivo quedará vinculado permanentemente a este empleado. Podrás abrirlo en cualquier momento.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            <div>
+                                <Label className="text-gray-600 font-bold mb-2 block">Otros Anexos / Evidencias</Label>
+                                <EvidenciasComponent
+                                    evidencias={localData.fi_plan_entrenamiento || []}
+                                    onEvidenciasChange={async (evs) => {
+                                        const updated = { ...localData, fi_plan_entrenamiento: evs }
+                                        setLocalData(updated)
+                                        await updateDB({ fi_plan_entrenamiento: evs })
+                                    }}
+                                    path={`hilu-admin/${localData.id}/plan`}
+                                    readOnly={!canEdit()}
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
@@ -356,7 +474,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                             </div>
 
                             <div className="lg:col-span-12 flex justify-end mt-4">
-                                <Button 
+                                <Button
                                     className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white px-8"
                                     onClick={async () => {
                                         await updateDB(localData)
@@ -417,7 +535,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                             </div>
 
                             <div className="lg:col-span-12 flex justify-end mt-4">
-                                <Button 
+                                <Button
                                     className="bg-[#1e2f3d] hover:bg-[#2a4054] text-white px-8"
                                     onClick={async () => {
                                         await updateDB(localData)
@@ -437,6 +555,32 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
 
     return (
         <div className="space-y-6">
+            <ConfirmDialog
+                isOpen={confirmDeleteLink}
+                title="Eliminar documento"
+                description="¿Estás seguro de que deseas desvincular este documento de Excel? Esta acción es permanente y no se puede deshacer."
+                confirmLabel="Sí, eliminar"
+                cancelLabel="Cancelar"
+                variant="danger"
+                onConfirm={async () => {
+                    try {
+                        const { error } = await (supabase as any)
+                            .from('hilu_administrativa')
+                            .update({ fi_link_excel: null, updated_at: new Date().toISOString() })
+                            .eq('id', hiluData.id)
+                        if (error) {
+                            toast.error('Error al eliminar: ' + error.message)
+                        } else {
+                            setLinkedExcelUrl(null)
+                            setTempLink('')
+                            toast.success('Documento desvinculado')
+                        }
+                    } finally {
+                        setConfirmDeleteLink(false)
+                    }
+                }}
+                onCancel={() => setConfirmDeleteLink(false)}
+            />
             {renderFaseH()}
             {renderFaseI()}
             {renderFaseL()}
