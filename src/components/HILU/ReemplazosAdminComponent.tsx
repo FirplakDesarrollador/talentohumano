@@ -75,9 +75,15 @@ interface Props {
     canEdit: boolean;
 }
 
+interface EmpleadoItem {
+    id: number
+    nombreCompleto: string
+    cargo: string | null
+}
+
 export function ReemplazosAdminComponent({ empleadoId, cargo, canEdit }: Props) {
     const supabase = createClient()
-    const [empleados, setEmpleados] = useState<any[]>([])
+    const [empleados, setEmpleados] = useState<EmpleadoItem[]>([])
     const [cargos, setCargos] = useState<string[]>([])
 
     // UI State for form
@@ -93,14 +99,15 @@ export function ReemplazosAdminComponent({ empleadoId, cargo, canEdit }: Props) 
             try {
                 // Fetch empleados administrativos
                 const adminAreas = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
-                const { data: empData } = await supabase
+                const { data: rawData } = await supabase
                     .from('query_estado_hilu')
                     .select('id, nombreCompleto, cargo')
                     .eq('activo', true)
                     .or(`${adminAreas},nivelCargo.in.("Jefe","Coordinador","Director","Gerente","Supervisor")`)
                     .order('nombreCompleto')
 
-                if (empData) {
+                const empData = (rawData ?? []) as EmpleadoItem[]
+                if (empData.length > 0) {
                     setEmpleados(empData)
                     // Extraer cargos únicos
                     const uniqueCargos = Array.from(new Set(empData.map(e => e.cargo).filter(Boolean))).sort() as string[]
