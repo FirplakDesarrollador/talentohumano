@@ -158,8 +158,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     const supabase = createClient()
     const [openPhase, setOpenPhase] = useState<'H' | 'I' | 'L' | 'U' | null>('H')
 
+    const processEmpleado = (emp: QueryHiluRow) => {
+        const base = { ...emp }
+        if (base.fi_detalles && typeof base.fi_detalles === 'object') {
+            base.fi_mantenimiento_autonomo = (base.fi_detalles as any).mantenimiento_autonomo
+        }
+        return base
+    }
+
     // localEmpleado allows for optimistic UI updates without waiting for DB/Parent re-fetch
-    const [localEmpleado, setLocalEmpleado] = useState<QueryHiluRow>(empleado)
+    const [localEmpleado, setLocalEmpleado] = useState<QueryHiluRow>(processEmpleado(empleado))
 
     const canEditPhase = (phase: 'H' | 'I' | 'L' | 'U') => {
         if (!currentUser) return false
@@ -196,14 +204,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     useEffect(() => {
         setLocalEmpleado(prev => {
             if (prev.cedula !== empleado.cedula) {
-                return empleado  // Different employee → full reset
+                return processEmpleado(empleado)  // Different employee → full reset
             }
             // Same employee: merge server data but keep local detalles (unsaved or just saved)
+            const processed = processEmpleado(empleado)
             return {
-                ...empleado,
+                ...processed,
                 fi_detalles: prev.fi_detalles,
                 fl_detalles: prev.fl_detalles,
-                fu_detalles: prev.fu_detalles
+                fu_detalles: prev.fu_detalles,
+                fi_mantenimiento_autonomo: prev.fi_mantenimiento_autonomo !== undefined ? prev.fi_mantenimiento_autonomo : processed.fi_mantenimiento_autonomo
             }
         })
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -302,7 +312,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         }
 
         const dataToSave: any = {
-            detalles: stateToUse[fieldMap[phase]],
+            detalles: {
+                ...(stateToUse[fieldMap[phase]] as object || {}),
+                ...(phase === 'I' ? { mantenimiento_autonomo: stateToUse.fi_mantenimiento_autonomo } : {})
+            },
             ...additionalData
         }
 
@@ -320,6 +333,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         } else if (phase === 'L') {
             dataToSave.cumple_calidad = stateToUse.fl_cumple_calidad
             dataToSave.cumple_estandar = stateToUse.fl_cumple_estandar
+            dataToSave.cumple_mantenimiento_autonomo = stateToUse.fl_cumple_mantenimiento_autonomo
             dataToSave.cumple_tiempo = stateToUse.fl_cumple_tiempo
             dataToSave.comentario = stateToUse.fl_comentario
         } else if (phase === 'U') {
@@ -380,7 +394,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                     currentData.fi_firma_empleado &&
                     currentData.fi_firma_supervisor)
             } else if (phase === 'L') {
-                isDone = !!(currentData.fl_cumple_calidad && currentData.fl_cumple_estandar && currentData.fl_cumple_tiempo && currentData.fl_firma_empleado && currentData.fl_firma_supervisor)
+                isDone = !!(currentData.fl_cumple_calidad && currentData.fl_cumple_estandar && currentData.fl_cumple_mantenimiento_autonomo && currentData.fl_cumple_tiempo && currentData.fl_firma_empleado && currentData.fl_firma_supervisor)
             } else if (phase === 'U') {
                 isDone = !!(currentData.fu_capacitado_para_entrenar && currentData.fu_entrena_solo && currentData.fu_acompana_entrenamientos && currentData.fu_firma_empleado && currentData.fu_firma_supervisor)
             }
@@ -759,7 +773,10 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                     </div>
 
                                     {/* Row 2: Performance Checks */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        <PillCheckbox id="fi_mantenimiento_autonomo" label="Entrenamiento en mantenimiento autónomo del puesto" checked={localEmpleado.fi_mantenimiento_autonomo || false} onChange={(c) => {
+                                            setLocalEmpleado(prev => ({ ...prev, fi_mantenimiento_autonomo: c }))
+                                        }} />
                                         <PillCheckbox id="fi_hace_acompanado" label="Hace acompañado" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
                                         }} />
@@ -886,7 +903,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         }
         // Phase L is disabled until ALL phase I checks are complete (OPERARIO only)
         const faseHComplete = !!localEmpleado.fh_completado;
-        const faseIComplete = !!(localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
+        const faseIComplete = !!(localEmpleado.fi_estandar_hdt && localEmpleado.fi_entrenamiento_calidad && localEmpleado.fi_mantenimiento_autonomo && localEmpleado.fi_hace_acompanado && localEmpleado.fi_hace_solo)
         const canEditL = faseHComplete && faseIComplete;
 
         return (
@@ -935,12 +952,15 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                                         ⚠️ Complete todas las habilidades de la Fase I para habilitar la Fase L
                                     </div>
                                 )}
-                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${(!faseIComplete || !canEditPhase('L')) ? 'opacity-60 pointer-events-none' : ''}`}>
+                                <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 ${(!faseIComplete || !canEditPhase('L')) ? 'opacity-60 pointer-events-none' : ''}`}>
                                     <PillCheckbox id="fl_cumple_calidad" label="Cumple Calidad" checked={localEmpleado.fl_cumple_calidad || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_calidad: c }))
                                     }} />
                                     <PillCheckbox id="fl_cumple_estandar" label="Cumple Estándar" checked={localEmpleado.fl_cumple_estandar || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_estandar: c }))
+                                    }} />
+                                    <PillCheckbox id="fl_cumple_mantenimiento_autonomo" label="Cumple con el mantenimiento autónomo de su puesto" checked={localEmpleado.fl_cumple_mantenimiento_autonomo || false} disabled={!faseIComplete} onChange={(c) => {
+                                        setLocalEmpleado(prev => ({ ...prev, fl_cumple_mantenimiento_autonomo: c }))
                                     }} />
                                     <PillCheckbox id="fl_cumple_tiempo" label="Cumple Tiempo" checked={localEmpleado.fl_cumple_tiempo || false} disabled={!faseIComplete} onChange={(c) => {
                                         setLocalEmpleado(prev => ({ ...prev, fl_cumple_tiempo: c }))

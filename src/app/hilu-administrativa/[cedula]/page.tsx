@@ -13,6 +13,7 @@ import { HiluAdministrativaComponent } from '@/components/HILU/HiluAdministrativ
 import { FeedbackAdminCard } from '@/components/HILU/FeedbackAdminCard'
 import { ReentrenamientoCard } from '@/components/HILU/ReentrenamientoCard'
 import { HiluComponent } from '@/components/HILU/HiluComponent'
+import { ReemplazosAdminComponent } from '@/components/HILU/ReemplazosAdminComponent'
 
 export default function HiluAdministrativaPage() {
     const params = useParams()
@@ -26,7 +27,7 @@ export default function HiluAdministrativaPage() {
     const [reentrenamientos, setReentrenamientos] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [currentUser, setCurrentUser] = useState<any>(null)
-    const [activeTab, setActiveTab] = useState<'administrativa' | 'sistema'>('administrativa')
+    const [activeTab, setActiveTab] = useState<'administrativa' | 'sistema' | 'reemplazos'>('administrativa')
 
     const supabase = createClient()
 
@@ -233,8 +234,8 @@ export default function HiluAdministrativaPage() {
                                     </div>
                                 </div>
 
-                                {/* Sistema / Operativa Progress (only if high level) */}
-                                {isHighLevel && (
+                                {/* Sistema / Operativa Progress */}
+                                {operativeHiluRecord && (
                                     <>
                                         <div className="hidden md:block w-px bg-white/10 mx-2 self-stretch" />
                                         <div className="flex flex-col md:flex-row items-center gap-6 opacity-90">
@@ -262,32 +263,41 @@ export default function HiluAdministrativaPage() {
                     </CardContent>
                 </Card>
 
-                {isHighLevel && (
-                    <div className="flex justify-center mb-10">
-                        <div className="inline-flex bg-white/50 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-xl ring-1 ring-black/[0.03]">
-                            <button
-                                onClick={() => setActiveTab('administrativa')}
-                                className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${activeTab === 'administrativa'
-                                        ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
-                                        : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
-                                    }`}
-                            >
-                                HILU Administrativa
-                            </button>
+                <div className="flex justify-center mb-10">
+                    <div className="inline-flex bg-white/50 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-xl ring-1 ring-black/[0.03]">
+                        <button
+                            onClick={() => setActiveTab('administrativa')}
+                            className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${activeTab === 'administrativa'
+                                ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                }`}
+                        >
+                            HILU Administrativa
+                        </button>
+                        {operativeHiluRecord && (
                             <button
                                 onClick={() => setActiveTab('sistema')}
                                 className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${activeTab === 'sistema'
-                                        ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
-                                        : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                    ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                    : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
                                     }`}
                             >
                                 HILU Sistema de Produccion
                             </button>
-                        </div>
+                        )}
+                        <button
+                            onClick={() => setActiveTab('reemplazos')}
+                            className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.75rem] transition-all duration-500 font-black uppercase tracking-widest text-[11px] ${activeTab === 'reemplazos'
+                                ? 'bg-[#1e2f3d] text-white shadow-lg shadow-[#1e2f3d]/20 scale-105'
+                                : 'text-gray-400 hover:text-[#1e2f3d] hover:bg-white/50'
+                                }`}
+                        >
+                            Reemplazos/Polivalencias
+                        </button>
                     </div>
-                )}
+                </div>
 
-                {activeTab === 'administrativa' ? (
+                {activeTab === 'administrativa' && (
                     <>
                         <HiluAdministrativaComponent
                             empleado={empleado}
@@ -321,7 +331,9 @@ export default function HiluAdministrativaPage() {
                             />
                         </div>
                     </>
-                ) : (
+                )}
+
+                {activeTab === 'sistema' && (
                     operativeHiluRecord ? (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                             <HiluComponent
@@ -350,6 +362,16 @@ export default function HiluAdministrativaPage() {
                             </div>
                         </div>
                     )
+                )}
+
+                {activeTab === 'reemplazos' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                        <ReemplazosAdminComponent 
+                            empleadoId={empleado.id} 
+                            cargo={empleado.cargo || 'N/A'} 
+                            canEdit={canEdit()} 
+                        />
+                    </div>
                 )}
             </div>
         </div>

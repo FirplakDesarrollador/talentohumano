@@ -1161,6 +1161,7 @@ export interface Database {
                     fi_estandar_hdt_responsable_id: number | null
                     fi_estandar_hdt_responsable_nombre: string | null
                     fi_entrenamiento_calidad: boolean | null
+                    fi_mantenimiento_autonomo: boolean | null
                     fi_entrenamiento_calidad_fecha: string | null
                     fi_entrenamiento_calidad_responsable_id: number | null
                     fi_entrenamiento_calidad_responsable_nombre: string | null
@@ -1194,6 +1195,7 @@ export interface Database {
                     fl_modified_by_nombre: string | null
                     fl_cumple_calidad: boolean | null
                     fl_cumple_estandar: boolean | null
+                    fl_cumple_mantenimiento_autonomo: boolean | null
                     fl_cumple_tiempo: boolean | null
                     fl_detalles: Json | null
                     fl_comentario: string | null
