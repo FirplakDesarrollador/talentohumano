@@ -192,7 +192,7 @@ export function useDesempenoScore(
             console.error('useDesempenoScore error:', err)
             setScores(prev => ({ ...prev, loading: false }))
         }
-    }, [cedula, cargo, empleadoEmail, supabase])
+    }, [cedula, empleadoEmail, supabase])
 
     useEffect(() => {
         if (cedula) calcular()

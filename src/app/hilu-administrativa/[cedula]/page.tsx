@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
@@ -38,13 +38,13 @@ export default function HiluAdministrativaPage() {
         return isAdmin || ['Jefe', 'Director', 'Gerente', 'Coordinador'].includes(currentUser.nivelCargo)
     }
 
-    const fetchAuditorias = async (cedula: string) => {
+    const fetchAuditorias = useCallback(async (cedula: string) => {
         const { data: auditData } = await supabase.from('auditorias').select('*').eq('empleado_id', cedula).order('created_at', { ascending: false })
         if (auditData) setAuditorias(auditData)
 
         const { data: reentrenData } = await supabase.from('reentrenamientos').select('*').eq('empleado_id', cedula).order('created_at', { ascending: false })
         if (reentrenData) setReentrenamientos(reentrenData)
-    }
+    }, [supabase])
 
     useEffect(() => {
         const fetchData = async () => {
@@ -80,15 +80,23 @@ export default function HiluAdministrativaPage() {
 
                 await fetchAuditorias(empRecordAny.id)
 
-                // Fetch Operative HILU Record (for HILU Sistema)
-                const { data: opHilu } = await supabase
-                    .from('query_hilu')
-                    .select('*')
-                    .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
-                    .eq('cargo', empRecordAny.cargo)
-                    .maybeSingle()
+                // Check if employee is in an administrative area
+                const AREAS_ADMINISTRATIVAS = ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial']
+                const isAdministrative = AREAS_ADMINISTRATIVAS.includes(empRecordAny.area)
 
-                if (opHilu) setOperativeHiluRecord(opHilu)
+                // Fetch Operative HILU Record (for HILU Sistema) ONLY if not strictly administrative
+                if (!isAdministrative) {
+                    const { data: opHilu } = await supabase
+                        .from('query_hilu')
+                        .select('*')
+                        .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
+                        .eq('cargo', empRecordAny.cargo)
+                        .maybeSingle()
+
+                    if (opHilu) setOperativeHiluRecord(opHilu)
+                } else {
+                    setOperativeHiluRecord(null)
+                }
 
                 // Fetch or Create HILU Administrativa record
                 const { data: hiluRecord, error: hiluError } = await supabase
@@ -140,7 +148,7 @@ export default function HiluAdministrativaPage() {
         }
 
         fetchData()
-    }, [idParam, router, supabase])
+    }, [idParam, router, supabase, fetchAuditorias])
 
     if (loading) {
         return (

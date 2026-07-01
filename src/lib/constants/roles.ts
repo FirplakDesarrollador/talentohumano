@@ -150,7 +150,7 @@ export const SUPERVISORES_RTM_FIBRA = [
 ];
 
 /**
- * Combined list of supervisors with restricted editing permissions (only Laboral & Dotación).
+ * Combined list of supervisors with restricted editing permissions (only Laboral & DotaciÃ³n).
  */
 export const RESTRICTED_SUPERVISORS = [
     ...SUPERVISORES_MUEBLES_CEFI,
@@ -227,7 +227,7 @@ export const PLANTAS_DIRECTORES_PERMITIDAS = [
 
 /**
  * Analistas explicitly permitted to access the Gestor de Personal module.
- * These can only VIEW the employee list — they cannot open individual records.
+ * These can only VIEW the employee list â€” they cannot open individual records.
  * All other Analistas are blocked by default.
  */
 export const ANALISTAS_CON_ACCESO = [
@@ -290,3 +290,10 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (DIRECTORES_CON_ACCESO.includes(email)) return PLANTAS_DIRECTORES_PERMITIDAS;
     return null;
 }
+
+export const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI',
+    'Talento y Cultura', 'Negociacion y compras',
+    'Mercadeo', 'Servicios', 'I+D+I', 'Logistica',
+    'Manufactura', 'Comercial'
+];

@@ -19,6 +19,12 @@ function LoginForm() {
     const router = useRouter()
     const supabase = createClient()
 
+    useEffect(() => {
+        if (searchParams.get('error') === 'inactivo') {
+            setError('Tu usuario se encuentra inactivo. Por favor, contacta a Talento Humano.')
+        }
+    }, [searchParams])
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
@@ -33,6 +39,20 @@ function LoginForm() {
             if (error) {
                 setError(error.message)
             } else if (data.user) {
+                // Verificar si el usuario está activo antes de dejarlo pasar
+                const { data: emp } = await supabase
+                    .from('empleados')
+                    .select('activo')
+                    .eq('correo_electronico', data.user.email || '')
+                    .maybeSingle()
+
+                if (emp && (emp as any).activo === false) {
+                    await supabase.auth.signOut()
+                    setError('Tu usuario se encuentra inactivo. Por favor, contacta a Talento Humano.')
+                    setLoading(false)
+                    return
+                }
+
                 router.push('/menu')
                 router.refresh()
             }

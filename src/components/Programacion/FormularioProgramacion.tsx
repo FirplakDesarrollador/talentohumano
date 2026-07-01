@@ -25,23 +25,19 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+import { AREAS_ADMINISTRATIVAS } from '@/lib/constants/roles';
+
 interface FormularioProgramacionProps {
     onSuccess?: () => void;
     editId?: string | null;
     preselectedEmpleadoId?: string | null;
+    userType?: 'admin' | 'administrativa' | 'operativa' | null;
 }
 
 const TIPOS_ENTRENAMIENTO = ['Entrenamiento', 'Reentrenamiento'];
 const FASES_HILU = ['I', 'L', 'U'];
 
-// Areas that belong to the "Administrativa" virtual group
-const AREAS_ADMINISTRATIVAS = [
-    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'I+D+I', 'Logistica',
-    'Manufactura', 'Comercial'
-];
-
-export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ onSuccess, editId, preselectedEmpleadoId }) => {
+export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ onSuccess, editId, preselectedEmpleadoId, userType }) => {
     const router = useRouter();
     const supabase = React.useMemo(() => createClient(), []);
     const [loading, setLoading] = useState(false);
@@ -91,16 +87,23 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                     .filter(a => a !== 'Produccion' && a !== 'Todos')
                     .sort();
                 
-                const formatted = [
+                let formatted = [
                     { planta: 'Todas las áreas' },
                     { planta: 'Administrativa' }, 
                     ...filteredAreas.map(a => ({ planta: a }))
                 ];
+
+                if (userType === 'administrativa') {
+                    formatted = [{ planta: 'Administrativa' }];
+                } else if (userType === 'operativa') {
+                    formatted = [{ planta: 'Todas las áreas' }, ...filteredAreas.map(a => ({ planta: a }))];
+                }
+
                 setPlantas(formatted);
             }
         };
         fetchPlantas();
-    }, [supabase]);
+    }, [supabase, userType]);
 
     // Fetch data for edit mode
     useEffect(() => {
@@ -194,15 +197,30 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
 
             setFetchingEmployees(true);
             try {
-                const { data, error } = await supabase
+                let query = supabase
                     .from('empleados')
-                    .select('id, nombreCompleto, cargo, planta')
+                    .select('id, nombreCompleto, cargo, planta, area')
                     .eq('activo', true)
-                    .ilike('nombreCompleto', `%${searchQuery}%`)
-                    .limit(5);
+                    .ilike('nombreCompleto', `%${searchQuery}%`);
+                
+                if (userType === 'administrativa') {
+                    query = query.in('area', AREAS_ADMINISTRATIVAS);
+                } else if (userType === 'operativa') {
+                    // supabase doesn't have `not.in` directly easily without string, so we filter locally below, 
+                    // or we can just fetch and let the user see all but maybe they shouldn't.
+                    // Another way is to filter after fetch since limit(5) might restrict, but let's try to just fetch 50 and filter locally.
+                }
+
+                const { data, error } = await query.limit(50);
 
                 if (error) throw error;
-                setEmployees(data || []);
+                
+                let filteredData = (data as any[]) || [];
+                if (userType === 'operativa') {
+                    filteredData = filteredData.filter((emp: any) => !AREAS_ADMINISTRATIVAS.includes(emp.area || '') && !AREAS_ADMINISTRATIVAS.includes(emp.planta || ''));
+                }
+                
+                setEmployees(filteredData.slice(0, 5));
             } catch (err: any) {
                 console.error('Error searching employees:', err);
             } finally {
@@ -211,7 +229,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
         }, 300);
 
         return () => clearTimeout(handler);
-    }, [searchQuery, supabase]);
+    }, [searchQuery, supabase, userType]);
 
     // Fetch instructors for autocomplete
     useEffect(() => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
+import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS, AREAS_ADMINISTRATIVAS } from '@/lib/constants/roles'
 import { Navbar } from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,12 +12,6 @@ import { ArrowLeft, Loader2, Users, CheckCircle2, Clock, TrendingUp } from 'luci
 import type { Database } from '@/lib/supabase/types'
 
 type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
-
-// Areas that belong to the "Administrativa" virtual group
-const AREAS_ADMINISTRATIVAS = [
-    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I'
-]
 
 export default function IndicadoresHiluPage() {
     const router = useRouter()

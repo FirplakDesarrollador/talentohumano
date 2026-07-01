@@ -1,11 +1,22 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Calendar, History, ArrowLeft, PlusCircle, ClipboardList } from 'lucide-react'
+import { Suspense } from 'react'
 
-export default function ProgramacionEntrenamientosPage() {
+function ProgramacionEntrenamientosContent() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const tipo = searchParams.get('tipo')
+    
+    const handleNavigation = (path: string) => {
+        if (tipo) {
+            router.push(`${path}?tipo=${tipo}`)
+        } else {
+            router.push(path)
+        }
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -27,7 +38,7 @@ export default function ProgramacionEntrenamientosPage() {
                     {/* Programar Entrenamiento */}
                     <Card 
                         className="group cursor-pointer hover:shadow-2xl transition-all duration-500 border-none ring-1 ring-gray-200 hover:ring-blue-500 bg-white overflow-hidden"
-                        onClick={() => router.push('/programar-entrenamiento')}
+                        onClick={() => handleNavigation('/programar-entrenamiento')}
                     >
                         <div className="absolute top-0 left-0 w-2 h-full bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
                         <CardContent className="p-10 flex flex-col items-center text-center relative">
@@ -48,7 +59,7 @@ export default function ProgramacionEntrenamientosPage() {
                     {/* Historial de Entrenamientos */}
                     <Card 
                         className="group cursor-pointer hover:shadow-2xl transition-all duration-500 border-none ring-1 ring-gray-200 hover:ring-orange-500 bg-white overflow-hidden"
-                        onClick={() => router.push('/historial-entrenamientos')}
+                        onClick={() => handleNavigation('/historial-entrenamientos')}
                     >
                         <div className="absolute top-0 left-0 w-2 h-full bg-orange-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
                         <CardContent className="p-10 flex flex-col items-center text-center relative">
@@ -68,5 +79,13 @@ export default function ProgramacionEntrenamientosPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function ProgramacionEntrenamientosPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Cargando...</div>}>
+            <ProgramacionEntrenamientosContent />
+        </Suspense>
     )
 }

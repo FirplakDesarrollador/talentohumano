@@ -25,12 +25,15 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+import { AREAS_ADMINISTRATIVAS } from '@/lib/constants/roles';
+
 interface CalendarioTeamsProps {
     onEventClick?: (event: any) => void;
     initialDate?: Date;
+    userType?: 'admin' | 'administrativa' | 'operativa' | null;
 }
 
-export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick, initialDate }) => {
+export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick, initialDate, userType }) => {
     const supabase = React.useMemo(() => createClient(), []);
     const [currentDate, setCurrentDate] = useState(initialDate || new Date());
     const [events, setEvents] = useState<any[]>([]);
@@ -56,7 +59,15 @@ export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick, 
                     .lte('fecha_programada', weekEndStr);
 
                 if (error) throw error;
-                setEvents(data || []);
+                
+                let filteredData = (data as any[]) || [];
+                if (userType === 'administrativa') {
+                    filteredData = filteredData.filter((event: any) => AREAS_ADMINISTRATIVAS.includes(event.planta || '') || event.planta === 'Administrativa');
+                } else if (userType === 'operativa') {
+                    filteredData = filteredData.filter((event: any) => !AREAS_ADMINISTRATIVAS.includes(event.planta || '') && event.planta !== 'Administrativa');
+                }
+
+                setEvents(filteredData);
             } catch (err) {
                 console.error('Error fetching calendar events:', err);
             } finally {
@@ -65,7 +76,7 @@ export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick, 
         };
 
         fetchEvents();
-    }, [weekStartStr, weekEndStr, supabase]);
+    }, [weekStartStr, weekEndStr, supabase, userType]);
 
     const getEventsForDayAndHour = (day: Date, hour: number) => {
         return events.filter(event => {

@@ -22,23 +22,63 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { CalendarioTeams } from '@/components/Programacion/CalendarioTeams';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, Loader2 } from 'lucide-react';
+import { AREAS_ADMINISTRATIVAS, ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-// Same exclusion list as buscador HILU
-const AREAS_ADMINISTRATIVAS = [
-    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I'
-];
-
-export default function HistorialEntrenamientosPage() {
+function HistorialEntrenamientosContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const urlTipo = searchParams.get('tipo'); // 'operativa' or 'administrativa'
+    
     const supabase = createClient();
     const [loading, setLoading] = useState(true);
+    const [userType, setUserType] = useState<'admin' | 'administrativa' | 'operativa' | null>(null);
+    const [loadingUser, setLoadingUser] = useState(true);
     const [entrenamientos, setEntrenamientos] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPlanta, setSelectedPlanta] = useState('all');
     const [plantas, setPlantas] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState('list');
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const email = user.email || '';
+                const nivelCargo = user.user_metadata?.nivelCargo || '';
+                const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(nivelCargo);
+                
+                if (isAdmin) {
+                    if (urlTipo === 'operativa' || urlTipo === 'administrativa') {
+                        setUserType(urlTipo);
+                    } else {
+                        setUserType('admin');
+                    }
+                } else {
+                    const { data: empData } = await supabase.from('empleados').select('area, planta').eq('correo_electronico', email).single();
+                    if (empData) {
+                        const emp = empData as any;
+                        const isAdmi = AREAS_ADMINISTRATIVAS.includes(emp.area) || AREAS_ADMINISTRATIVAS.includes(emp.planta);
+                        setUserType(isAdmi ? 'administrativa' : 'operativa');
+                    } else {
+                        setUserType('operativa');
+                    }
+                }
+            }
+            setLoadingUser(false);
+        };
+        fetchUser();
+    }, [supabase, urlTipo]);
+
+    useEffect(() => {
+        if (userType === 'administrativa') {
+            setSelectedPlanta('Administrativa');
+        } else {
+            setSelectedPlanta('all');
+        }
+    }, [userType]);
 
     // Fetch plants dynamically (same as HILU buscador)
     useEffect(() => {
@@ -116,13 +156,18 @@ export default function HistorialEntrenamientosPage() {
     }, [supabase]);
 
     const filteredData = entrenamientos.filter(item => {
+        const isAdministrativaItem = AREAS_ADMINISTRATIVAS.includes(item.planta) || item.planta === 'Administrativa';
+        
+        if (userType === 'administrativa' && !isAdministrativaItem) return false;
+        if (userType === 'operativa' && isAdministrativaItem) return false;
+
         const matchesSearch = 
             item.empleados?.nombreCompleto?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.planta?.toLowerCase().includes(searchQuery.toLowerCase());
         
         const matchesPlanta = selectedPlanta === 'all' || 
-            (selectedPlanta === 'Administrativa' ? AREAS_ADMINISTRATIVAS.includes(item.planta) : item.planta === selectedPlanta);
+            (selectedPlanta === 'Administrativa' ? isAdministrativaItem : item.planta === selectedPlanta);
         
         return matchesSearch && matchesPlanta;
     });
@@ -211,9 +256,9 @@ export default function HistorialEntrenamientosPage() {
                             onChange={(e) => setSelectedPlanta(e.target.value)}
                             className="h-12 px-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-sm font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                         >
-                            <option value="all">Todas las áreas</option>
-                            <option value="Administrativa">Administrativa</option>
-                            {plantas.map(p => (
+                            {userType !== 'administrativa' && <option value="all">Todas las áreas</option>}
+                            {userType !== 'operativa' && <option value="Administrativa">Administrativa</option>}
+                            {userType !== 'administrativa' && plantas.map(p => (
                                 <option key={p} value={p}>{p}</option>
                             ))}
                         </select>
@@ -254,9 +299,9 @@ export default function HistorialEntrenamientosPage() {
 
                 {activeTab === 'calendar' ? (
                     <div className="bg-white rounded-[32px] p-2 md:p-6 shadow-sm border border-gray-100">
-                        <CalendarioTeams />
+                        <CalendarioTeams userType={userType} />
                     </div>
-                ) : loading ? (
+                ) : loading || loadingUser ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                         <p className="text-gray-500 font-bold animate-pulse">Cargando registros...</p>
@@ -396,6 +441,14 @@ export default function HistorialEntrenamientosPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function HistorialEntrenamientosPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8fafc]"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>}>
+            <HistorialEntrenamientosContent />
+        </Suspense>
     );
 }
 
