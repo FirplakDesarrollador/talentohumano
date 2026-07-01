@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
+import { ADMIN_EMAILS, ADMIN_LEVELS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, DIRECTORES_CON_ACCESO, JEFES_CON_ACCESO } from '@/lib/constants/roles'
 import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { CrearFirma, VerFirma } from './FirmaComponents'
@@ -192,7 +192,24 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
         if (!currentUser) return false
         const email = currentUser.email || ''
         const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
-        return isAdmin || ['Jefe', 'Director', 'Gerente', 'Coordinador'].includes(currentUser.nivelCargo)
+        if (isAdmin) return true
+        // Same permissions as HILU Operativa
+        if (
+            email === 'hector.chinchilla@firplak.com' ||
+            email === 'estiven.londono@firplak.com' ||
+            email === 'coordinacioncalidad@firplak.com' ||
+            email === 'david.ramirez@firplak.com' ||
+            email === 'jakeline.chaverra@firplak.com' ||
+            email === 'maria.perez@firplak.com' ||
+            email === 'juliana.ramirez@firplak.com' ||
+            email === 'sara.aguilar@firplak.com' ||
+            email === 'analistaabastecimiento@firplak.com' ||
+            RESTRICTED_SUPERVISORS.includes(email) ||
+            COORDINADORES_CON_ACCESO.includes(email) ||
+            DIRECTORES_CON_ACCESO.includes(email) ||
+            JEFES_CON_ACCESO.includes(email)
+        ) return true
+        return ['Jefe', 'Director', 'Gerente', 'Coordinador'].includes(currentUser.nivelCargo)
     }
 
     const updateDB = async (payload: Partial<HiluAdminRow>) => {

@@ -56,19 +56,19 @@ export default function AusentismosPage() {
                 // Fetch cargo level
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivel_cargo')
+                    .select('nivelCargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivel_cargo) {
-                    setUserLevel((empleado as any).nivel_cargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                 } else {
                     const { data: usuario } = await supabase
                         .from('usuarios')
                         .select('rol')
                         .eq('correo', user.email!)
                         .maybeSingle()
-                    
+
                     if ((usuario as any)?.rol) {
                         const roleMap: Record<string, string> = {
                             'admin': 'Jefe',
@@ -77,7 +77,8 @@ export default function AusentismosPage() {
                             'gerente': 'Gerente',
                             'director': 'Director',
                             'coordinador': 'Coordinador',
-                            'analista': 'Analista'
+                            'analista': 'Analista',
+                            'supervisor': 'Supervisor'
                         }
                         setUserLevel(roleMap[(usuario as any).rol] || (usuario as any).rol)
                     }

@@ -173,10 +173,16 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
         if (!currentUser) return false
         const email = currentUser.email || ''
 
-        // Estiven Londono and Coordinacion Calidad have full permissions
-        if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
-        const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
+        // Full access (all phases including U)
+        if (
+            email === 'estiven.londono@firplak.com' ||
+            email === 'coordinacioncalidad@firplak.com' ||
+            email === 'hector.chinchilla@firplak.com' ||
+            email === 'juliana.ramirez@firplak.com' ||
+            email === 'analistaabastecimiento@firplak.com'
+        ) return true
 
+        const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
         if (isAdmin) return true
 
         if (
@@ -187,10 +193,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             SUPERVISORES_MUEBLES_CEFI.includes(email) ||
             email === 'jakeline.chaverra@firplak.com' ||
             email === 'maria.perez@firplak.com' ||
-            email === 'juliana.ramirez@firplak.com' ||
-            email === 'sara.aguilar@firplak.com' ||
-            email === 'analistaabastecimiento@firplak.com' ||
-            email === 'hector.chinchilla@firplak.com'
+            email === 'sara.aguilar@firplak.com'
         ) {
             if (phase === 'U') return false
             return true
