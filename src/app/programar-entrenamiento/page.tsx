@@ -48,7 +48,8 @@ function ProgramarEntrenamientoContent() {
                 } else {
                     const { data: empData } = await supabase.from('empleados').select('area, planta').eq('correo_electronico', email).single();
                     if (empData) {
-                        const isAdmi = AREAS_ADMINISTRATIVAS.includes(empData.area) || AREAS_ADMINISTRATIVAS.includes(empData.planta);
+                        const emp = empData as any;
+                        const isAdmi = AREAS_ADMINISTRATIVAS.includes(emp.area) || AREAS_ADMINISTRATIVAS.includes(emp.planta);
                         setUserType(isAdmi ? 'administrativa' : 'operativa');
                     } else {
                         setUserType('operativa');
@@ -58,7 +59,7 @@ function ProgramarEntrenamientoContent() {
             setLoadingUser(false);
         };
         fetchUser();
-    }, [supabase]);
+    }, [supabase, urlTipo]);
 
     const handleSuccess = () => {
         setRefreshKey(prev => prev + 1);
