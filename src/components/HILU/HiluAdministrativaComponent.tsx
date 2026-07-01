@@ -12,6 +12,11 @@ import { CrearFirma, VerFirma } from './FirmaComponents'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
+// Datos legados guardaron el texto literal "true"/"false" en los campos de firma
+// en vez de un booleano real o una firma dibujada (data URI). Como "false" es un
+// string truthy en JS, hay que interpretarlo explícitamente en vez de usar el valor crudo.
+const isFirmado = (value?: string | boolean | null) => value === true || (typeof value === 'string' && value !== 'false')
+
 interface HiluAdminRow {
     id: number;
     empleado_id: number;
@@ -120,31 +125,39 @@ const SignatureWidget = ({
     value?: string | boolean | null,
     onSave: (firma: string) => void,
     date?: string | null
-}) => (
-    <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[220px] transition-all hover:border-blue-200 hover:shadow-md">
-        <div className="bg-gray-50/80 border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${value ? 'bg-green-500' : 'bg-blue-400 animate-pulse'}`}></div>
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
-            </div>
-            {value && (
-                <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
-                    {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+}) => {
+    // Solo un string distinto de "true"/"false" es una firma dibujada real (data URI).
+    const isRealSignature = typeof value === 'string' && value !== 'true' && value !== 'false';
+    const isSigned = isFirmado(value);
+
+    return (
+        <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[220px] transition-all hover:border-blue-200 hover:shadow-md">
+            <div className="bg-gray-50/80 border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${isSigned ? 'bg-green-500' : 'bg-blue-400 animate-pulse'}`}></div>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
                 </div>
-            )}
-        </div>
-        <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
-            <div className="w-full">
-                {value ? (
-                    typeof value === 'string' ? <VerFirma firmaUrl={value} /> : <div className="text-green-600 font-bold text-center">Firma Electrónica Confirmada</div>
-                ) : (
-                    <CrearFirma onFirmaGuardada={onSave} />
+                {isSigned && (
+                    <div className="flex flex-col items-end">
+                        <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
+                        {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+                    </div>
                 )}
             </div>
+            <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
+                <div className="w-full">
+                    {isRealSignature ? (
+                        <VerFirma firmaUrl={value as string} />
+                    ) : isSigned ? (
+                        <div className="text-green-600 font-bold text-center">Firma Electrónica Confirmada</div>
+                    ) : (
+                        <CrearFirma onFirmaGuardada={onSave} />
+                    )}
+                </div>
+            </div>
         </div>
-    </div>
-)
+    )
+}
 
 const PhaseHeader = ({ title, progress, isOpen, onClick }: { title: string, progress: number, isOpen: boolean, onClick: () => void }) => (
     <div
@@ -229,7 +242,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
     }
 
     const checkPhaseH = async (data: HiluAdminRow) => {
-        const isDone = data.fh_induccion_th && data.fh_induccion_sst && data.fh_presentacion_area && data.fh_explicacion_cargo && data.fh_firma_empleado && data.fh_firma_jefe
+        const isDone = data.fh_induccion_th && data.fh_induccion_sst && data.fh_presentacion_area && data.fh_explicacion_cargo && isFirmado(data.fh_firma_empleado) && isFirmado(data.fh_firma_jefe)
         const hasComment = !!(data.fh_comentarios?.trim())
 
         if (isDone && hasComment && !data.fh_completado) {
@@ -242,7 +255,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
 
     const checkPhaseI = async (data: HiluAdminRow) => {
         const isDone = data.fi_capacitacion_funciones && data.fi_capacitacion_procesos && data.fi_capacitacion_herramientas && data.fi_acompanamiento_practico &&
-            data.fi_eval_actitud && data.fi_eval_adaptacion && data.fi_eval_aprendizaje && data.fi_eval_conocimiento && data.fi_firma_empleado && data.fi_firma_jefe
+            data.fi_eval_actitud && data.fi_eval_adaptacion && data.fi_eval_aprendizaje && data.fi_eval_conocimiento && isFirmado(data.fi_firma_empleado) && isFirmado(data.fi_firma_jefe)
         const hasComment = !!(data.fi_comentarios?.trim())
 
         if (isDone && hasComment && !data.fi_completado) {
@@ -254,7 +267,7 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
     }
 
     const checkPhaseL = async (data: HiluAdminRow) => {
-        const isDone = data.fl_desempena_autonomia && data.fl_cumple_responsabilidades && data.fl_aplica_procedimientos && data.fl_ejecuta_sin_acompanamiento && data.fl_cumple_resultados && data.fl_firma_empleado && data.fl_firma_jefe
+        const isDone = data.fl_desempena_autonomia && data.fl_cumple_responsabilidades && data.fl_aplica_procedimientos && data.fl_ejecuta_sin_acompanamiento && data.fl_cumple_resultados && isFirmado(data.fl_firma_empleado) && isFirmado(data.fl_firma_jefe)
         const hasComment = !!(data.fl_comentarios?.trim())
 
         if (isDone && hasComment && !data.fl_completado) {
