@@ -1,14 +1,18 @@
 'use client'
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Calendar, FormInput, Plus, LayoutGrid, List, Loader2 } from 'lucide-react';
 import { FormularioProgramacion } from '@/components/Programacion/FormularioProgramacion';
 import { CalendarioTeams } from '@/components/Programacion/CalendarioTeams';
+import { createClient } from '@/lib/supabase/client';
+import { ADMIN_EMAILS, ADMIN_LEVELS, AREAS_ADMINISTRATIVAS } from '@/lib/constants/roles';
 
 function ProgramarEntrenamientoContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const urlTipo = searchParams.get('tipo');
+    const supabase = createClient();
     
     // Initialize tab from URL if present
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'form');
@@ -24,6 +28,37 @@ function ProgramarEntrenamientoContent() {
     const empleadoId = searchParams.get('empleadoId');
     
     const [refreshKey, setRefreshKey] = useState(0);
+    const [userType, setUserType] = useState<'admin' | 'administrativa' | 'operativa' | null>(null);
+    const [loadingUser, setLoadingUser] = useState(true);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const email = user.email || '';
+                const nivelCargo = user.user_metadata?.nivelCargo || '';
+                const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(nivelCargo);
+                
+                if (isAdmin) {
+                    if (urlTipo === 'operativa' || urlTipo === 'administrativa') {
+                        setUserType(urlTipo);
+                    } else {
+                        setUserType('admin');
+                    }
+                } else {
+                    const { data: empData } = await supabase.from('empleados').select('area, planta').eq('correo_electronico', email).single();
+                    if (empData) {
+                        const isAdmi = AREAS_ADMINISTRATIVAS.includes(empData.area) || AREAS_ADMINISTRATIVAS.includes(empData.planta);
+                        setUserType(isAdmi ? 'administrativa' : 'operativa');
+                    } else {
+                        setUserType('operativa');
+                    }
+                }
+            }
+            setLoadingUser(false);
+        };
+        fetchUser();
+    }, [supabase]);
 
     const handleSuccess = () => {
         setRefreshKey(prev => prev + 1);
@@ -33,6 +68,14 @@ function ProgramarEntrenamientoContent() {
             router.replace('/programar-entrenamiento?tab=calendar');
         }
     };
+
+    if (loadingUser) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#f8fafc]">
@@ -87,6 +130,7 @@ function ProgramarEntrenamientoContent() {
                                         onSuccess={handleSuccess} 
                                         editId={editId} 
                                         preselectedEmpleadoId={empleadoId}
+                                        userType={userType}
                                     />
                                 </div>
                                 <div className="lg:col-span-7 space-y-6">
@@ -98,7 +142,7 @@ function ProgramarEntrenamientoContent() {
                                             <h2 className="text-xl font-bold text-gray-900">Vista Previa del Calendario</h2>
                                         </div>
                                         <div className="transform scale-[0.8] origin-top opacity-80 pointer-events-none">
-                                            <CalendarioTeams key={`preview-${refreshKey}`} initialDate={initialDate} />
+                                            <CalendarioTeams key={`preview-${refreshKey}`} initialDate={initialDate} userType={userType} />
                                         </div>
                                         <div className="mt-4 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
                                             Pulse en el botón &quot;CALENDARIO&quot; para ver a pantalla completa
@@ -109,7 +153,7 @@ function ProgramarEntrenamientoContent() {
                         </div>
                     ) : (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <CalendarioTeams key={refreshKey} initialDate={initialDate} />
+                            <CalendarioTeams key={refreshKey} initialDate={initialDate} userType={userType} />
                         </div>
                     )}
                 </div>
