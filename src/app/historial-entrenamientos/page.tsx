@@ -70,7 +70,7 @@ function HistorialEntrenamientosContent() {
             setLoadingUser(false);
         };
         fetchUser();
-    }, [supabase]);
+    }, [supabase, urlTipo]);
 
     useEffect(() => {
         if (userType === 'administrativa') {

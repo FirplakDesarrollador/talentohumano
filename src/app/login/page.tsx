@@ -43,7 +43,7 @@ function LoginForm() {
                 const { data: emp } = await supabase
                     .from('empleados')
                     .select('activo')
-                    .eq('correo_electronico', data.user.email)
+                    .eq('correo_electronico', data.user.email || '')
                     .maybeSingle()
 
                 if (emp && emp.activo === false) {
