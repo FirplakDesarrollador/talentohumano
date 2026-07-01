@@ -56,6 +56,26 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
+    // Check if the user is active in the 'empleados' table (skip for API routes)
+    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+    if (user && !isPublicRoute && !isApiRoute) {
+        const { data: emp } = await supabase
+            .from('empleados')
+            .select('activo')
+            .eq('correo_electronico', user.email)
+            .maybeSingle()
+
+        // If employee record exists and activo is explicitly false
+        if (emp && emp.activo === false) {
+            await supabase.auth.signOut()
+            const url = request.nextUrl.clone()
+            url.pathname = '/login'
+            // Add a query param so the login page can show an error if desired
+            url.searchParams.set('error', 'inactivo')
+            return NextResponse.redirect(url)
+        }
+    }
+
     // If user is logged in and tries to access login page, redirect to menu
     if (user && request.nextUrl.pathname === '/login') {
         const url = request.nextUrl.clone()

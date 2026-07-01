@@ -12,14 +12,9 @@ import { Search, Filter, BarChart3, Loader2, ArrowLeft, Eraser, Calendar, Chevro
 import { Label } from '@/components/ui/label'
 import { EmpleadoCardHILU } from '@/components/HILU/EmpleadoCardHILU'
 import type { Database } from '@/lib/supabase/types'
+import { AREAS_ADMINISTRATIVAS } from '@/lib/constants/roles'
 
 type EmpleadoHILU = Database['public']['Views']['query_estado_hilu']['Row']
-
-// Areas that belong to the "Administrativa" virtual group
-const AREAS_ADMINISTRATIVAS = [
-    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
-    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial'
-]
 
 export default function BuscadorHiluPage() {
     const router = useRouter()
@@ -379,7 +374,7 @@ export default function BuscadorHiluPage() {
                                                 return (
                                                     <div 
                                                         key={i} 
-                                                        onClick={() => router.push('/programacion-entrenamientos')}
+                                                        onClick={() => router.push('/programacion-entrenamientos?tipo=operativa')}
                                                         className="p-3.5 bg-white rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer"
                                                     >
                                                         <div className="flex justify-between items-start mb-2">
@@ -446,7 +441,6 @@ export default function BuscadorHiluPage() {
                                 onChange={(e) => setSelectedPlanta(e.target.value)}
                             >
                                 <option value="all">Todas las áreas</option>
-                                <option value="Administrativa">Administrativa</option>
                                 {plantas.map((area) => (
                                     <option key={area} value={area}>{area}</option>
                                 ))}
@@ -536,7 +530,7 @@ export default function BuscadorHiluPage() {
                             <Button
                                 variant="outline"
                                 className="h-10 w-10 p-0 border-gray-200 text-blue-600 hover:text-blue-700"
-                                onClick={() => router.push('/programacion-entrenamientos')}
+                                onClick={() => router.push('/programacion-entrenamientos?tipo=operativa')}
                             >
                                 <Calendar className="h-5 w-5" />
                             </Button>

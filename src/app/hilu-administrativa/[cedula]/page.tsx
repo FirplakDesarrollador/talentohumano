@@ -80,15 +80,23 @@ export default function HiluAdministrativaPage() {
 
                 await fetchAuditorias(empRecordAny.id)
 
-                // Fetch Operative HILU Record (for HILU Sistema)
-                const { data: opHilu } = await supabase
-                    .from('query_hilu')
-                    .select('*')
-                    .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
-                    .eq('cargo', empRecordAny.cargo)
-                    .maybeSingle()
+                // Check if employee is in an administrative area
+                const AREAS_ADMINISTRATIVAS = ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial']
+                const isAdministrative = AREAS_ADMINISTRATIVAS.includes(empRecordAny.area)
 
-                if (opHilu) setOperativeHiluRecord(opHilu)
+                // Fetch Operative HILU Record (for HILU Sistema) ONLY if not strictly administrative
+                if (!isAdministrative) {
+                    const { data: opHilu } = await supabase
+                        .from('query_hilu')
+                        .select('*')
+                        .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
+                        .eq('cargo', empRecordAny.cargo)
+                        .maybeSingle()
+
+                    if (opHilu) setOperativeHiluRecord(opHilu)
+                } else {
+                    setOperativeHiluRecord(null)
+                }
 
                 // Fetch or Create HILU Administrativa record
                 const { data: hiluRecord, error: hiluError } = await supabase

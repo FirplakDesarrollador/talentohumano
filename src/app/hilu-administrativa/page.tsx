@@ -36,6 +36,7 @@ export default function BuscadorHiluAdminPage() {
     const nivelDropdownRef = useRef<HTMLDivElement>(null)
     const [userLevel, setUserLevel] = useState<string>('')
     const [userEmail, setUserEmail] = useState<string>('')
+    const [userName, setUserName] = useState<string>('')
     const [programaciones, setProgramaciones] = useState<any[]>([])
     const [showProgramaciones, setShowProgramaciones] = useState(false)
 
@@ -121,15 +122,17 @@ export default function BuscadorHiluAdminPage() {
                 // If we want to filter by user's plants or instructor, we can do it here.
                 // For now, let's just get the upcoming ones. If the user is an instructor, we prioritize those.
                 // Let's try to find their name from the profile or employee record
-                let userName = '';
-                if ((empleado as any)?.nombreCompleto) userName = (empleado as any).nombreCompleto;
-                else if ((empleado as any)?.nombre) userName = (empleado as any).nombre;
+                let fetchedUserName = '';
+                if ((empleado as any)?.nombreCompleto) fetchedUserName = (empleado as any).nombreCompleto;
+                else if ((empleado as any)?.nombre) fetchedUserName = (empleado as any).nombre;
                 
+                setUserName(fetchedUserName);
+
                 if (progData) {
                     // Si encontramos su nombre, ponemos primero donde ellos son el instructor
                     const sortedProg = progData.sort((a: any, b: any) => {
-                        const aIsMe = userName && a.instructor?.toLowerCase().includes(userName.toLowerCase());
-                        const bIsMe = userName && b.instructor?.toLowerCase().includes(userName.toLowerCase());
+                        const aIsMe = fetchedUserName && a.instructor?.toLowerCase().includes(fetchedUserName.toLowerCase());
+                        const bIsMe = fetchedUserName && b.instructor?.toLowerCase().includes(fetchedUserName.toLowerCase());
                         if (aIsMe && !bIsMe) return -1;
                         if (!aIsMe && bIsMe) return 1;
                         return 0;
@@ -152,6 +155,9 @@ export default function BuscadorHiluAdminPage() {
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
+
+    const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
+    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
 
     const fetchFilters = useCallback(async () => {
         try {
@@ -183,10 +189,43 @@ export default function BuscadorHiluAdminPage() {
                 query = query.in('nivelCargo', selectedNiveles)
             }
 
-            // Filter by "Administrativo"
+            // Filter by "Administrativo" (Base for HILU Administrativa)
             // Include if Area in AREAS_ADMINISTRATIVAS OR NivelCargo in ('Jefe', 'Coordinador', 'Director', 'Gerente', 'Supervisor')
             const adminAreas = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
             query = query.or(`${adminAreas},nivelCargo.in.("Jefe","Coordinador","Director","Gerente","Supervisor")`)
+
+            // --- SISTEMA DE PERMISOS HILU ADMINISTRATIVA ---
+            // 1. Los Administradores pueden ver a todos los empleados.
+            if (isSystemAdmin) {
+                // No se aplica ningún filtro adicional, ven a todos.
+            } else {
+                // Evaluamos si el usuario actual tiene HILU de Sistemas de Producción
+                const normalizedUser = (userName || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, ' ');
+                const specialNames = ['hector jose chinchilla', 'hector chinchilla', 'jakeline chaverra', 'sara maria aguilar', 'carlos jose mier', 'ederson estiven', 'juliana ramirez', 'maria isabel escobar'];
+                const isSpecialUser = (userLevel || '').toLowerCase().includes('supervisor') || specialNames.some(name => normalizedUser.includes(name));
+
+                // 2. Empleados se ven a sí mismos.
+                // 3. Jefes pueden ver a los empleados que tienen a cargo.
+                let baseOr = '';
+                if (userEmail) {
+                    baseOr += `correo_electronico.eq.${userEmail}`;
+                }
+                if (userName) {
+                    baseOr += baseOr ? `,jefe.ilike.%${userName}%` : `jefe.ilike.%${userName}%`;
+                }
+
+                // 4. Si tienen HILU Sistemas de Producción, pueden verse entre ellos (supervisores y los empleados especiales).
+                if (isSpecialUser) {
+                    const specialNamesFilter = specialNames.map(n => `nombreCompleto.ilike.%${n}%`).join(',');
+                    const opHiluFilter = `nivelCargo.ilike.%supervisor%,${specialNamesFilter}`;
+                    baseOr += baseOr ? `,${opHiluFilter}` : opHiluFilter;
+                }
+
+                if (baseOr) {
+                    query = query.or(baseOr);
+                }
+            }
+            // ------------------------------------------------
 
             // Filter by Area
             if (selectedPlanta && selectedPlanta !== 'all') {
@@ -250,10 +289,7 @@ export default function BuscadorHiluAdminPage() {
             setLoading(true) // Pre-loader while processing
             setTimeout(() => setLoading(false), 10)
         }
-    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase])
-
-    const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
-    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
+    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase, isSystemAdmin, userName, userEmail, userLevel])
 
     useEffect(() => {
         const handleFocus = () => {
@@ -360,7 +396,7 @@ export default function BuscadorHiluAdminPage() {
                                                 return (
                                                     <div 
                                                         key={i} 
-                                                        onClick={() => router.push('/programacion-entrenamientos')}
+                                                        onClick={() => router.push('/programacion-entrenamientos?tipo=administrativa')}
                                                         className="p-3.5 bg-white rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer"
                                                     >
                                                         <div className="flex justify-between items-start mb-2">
@@ -516,7 +552,7 @@ export default function BuscadorHiluAdminPage() {
                             <Button
                                 variant="outline"
                                 className="h-10 w-10 p-0 border-gray-200 text-blue-600 hover:text-blue-700"
-                                onClick={() => router.push('/programacion-entrenamientos')}
+                                onClick={() => router.push('/programacion-entrenamientos?tipo=administrativa')}
                             >
                                 <Calendar className="h-5 w-5" />
                             </Button>

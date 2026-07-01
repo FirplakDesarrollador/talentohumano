@@ -23,8 +23,8 @@ interface HiluAdminRow {
     fh_presentacion_area: boolean;
     fh_explicacion_cargo: boolean;
     fh_comentarios: string | null;
-    fh_firma_empleado: boolean;
-    fh_firma_jefe: boolean;
+    fh_firma_empleado: string | boolean | null;
+    fh_firma_jefe: string | boolean | null;
     fh_completado: boolean;
     fh_fecha_finalizacion: string | null;
 
@@ -42,8 +42,8 @@ interface HiluAdminRow {
     fi_fecha_finalizacion: string | null;
     fi_plan_entrenamiento?: string[];
     fi_link_excel?: string | null;
-    fi_firma_empleado: boolean;
-    fi_firma_jefe: boolean;
+    fi_firma_empleado: string | boolean | null;
+    fi_firma_jefe: string | boolean | null;
 
     // FASE L
     fl_desempena_autonomia: boolean;
@@ -52,8 +52,8 @@ interface HiluAdminRow {
     fl_ejecuta_sin_acompanamiento: boolean;
     fl_cumple_resultados: boolean;
     fl_comentarios: string | null;
-    fl_firma_empleado: boolean;
-    fl_firma_jefe: boolean;
+    fl_firma_empleado: string | boolean | null;
+    fl_firma_jefe: string | boolean | null;
     fl_completado: boolean;
     fl_fecha_finalizacion: string | null;
 }
@@ -137,7 +137,7 @@ const SignatureWidget = ({
         <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
             <div className="w-full">
                 {value ? (
-                    typeof value === 'string' && value.startsWith('http') ? <VerFirma firmaUrl={value} /> : <div className="text-green-600 font-bold text-center">Firma Electrónica Confirmada</div>
+                    typeof value === 'string' ? <VerFirma firmaUrl={value} /> : <div className="text-green-600 font-bold text-center">Firma Electrónica Confirmada</div>
                 ) : (
                     <CrearFirma onFirmaGuardada={onSave} />
                 )}
@@ -278,12 +278,20 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <SignatureWidget
                                     label="Firma Empleado"
                                     value={localData.fh_firma_empleado}
-                                    onSave={(firma) => setLocalData({ ...localData, fh_firma_empleado: true })}
+                                    onSave={async (firma) => {
+                                        const next = { ...localData, fh_firma_empleado: firma };
+                                        setLocalData(next);
+                                        await updateDB({ fh_firma_empleado: firma } as any);
+                                    }}
                                 />
                                 <SignatureWidget
                                     label="Firma Jefe"
                                     value={localData.fh_firma_jefe}
-                                    onSave={(firma) => setLocalData({ ...localData, fh_firma_jefe: true })}
+                                    onSave={async (firma) => {
+                                        const next = { ...localData, fh_firma_jefe: firma };
+                                        setLocalData(next);
+                                        await updateDB({ fh_firma_jefe: firma } as any);
+                                    }}
                                 />
                             </div>
 
@@ -464,12 +472,20 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <SignatureWidget
                                     label="Firma Empleado"
                                     value={localData.fi_firma_empleado}
-                                    onSave={(firma) => setLocalData({ ...localData, fi_firma_empleado: true })}
+                                    onSave={async (firma) => {
+                                        const next = { ...localData, fi_firma_empleado: firma };
+                                        setLocalData(next);
+                                        await updateDB({ fi_firma_empleado: firma } as any);
+                                    }}
                                 />
                                 <SignatureWidget
                                     label="Firma Jefe"
                                     value={localData.fi_firma_jefe}
-                                    onSave={(firma) => setLocalData({ ...localData, fi_firma_jefe: true })}
+                                    onSave={async (firma) => {
+                                        const next = { ...localData, fi_firma_jefe: firma };
+                                        setLocalData(next);
+                                        await updateDB({ fi_firma_jefe: firma } as any);
+                                    }}
                                 />
                             </div>
 
@@ -525,12 +541,20 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
                                 <SignatureWidget
                                     label="Firma Empleado en formación"
                                     value={localData.fl_firma_empleado}
-                                    onSave={(firma) => setLocalData({ ...localData, fl_firma_empleado: true })}
+                                    onSave={async (firma) => {
+                                        const next = { ...localData, fl_firma_empleado: firma };
+                                        setLocalData(next);
+                                        await updateDB({ fl_firma_empleado: firma } as any);
+                                    }}
                                 />
                                 <SignatureWidget
                                     label="Firma Jefe"
                                     value={localData.fl_firma_jefe}
-                                    onSave={(firma) => setLocalData({ ...localData, fl_firma_jefe: true })}
+                                    onSave={async (firma) => {
+                                        const next = { ...localData, fl_firma_jefe: firma };
+                                        setLocalData(next);
+                                        await updateDB({ fl_firma_jefe: firma } as any);
+                                    }}
                                 />
                             </div>
 

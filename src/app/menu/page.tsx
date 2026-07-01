@@ -27,10 +27,16 @@ import {
     UserCircle
 } from 'lucide-react'
 
+const AREAS_ADMINISTRATIVAS = [
+    'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
+    'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial'
+]
+
 export default function MenuPage() {
     const [user, setUser] = useState<any>(null)
     const [userLevel, setUserLevel] = useState<string>('')
     const [userName, setUserName] = useState<string>('')
+    const [userArea, setUserArea] = useState<string>('')
     const [loading, setLoading] = useState(true)
     const [isMicrosoftConnected, setIsMicrosoftConnected] = useState(false)
     const router = useRouter()
@@ -48,13 +54,14 @@ export default function MenuPage() {
                 
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo, nombreCompleto')
+                    .select('nivelCargo, nombreCompleto, area')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
                 if ((empleado as any)?.nivelCargo) {
                     setUserLevel((empleado as any).nivelCargo)
                     setUserName((empleado as any).nombreCompleto || '')
+                    setUserArea((empleado as any).area || '')
                 } else {
                     const { data: usuario } = await supabase
                         .from('usuarios')
@@ -91,7 +98,8 @@ export default function MenuPage() {
         router.refresh()
     }
 
-    const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)
+    const normalizedUserEmail = (user?.email || '').toLowerCase().trim()
+    const isSystemAdmin = (normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)) || ADMIN_LEVELS.includes(userLevel as any)
 
     const menuItems = [
         {
@@ -134,13 +142,13 @@ export default function MenuPage() {
             title: 'HILU',
             href: '/seleccion-hilu',
             icon: Monitor,
-            visible: isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
+            visible: isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel) || AREAS_ADMINISTRATIVAS.includes(userArea)
         },
         {
             title: 'Desempeño',
             href: '/desempeno',
             icon: Component,
-            visible: user?.email && ADMIN_EMAILS.includes(user.email)
+            visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
         }
     ]
 
