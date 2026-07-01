@@ -46,7 +46,7 @@ function LoginForm() {
                     .eq('correo_electronico', data.user.email || '')
                     .maybeSingle()
 
-                if (emp && emp.activo === false) {
+                if (emp && (emp as any).activo === false) {
                     await supabase.auth.signOut()
                     setError('Tu usuario se encuentra inactivo. Por favor, contacta a Talento Humano.')
                     setLoading(false)
