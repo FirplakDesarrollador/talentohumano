@@ -60,11 +60,11 @@ export const CalendarioTeams: React.FC<CalendarioTeamsProps> = ({ onEventClick, 
 
                 if (error) throw error;
                 
-                let filteredData = data || [];
+                let filteredData = (data as any[]) || [];
                 if (userType === 'administrativa') {
-                    filteredData = filteredData.filter(event => AREAS_ADMINISTRATIVAS.includes(event.planta || '') || event.planta === 'Administrativa');
+                    filteredData = filteredData.filter((event: any) => AREAS_ADMINISTRATIVAS.includes(event.planta || '') || event.planta === 'Administrativa');
                 } else if (userType === 'operativa') {
-                    filteredData = filteredData.filter(event => !AREAS_ADMINISTRATIVAS.includes(event.planta || '') && event.planta !== 'Administrativa');
+                    filteredData = filteredData.filter((event: any) => !AREAS_ADMINISTRATIVAS.includes(event.planta || '') && event.planta !== 'Administrativa');
                 }
 
                 setEvents(filteredData);
