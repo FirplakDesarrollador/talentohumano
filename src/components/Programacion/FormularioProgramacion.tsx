@@ -215,9 +215,9 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
 
                 if (error) throw error;
                 
-                let filteredData = data || [];
+                let filteredData = (data as any[]) || [];
                 if (userType === 'operativa') {
-                    filteredData = filteredData.filter(emp => !AREAS_ADMINISTRATIVAS.includes(emp.area || '') && !AREAS_ADMINISTRATIVAS.includes(emp.planta || ''));
+                    filteredData = filteredData.filter((emp: any) => !AREAS_ADMINISTRATIVAS.includes(emp.area || '') && !AREAS_ADMINISTRATIVAS.includes(emp.planta || ''));
                 }
                 
                 setEmployees(filteredData.slice(0, 5));
