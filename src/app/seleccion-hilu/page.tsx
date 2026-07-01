@@ -35,7 +35,8 @@ export default function SeleccionHiluPage() {
             }
 
             const AREAS_ADMINISTRATIVAS = ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial'];
-            const isAdministrative = AREAS_ADMINISTRATIVAS.includes(emp.area);
+            const empAny = emp as any;
+            const isAdministrative = AREAS_ADMINISTRATIVAS.includes(empAny.area);
 
             if (!isAdministrative) {
                 setShowOperativa(true);
@@ -43,8 +44,8 @@ export default function SeleccionHiluPage() {
                 const { data: opHilu } = await supabase
                     .from('query_hilu')
                     .select('cedula')
-                    .eq('cedula', emp.cedula)
-                    .eq('cargo', emp.cargo)
+                    .eq('cedula', empAny.cedula)
+                    .eq('cargo', empAny.cargo)
                     .maybeSingle();
                 
                 setShowOperativa(!!opHilu);
