@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -56,16 +56,21 @@ export default function AusentismosPage() {
                 // Fetch cargo level
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivelCargo, nombreCompleto')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
+                let currentLevel = ''
+                let currentName = ''
+
                 if ((empleado as any)?.nivelCargo) {
-                    setUserLevel((empleado as any).nivelCargo)
+                    currentLevel = (empleado as any).nivelCargo
+                    currentName = (empleado as any).nombreCompleto || ''
+                    setUserLevel(currentLevel)
                 } else {
                     const { data: usuario } = await supabase
                         .from('usuarios')
-                        .select('rol')
+                        .select('rol, nombre')
                         .eq('correo', user.email!)
                         .maybeSingle()
 
@@ -80,28 +85,51 @@ export default function AusentismosPage() {
                             'analista': 'Analista',
                             'supervisor': 'Supervisor'
                         }
-                        setUserLevel(roleMap[(usuario as any).rol] || (usuario as any).rol)
+                        currentLevel = roleMap[(usuario as any).rol] || (usuario as any).rol
+                        currentName = (usuario as any).nombre || ''
+                        setUserLevel(currentLevel)
                     }
+                }
+
+                // Restrict scope: supervisors/coordinadores/jefes (and anyone without special
+                // plant-wide access) only see ausentismos of their direct reports or themselves.
+                const isAdminUser = ADMIN_EMAILS.includes(user.email || '') || ADMIN_LEVELS.includes(currentLevel as any)
+                const isAnalystUser = ANALISTAS_CON_ACCESO.includes(user.email || '')
+                const fullAccessEmails = ['hector.chinchilla@firplak.com', 'estiven.londono@firplak.com']
+
+                const applyScope = (q: any) => {
+                    if (isAdminUser || isAnalystUser || fullAccessEmails.includes(user.email || '')) {
+                        return q
+                    }
+                    const plantas = getPlantasPermitidas(user.email || '')
+                    if (plantas && plantas.length > 0) {
+                        const plantasFilter = plantas.map(p => `"${p}"`).join(',')
+                        return q.or(`Planta.in.(${plantasFilter}),Jefe.eq."${currentName}","Nombre Completo".eq."${currentName}"`)
+                    }
+                    if (currentName) {
+                        return q.or(`Jefe.eq."${currentName}","Nombre Completo".eq."${currentName}"`)
+                    }
+                    // No name resolved yet: show nothing rather than leaking all records.
+                    return q.eq('Id', -1)
                 }
 
                 // Table name with spaces as hinted by Flutter code
                 // Trying 'ausentismos' first as it was successful in probe
-                const { data, error } = await supabase
-                    .from('ausentismos' as any)
-                    .select('*')
-                    .order('Creado', { ascending: false })
+                const { data, error } = await applyScope(
+                    supabase.from('ausentismos' as any).select('*').order('Creado', { ascending: false })
+                )
 
                 if (error) {
                     // Try without ordering if 'Creado' doesn't exist either
-                    const { data: dataNoOrder, error: errorNoOrder } = await supabase
-                        .from('ausentismos' as any)
-                        .select('*')
+                    const { data: dataNoOrder, error: errorNoOrder } = await applyScope(
+                        supabase.from('ausentismos' as any).select('*')
+                    )
 
                     if (errorNoOrder) {
                         // Last resort: Try Title Case 'Ausentismos'
-                        const { data: dataTitle, error: errorTitle } = await supabase
-                            .from('Ausentismos' as any)
-                            .select('*')
+                        const { data: dataTitle, error: errorTitle } = await applyScope(
+                            supabase.from('Ausentismos' as any).select('*')
+                        )
 
                         if (errorTitle) throw errorTitle
                         setAusentismos(dataTitle as any[])

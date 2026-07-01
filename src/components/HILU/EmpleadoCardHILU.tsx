@@ -72,13 +72,19 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
         normalizedName.includes('juliana ramirez') ||
         normalizedName.includes('maria isabel escobar');
 
-    const isAdministrativo = 
-        ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea) ||
+    // Un área de oficina (no de planta) es lo único que realmente excluye a alguien
+    // del seguimiento Operativo. El nivel de cargo (Jefe, Coordinador, etc.) solo
+    // determina si también necesita el seguimiento Administrativo, no si se le oculta
+    // el Operativo — un Jefe de Mantenimiento, por ejemplo, sigue necesitando ambos.
+    const isAreaAdministrativa =
+        ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea);
+
+    const isNivelAdministrativo =
         ['analista', 'jefe', 'gerente', 'director', 'coordinador', 'administrador', 'desarrollador'].includes(empNivel) ||
         normalizedName.includes('alejo') || normalizedName.includes('alejandro fernandez');
 
-    const showAdminHilu = isAdministrativo || isSupervisorOrSpecific;
-    const showOperativeHilu = !isAdministrativo || isSupervisorOrSpecific;
+    const showAdminHilu = isAreaAdministrativa || isNivelAdministrativo || isSupervisorOrSpecific;
+    const showOperativeHilu = !isAreaAdministrativa || isSupervisorOrSpecific;
 
     return (
         <div onClick={onClick} className="cursor-pointer">

@@ -186,7 +186,9 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha de Solicitud</p>
-                                    <p className="text-xs font-bold text-gray-500 italic">{solicitud['Fecha Solicitud']}</p>
+                                    <p className="text-xs font-bold text-gray-500 italic">
+                                        {solicitud['Fecha Solicitud'] ? new Date(solicitud['Fecha Solicitud']).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+                                    </p>
                                 </div>
                             </div>
 

@@ -59,12 +59,12 @@ export default function IndicadoresPage() {
                 setUserEmail(user.email || '')
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivel_cargo')
+                    .select('nivelCargo')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
-                if ((empleado as any)?.nivel_cargo) {
-                    setUserLevel((empleado as any).nivel_cargo)
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
                 } else {
                     const { data: profile } = await supabase
                         .from('usuarios')

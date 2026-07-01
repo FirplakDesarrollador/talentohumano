@@ -53,6 +53,7 @@ export default function HiluAdministrativaPage() {
                 // Get Current User
                 const { data: { session } } = await supabase.auth.getSession()
                 let userLevel = ''
+                let currentUsuarioId = 1
                 if (session?.user) {
                     const { data: empData } = await supabase
                         .from('empleados')
@@ -61,6 +62,13 @@ export default function HiluAdministrativaPage() {
                         .maybeSingle()
                     userLevel = (empData as any)?.nivelCargo || ''
                     setCurrentUser({ ...session.user, nivelCargo: userLevel })
+
+                    const { data: usuarioData } = await supabase
+                        .from('usuarios')
+                        .select('id')
+                        .eq('correo', session.user.email!)
+                        .maybeSingle()
+                    currentUsuarioId = (usuarioData as any)?.id || 1
                 }
 
                 // Fetch Employee Info
@@ -86,12 +94,44 @@ export default function HiluAdministrativaPage() {
 
                 // Fetch Operative HILU Record (for HILU Sistema) ONLY if not strictly administrative
                 if (!isAdministrative) {
-                    const { data: opHilu } = await supabase
+                    const cargoOperativo = empRecordAny.cargo || 'No especificado'
+                    let { data: opHilu } = await supabase
                         .from('query_hilu')
                         .select('*')
                         .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
-                        .eq('cargo', empRecordAny.cargo)
+                        .eq('cargo', cargoOperativo)
                         .maybeSingle()
+
+                    if (!opHilu) {
+                        // No tiene fases Operativas inicializadas todavía (típico de Jefes/líderes
+                        // que nunca pasaron por HILU Operativa). Las creamos para que la sección
+                        // "HILU Sistema de Producción" aparezca en su tarjeta.
+                        const phases = ['fase_H', 'fase_I', 'fase_L', 'fase_U'] as const
+                        for (const table of phases) {
+                            const { count } = await supabase
+                                .from(table)
+                                .select('*', { count: 'exact', head: true })
+                                .eq('empleado_id', empRecordAny.id)
+                                .eq('cargo', cargoOperativo)
+
+                            if (!count) {
+                                await (supabase.from(table) as any).insert({
+                                    empleado_id: empRecordAny.id,
+                                    cargo: cargoOperativo,
+                                    created_by: currentUsuarioId,
+                                    modified_by: currentUsuarioId
+                                })
+                            }
+                        }
+
+                        const { data: refreshedOpHilu } = await supabase
+                            .from('query_hilu')
+                            .select('*')
+                            .eq('cedula', Number(empRecordAny.cedula || empRecordAny.id))
+                            .eq('cargo', cargoOperativo)
+                            .maybeSingle()
+                        opHilu = refreshedOpHilu
+                    }
 
                     if (opHilu) setOperativeHiluRecord(opHilu)
                 } else {

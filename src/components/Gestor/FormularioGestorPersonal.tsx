@@ -903,7 +903,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     <div className="flex items-center gap-4 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
                         <Switch
                             checked={formData.activo}
+                            disabled={!isAdmin}
                             onCheckedChange={(val) => {
+                                if (!isAdmin) return;
                                 if (!val) {
                                     setShowRetiroModal(true);
                                 } else {
@@ -926,15 +928,17 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     <AlertCircle className="h-5 w-5 text-red-500" />
                                     <h4 className="text-sm font-black uppercase tracking-tight text-red-800">Detalles de Retiro</h4>
                                 </div>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => setShowRetiroModal(true)}
-                                    className="h-8 rounded-lg border-red-200 text-red-600 hover:bg-red-100 font-bold text-[10px] uppercase tracking-widest px-4"
-                                >
-                                    Editar Información
-                                </Button>
+                                {isAdmin && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowRetiroModal(true)}
+                                        className="h-8 rounded-lg border-red-200 text-red-600 hover:bg-red-100 font-bold text-[10px] uppercase tracking-widest px-4"
+                                    >
+                                        Editar Información
+                                    </Button>
+                                )}
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

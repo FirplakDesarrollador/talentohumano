@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, type NivelCargo } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, getPlantasPermitidas, type NivelCargo } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { VacacionesDetalle } from '@/components/Vacaciones/VacacionesDetalle'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -166,13 +166,35 @@ export default function VacacionesPage() {
         fetchUser()
     }, [supabase, router])
 
-    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
+    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) ||
                     (currentUser?.nivelCargo && ADMIN_LEVELS.includes(currentUser.nivelCargo as NivelCargo))
+
+    // Anyone who can actually use the module (i.e. wasn't redirected away as an Operario)
+    // should be able to see a history — just scoped to their own team.
+    const hasHistoryAccess = !!isAdmin || (!!currentUser?.nivelCargo && currentUser.nivelCargo !== 'Operario')
 
     const fetchHistory = useCallback(async () => {
         setHistoryLoading(true)
         try {
             let query = (supabase as any).from('Vacaciones').select('*').order('id', { ascending: false })
+
+            if (!isAdmin) {
+                const email = currentUser?.correo || ''
+                const fullAccessEmails = ['hector.chinchilla@firplak.com', 'estiven.londono@firplak.com']
+
+                if (!fullAccessEmails.includes(email)) {
+                    const plantas = getPlantasPermitidas(email)
+                    if (plantas && plantas.length > 0) {
+                        const plantasFilter = plantas.map(p => `"${p}"`).join(',')
+                        query = query.or(`Departamento.in.(${plantasFilter}),correo.eq."${email}",CorreoJefe.eq."${email}"`)
+                    } else if (email) {
+                        // Only see requests they submitted themselves or requests from their direct reports
+                        query = query.or(`correo.eq."${email}",CorreoJefe.eq."${email}"`)
+                    } else {
+                        query = query.eq('id', -1)
+                    }
+                }
+            }
 
             if (filterCedula) {
                 if (/^\d+$/.test(filterCedula)) {
@@ -195,7 +217,7 @@ export default function VacacionesPage() {
         } finally {
             setHistoryLoading(false)
         }
-    }, [supabase, filterCedula])
+    }, [supabase, filterCedula, isAdmin, currentUser])
 
     const handleDownloadReport = () => {
         if (history.length === 0) return;
@@ -310,7 +332,7 @@ export default function VacacionesPage() {
                     Cedula: empleado.cedula,
                     Empleado_Que_Disfruta: empleado.nombre_completo,
                     "Creado por": currentUser?.nombre || currentUser?.correo || 'Sistema',
-                    "Fecha Solicitud": new Date().toLocaleDateString('es-CO'),
+                    "Fecha Solicitud": new Date().toISOString(),
                     FechaInicial: formData.fechaInicio,
                     FechaFinal: formData.fechaFin,
                     FechaIngreso: formData.fechaRegreso,
@@ -406,7 +428,7 @@ export default function VacacionesPage() {
                                 <PlusCircle className="h-8 w-8 text-white" />
                                 <span className="font-bold text-lg uppercase tracking-tight">Ingresar Solicitud</span>
                             </Button>
-                            {isAdmin && (
+                            {hasHistoryAccess && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
                                     <Button
                                         onClick={() => setView('history')}
@@ -731,7 +753,7 @@ export default function VacacionesPage() {
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[11px] text-gray-500 font-medium">#{solicitud.Cedula}</span>
                                                                     <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded italic">
-                                                                        {solicitud['Fecha Solicitud']}
+                                                                        {solicitud['Fecha Solicitud'] ? new Date(solicitud['Fecha Solicitud']).toLocaleDateString('es-CO') : 'N/A'}
                                                                     </span>
                                                                 </div>
                                                             </div>
