@@ -37,8 +37,7 @@ import {
     RESTRICTED_SUPERVISORS,
     COORDINADORES_CON_ACCESO,
     JEFES_CON_ACCESO,
-    DIRECTORES_CON_ACCESO,
-    ANALISTAS_CON_ACCESO
+    DIRECTORES_CON_ACCESO
 } from '@/lib/constants/roles'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
@@ -213,8 +212,7 @@ export default function EntrenamientoDetailPage() {
             const isRestricted = RESTRICTED_SUPERVISORS.includes(email) || 
                                 COORDINADORES_CON_ACCESO.includes(email) || 
                                 JEFES_CON_ACCESO.includes(email) ||
-                                DIRECTORES_CON_ACCESO.includes(email) ||
-                                ANALISTAS_CON_ACCESO.includes(email)
+                                DIRECTORES_CON_ACCESO.includes(email)
 
             if (!isAdmin && !isRestricted) {
                 setIsAuthorized(false)

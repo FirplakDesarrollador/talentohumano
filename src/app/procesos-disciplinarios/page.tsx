@@ -130,7 +130,8 @@ export default function BuscadorProcesosDisciplinariosPage() {
                             'gerente': 'Gerente',
                             'director': 'Director',
                             'coordinador': 'Coordinador',
-                            'analista': 'Analista'
+                            'analista': 'Analista',
+                            'supervisor': 'Supervisor'
                         }
                         currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
                         userProfile = { ...(profile as any), correo: email, nivelCargo: currentLevel }
