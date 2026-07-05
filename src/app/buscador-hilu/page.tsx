@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
-import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -191,8 +191,11 @@ export default function BuscadorHiluPage() {
                 query = query.in('nivelCargo', selectedNiveles)
             }
 
-            // Filter by Area (with special Administrativa group)
-            if (selectedPlanta && selectedPlanta !== 'all') {
+            // Users restricted to Moldes only always see that plant, regardless of the Area dropdown
+            if (userEmail && HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(userEmail)) {
+                query = query.eq('area', 'Moldes')
+            } else if (selectedPlanta && selectedPlanta !== 'all') {
+                // Filter by Area (with special Administrativa group)
                 if (selectedPlanta === 'Administrativa') {
                     if (AREAS_ADMINISTRATIVAS.length > 0) {
                         const adminFilter = AREAS_ADMINISTRATIVAS.map(a => `area.eq.${a}`).join(',')
@@ -264,10 +267,11 @@ export default function BuscadorHiluPage() {
             setLoading(true) // Pre-loader while processing
             setTimeout(() => setLoading(false), 10)
         }
-    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase])
+    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase, userEmail])
 
     const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
-    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
+    const isRestrictedMoldes = userEmail && HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(userEmail)
+    const canSeeHilu = isSystemAdmin || isRestrictedMoldes || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
 
     useEffect(() => {
         const handleFocus = () => {

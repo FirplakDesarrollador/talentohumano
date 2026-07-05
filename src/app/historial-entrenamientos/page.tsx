@@ -21,6 +21,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CalendarioTeams } from '@/components/Programacion/CalendarioTeams';
 import { LayoutGrid, List, Loader2 } from 'lucide-react';
 import { AREAS_ADMINISTRATIVAS, ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles';
@@ -41,6 +42,7 @@ function HistorialEntrenamientosContent() {
     const [selectedPlanta, setSelectedPlanta] = useState('all');
     const [plantas, setPlantas] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState('list');
+    const [pendingEdit, setPendingEdit] = useState<any>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -190,6 +192,16 @@ function HistorialEntrenamientosContent() {
         }
     };
 
+    const handleConfirmEdit = () => {
+        if (!pendingEdit) return;
+        const params = new URLSearchParams();
+        params.set('tab', 'form');
+        params.set('edit', String(pendingEdit.id));
+        if (urlTipo) params.set('tipo', urlTipo);
+        router.push(`/programar-entrenamiento?${params.toString()}`);
+        setPendingEdit(null);
+    };
+
     const handleExport = () => {
         if (filteredData.length === 0) return;
 
@@ -299,7 +311,7 @@ function HistorialEntrenamientosContent() {
 
                 {activeTab === 'calendar' ? (
                     <div className="bg-white rounded-[32px] p-2 md:p-6 shadow-sm border border-gray-100">
-                        <CalendarioTeams userType={userType} />
+                        <CalendarioTeams userType={userType} onEventClick={(event) => setPendingEdit(event)} />
                     </div>
                 ) : loading || loadingUser ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
@@ -310,9 +322,10 @@ function HistorialEntrenamientosContent() {
                     <div className="grid grid-cols-1 gap-4">
                         {filteredData.length > 0 ? (
                             filteredData.map((item) => (
-                                <div 
+                                <div
                                     key={item.id}
-                                    className="bg-white rounded-[24px] p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group"
+                                    onClick={() => setPendingEdit(item)}
+                                    className="bg-white rounded-[24px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:ring-1 hover:ring-blue-200 transition-all group cursor-pointer"
                                 >
                                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                         <div className="flex items-center gap-5">
@@ -395,8 +408,9 @@ function HistorialEntrenamientosContent() {
                                             </div>
                                             
                                             <div className="flex gap-2">
-                                                <button 
-                                                    onClick={async () => {
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
                                                         await handleUpdateEstado(item.id, 'Entrenamiento Realizado');
                                                         router.push(`/entrenamiento/${item.empleado_id}`);
                                                     }}
@@ -409,8 +423,9 @@ function HistorialEntrenamientosContent() {
                                                 >
                                                     <CheckCircle2 className="h-5 w-5" />
                                                 </button>
-                                                <button 
-                                                    onClick={async () => {
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
                                                         await handleUpdateEstado(item.id, 'No Realizado');
                                                         router.push(`/programar-entrenamiento?tab=form&empleadoId=${item.empleado_id}`);
                                                     }}
@@ -440,6 +455,17 @@ function HistorialEntrenamientosContent() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={!!pendingEdit}
+                variant="info"
+                title="¿Deseas editar el entrenamiento?"
+                description={`Se abrirá el formulario de edición para ${pendingEdit?.empleados?.nombreCompleto || 'este colaborador'}, programado el ${pendingEdit ? format(parseISO(pendingEdit.fecha_programada), 'dd MMM yyyy', { locale: es }) : ''}.`}
+                confirmLabel="Editar"
+                cancelLabel="Cancelar"
+                onConfirm={handleConfirmEdit}
+                onCancel={() => setPendingEdit(null)}
+            />
         </div>
     );
 }

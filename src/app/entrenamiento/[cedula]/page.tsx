@@ -30,14 +30,15 @@ import { ReentrenamientoCard } from '@/components/HILU/ReentrenamientoCard'
 import { generateTrainingCertificatePDF } from '@/lib/pdf-utils'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { 
-    getPlantasPermitidas, 
-    ADMIN_EMAILS, 
+import {
+    getPlantasPermitidas,
+    ADMIN_EMAILS,
     ADMIN_LEVELS,
     RESTRICTED_SUPERVISORS,
     COORDINADORES_CON_ACCESO,
     JEFES_CON_ACCESO,
-    DIRECTORES_CON_ACCESO
+    DIRECTORES_CON_ACCESO,
+    HILU_OPERATIVA_RESTRINGIDA_MOLDES
 } from '@/lib/constants/roles'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
@@ -347,7 +348,8 @@ export default function EntrenamientoDetailPage() {
             }
 
             // Authorization check based on employee's plant
-            const userPlantas = userProfile?.plantas || getPlantasPermitidas(email)
+            const userPlantas = userProfile?.plantas
+                || (HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(email) ? ['Moldes'] : getPlantasPermitidas(email))
             const empPlanta = (emp.planta || '').trim()
             const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
 

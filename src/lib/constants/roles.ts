@@ -85,6 +85,7 @@ export const PROCESOS_DISCIPLINARIOS_LEVELS: NivelCargo[] = [
  */
 export const PROCESOS_DISCIPLINARIOS_EMAILS = [
     'luz.echeverri@firplak.com',
+    'brian.sanchez@firplak.com',
 ];
 
 /**
@@ -215,6 +216,24 @@ export const JEFES_INGENIERIA_MOLDES = [
 ];
 
 /**
+ * Non-supervisor employees explicitly granted access to the HILU Operativa
+ * module, restricted to viewing/editing (phases H, I, L — not U) employees
+ * from the Moldes plant only.
+ */
+export const HILU_OPERATIVA_RESTRINGIDA_MOLDES = [
+    'brian.sanchez@firplak.com',
+];
+
+/**
+ * Non-supervisor employees granted the same Jefe-tier module access as
+ * JEFES_INGENIERIA_MOLDES (Gestor de Personal, Ausentismos, Procesos
+ * Disciplinarios, Aumentos Salariales), but restricted to the Moldes plant only.
+ */
+export const JEFES_MOLDES = [
+    'brian.sanchez@firplak.com',
+];
+
+/**
  * Directors explicitly permitted to access the Gestor de Personal module.
  * All other Directors are blocked by default.
  */
@@ -289,6 +308,7 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (JEFES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
     if (JEFES_ALMACEN_CEDI.includes(email)) return ['Almacen', 'CEDI'];
     if (JEFES_INGENIERIA_MOLDES.includes(email)) return ['Ingenieria', 'Moldes'];
+    if (JEFES_MOLDES.includes(email)) return ['Moldes'];
     if (DIRECTORES_CON_ACCESO.includes(email)) return PLANTAS_DIRECTORES_PERMITIDAS;
     return null;
 }

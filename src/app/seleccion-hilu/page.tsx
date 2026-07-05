@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Briefcase, Settings, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles';
 
 export default function SeleccionHiluPage() {
     const router = useRouter();
@@ -29,6 +30,12 @@ export default function SeleccionHiluPage() {
                 .maybeSingle();
 
             if (!emp) {
+                setShowOperativa(true);
+                setLoading(false);
+                return;
+            }
+
+            if (HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(session.user.email)) {
                 setShowOperativa(true);
                 setLoading(false);
                 return;

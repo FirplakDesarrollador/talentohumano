@@ -19,36 +19,40 @@ import {
     FileText,
     AlertCircle,
     Loader2,
-    Search
+    Search,
+    Upload,
+    Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 const MOTIVOS = [
-    'Pendiente',
     'Ausencia Injustificada',
-    'incapacidad Enfermedad General',
-    'Incapacidad Accidente de Trabajo',
-    'Licencia de Maternidad',
-    'Licencia de Paternidad',
-    'Licencia por Luto',
-    'Permiso Remunerado',
-    'Permiso No Remunerado',
-    'Suspension',
     'Calamidad Domestica',
-    'Otro'
+    'Cumpleaños',
+    'Incapacidad Accidente de Tránsito',
+    'Incapacidad ARL',
+    'Incapacidad Enfermedad General',
+    'Licencia',
+    'Licencia No Remunerada',
+    'Pendiente',
+    'Permiso',
+    'Suspensión',
+    'Vacaciones'
 ].sort();
 
 interface FormularioAusentismoProps {
     onSuccess?: () => void;
-    initialData?: any; // For bulk registration maybe
+    editId?: string | null;
 }
 
-export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSuccess }) => {
+export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSuccess, editId }) => {
     const router = useRouter();
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
+    const [loadingEdit, setLoadingEdit] = useState(!!editId);
     const [fetchingEmployees, setFetchingEmployees] = useState(false);
+    const [uploadingDocumento, setUploadingDocumento] = useState(false);
 
     // Employee search state
     const [employees, setEmployees] = useState<any[]>([]);
@@ -60,7 +64,6 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
         cedula: '',
         nombreCompleto: '',
         motivo: 'Pendiente',
-        codigoIncapacidad: '',
         fechaInicio: format(new Date(), 'yyyy-MM-dd'),
         fechaFinal: format(new Date(), 'yyyy-MM-dd'),
         observaciones: '',
@@ -68,8 +71,51 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
         planta: '',
         jefe: '',
         contrato: '',
-        cargo: ''
+        cargo: '',
+        documentoSoporte: ''
     });
+
+    // Fetch existing record when editing
+    useEffect(() => {
+        const fetchEditData = async () => {
+            if (!editId) return;
+
+            setLoadingEdit(true);
+            try {
+                const { data, error } = await (supabase as any)
+                    .from('ausentismos')
+                    .select('*')
+                    .eq('Id', editId)
+                    .single();
+
+                if (error) throw error;
+                if (data) {
+                    const datosAdjuntos = data['Datos adjuntos'];
+                    setFormData({
+                        cedula: data['Título']?.toString() || '',
+                        nombreCompleto: data['Nombre Completo'] || '',
+                        motivo: data['Motivo Ausentismo'] || 'Pendiente',
+                        fechaInicio: data['FechaInicio'] || format(new Date(), 'yyyy-MM-dd'),
+                        fechaFinal: data['FechaFinal'] || format(new Date(), 'yyyy-MM-dd'),
+                        observaciones: data['Observaciones'] || '',
+                        descontarNomina: !!data['Descontar nomina'],
+                        planta: data['Planta'] || '',
+                        jefe: data['Jefe'] || '',
+                        contrato: data['Contrato'] || '',
+                        cargo: data['Cargo'] || '',
+                        documentoSoporte: (datosAdjuntos && datosAdjuntos.startsWith('http')) ? datosAdjuntos : ''
+                    });
+                    setSearchQuery(data['Nombre Completo'] || '');
+                }
+            } catch (err: any) {
+                console.error('Error fetching ausentismo for edit:', err);
+                toast.error('Error al cargar el registro para editar');
+            } finally {
+                setLoadingEdit(false);
+            }
+        };
+        fetchEditData();
+    }, [editId, supabase]);
 
     // Fetch employees for autocomplete
     useEffect(() => {
@@ -127,6 +173,36 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
         setShowResults(false);
     };
 
+    const handleUploadDocumento = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+
+        setUploadingDocumento(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `ausentismos/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('evidencias')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage
+                .from('evidencias')
+                .getPublicUrl(filePath);
+
+            setFormData(prev => ({ ...prev, documentoSoporte: data.publicUrl }));
+            toast.success('Documento adjuntado correctamente');
+        } catch (err: any) {
+            console.error('Error uploading documento:', err);
+            toast.error('Error al subir el documento: ' + (err.message || 'Error desconocido'));
+        } finally {
+            setUploadingDocumento(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.cedula || !formData.nombreCompleto) {
@@ -137,12 +213,12 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
         setLoading(true);
         try {
             const { data: userData } = await supabase.auth.getUser();
+            const userEmail = userData.user?.email || 'Sistema';
 
-            const dataToSave = {
+            const dataToSave: any = {
                 'Título': parseInt(formData.cedula),
                 'Nombre Completo': formData.nombreCompleto,
                 'Motivo Ausentismo': formData.motivo,
-                'Codigo Incapacidad': formData.codigoIncapacidad,
                 'FechaInicio': formData.fechaInicio,
                 'FechaFinal': formData.fechaFinal,
                 'Observaciones': formData.observaciones,
@@ -151,14 +227,27 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 'Contrato': formData.contrato,
                 'Cargo': formData.cargo,
                 'Descontar nomina': formData.descontarNomina,
-                'Creado por': userData.user?.email || 'Sistema',
-                'Creado': new Date().toISOString()
+                'Datos adjuntos': formData.documentoSoporte || null
             };
 
-            const { error } = await (supabase.from('ausentismos') as any).insert(dataToSave);
-            if (error) throw error;
+            if (editId) {
+                dataToSave['Modificado por'] = userEmail;
+                dataToSave['Modificado'] = new Date().toISOString();
 
-            toast.success('Ausentismo registrado correctamente');
+                const { error } = await (supabase.from('ausentismos') as any).update(dataToSave).eq('Id', editId);
+                if (error) throw error;
+
+                toast.success('Ausentismo actualizado correctamente');
+            } else {
+                dataToSave['Creado por'] = userEmail;
+                dataToSave['Creado'] = new Date().toISOString();
+
+                const { error } = await (supabase.from('ausentismos') as any).insert(dataToSave);
+                if (error) throw error;
+
+                toast.success('Ausentismo registrado correctamente');
+            }
+
             if (onSuccess) onSuccess();
             else router.push('/ausentismos');
         } catch (err: any) {
@@ -271,20 +360,47 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                                 {MOTIVOS.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
                         </div>
-
-                        {(formData.motivo.toLowerCase().includes('incapacidad')) && (
-                            <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
-                                <Label htmlFor="codigo" className="text-xs font-bold text-gray-500 mb-1.5 block">Código Incapacidad (Opcional)</Label>
-                                <Input
-                                    id="codigo"
-                                    value={formData.codigoIncapacidad}
-                                    onChange={(e) => setFormData({ ...formData, codigoIncapacidad: e.target.value })}
-                                    placeholder="Ej: K00.1"
-                                    className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold uppercase"
-                                />
-                            </div>
-                        )}
                     </div>
+
+                    {(formData.motivo.toLowerCase().includes('incapacidad')) && (
+                        <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
+                            <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Documento Soporte de Incapacidad</Label>
+                            <div className="flex items-center gap-3">
+                                <Input
+                                    type="file"
+                                    className="hidden"
+                                    id="documentoSoporte"
+                                    onChange={handleUploadDocumento}
+                                    disabled={uploadingDocumento}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={uploadingDocumento}
+                                    onClick={() => document.getElementById('documentoSoporte')?.click()}
+                                    className="h-12 rounded-xl border-gray-200 font-semibold text-gray-600"
+                                >
+                                    {uploadingDocumento ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Upload className="h-4 w-4 mr-2" />
+                                    )}
+                                    {formData.documentoSoporte ? 'Reemplazar Archivo' : 'Subir Archivo'}
+                                </Button>
+
+                                {formData.documentoSoporte && (
+                                    <a
+                                        href={formData.documentoSoporte}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-2 rounded-xl"
+                                    >
+                                        <Eye className="h-4 w-4" /> Ver documento
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1.5">
@@ -353,7 +469,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 </Button>
                 <Button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || loadingEdit}
                     className="flex-[2] h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
                 >
                     {loading ? (
@@ -361,7 +477,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                     ) : (
                         <>
                             <Save className="h-5 w-5 mr-2" />
-                            Guardar Registro
+                            {editId ? 'Guardar Cambios' : 'Guardar Registro'}
                         </>
                     )}
                 </Button>
