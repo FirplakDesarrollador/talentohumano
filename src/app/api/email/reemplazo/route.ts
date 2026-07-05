@@ -164,6 +164,7 @@ export async function POST(request: Request) {
                         <p>Hola <strong>${reemplazo.nombreCompleto}</strong>,</p>
                         <p>Se te ha asignado como encargado(a) durante la ausencia de <strong>${empAusente.nombreCompleto}</strong>.</p>
                         <p><strong>Cargo a cubrir:</strong> ${selectedCargo}</p>
+                        <p>Para revisar el archivo soporte dirígete al siguiente link: <a href="https://talentohumano.vercel.app/login">Talento Humano</a></p>
                         <br/>
                         <p>Este es un mensaje automático del sistema de Talento Humano.</p>
                     </div>
@@ -184,6 +185,7 @@ export async function POST(request: Request) {
                     <p>Te informamos que se ha registrado un reemplazo para <strong>${empAusente.nombreCompleto}</strong>.</p>
                     <p><strong>Cargo a cubrir:</strong> ${selectedCargo}</p>
                     <p><strong>Persona(s) encargada(s):</strong> ${nombresReemplazos}</p>
+                    <p>Para revisar el archivo soporte dirígete al siguiente link: <a href="https://talentohumano.vercel.app/login">Talento Humano</a></p>
                     <br/>
                     <p>Este es un mensaje automático del sistema de Talento Humano.</p>
                 </div>

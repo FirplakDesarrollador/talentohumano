@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS, ANALISTAS_CON_ACCESO, JEFES_MOLDES, getPlantasPermitidas } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { AusentismoCard, type Ausentismo } from '@/components/Ausentismos/AusentismoCard'
 import { AusentismoRow } from '@/components/Ausentismos/AusentismoRow'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { subMonths, isAfter, parse, isValid } from 'date-fns'
@@ -38,6 +39,7 @@ export default function AusentismosPage() {
     // UI State
     const [busqueda, setBusqueda] = useState('')
     const [filtroReciente, setFiltroReciente] = useState(false)
+    const [pendingEdit, setPendingEdit] = useState<Ausentismo | null>(null)
 
     // 1. Fetch Ausentismos
     useEffect(() => {
@@ -198,7 +200,7 @@ export default function AusentismosPage() {
     }, [busqueda, ausentismos, filtroReciente])
 
     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(userLevel as any)
-    const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any)
+    const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || (currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo))
 
     if (!loading && !hasAccess) {
         return (
@@ -292,7 +294,7 @@ export default function AusentismosPage() {
                 ) : filteredAusentismos.length > 0 ? (
                     <div className="flex flex-col gap-3">
                         {filteredAusentismos.map((a, index) => (
-                            <AusentismoRow key={`${a.id}-${index}`} ausentismo={a} />
+                            <AusentismoRow key={`${a.Id}-${index}`} ausentismo={a} onClick={() => setPendingEdit(a)} />
                         ))}
                     </div>
                 ) : (
@@ -307,6 +309,20 @@ export default function AusentismosPage() {
                     </div>
                 )}
             </main>
+
+            <ConfirmDialog
+                isOpen={!!pendingEdit}
+                variant="info"
+                title="¿Deseas editar el ausentismo?"
+                description={`Se abrirá el formulario de edición para ${pendingEdit?.['Nombre Completo'] || 'este colaborador'}.`}
+                confirmLabel="Editar"
+                cancelLabel="Cancelar"
+                onConfirm={() => {
+                    if (pendingEdit) router.push(`/ausentismos/nuevo?edit=${pendingEdit.Id}`)
+                    setPendingEdit(null)
+                }}
+                onCancel={() => setPendingEdit(null)}
+            />
         </div>
     )
 }

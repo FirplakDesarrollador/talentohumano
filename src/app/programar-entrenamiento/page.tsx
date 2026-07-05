@@ -70,6 +70,15 @@ function ProgramarEntrenamientoContent() {
         }
     };
 
+    const handleEventClick = (event: any) => {
+        setActiveTab('form');
+        const params = new URLSearchParams();
+        params.set('tab', 'form');
+        params.set('edit', String(event.id));
+        if (urlTipo) params.set('tipo', urlTipo);
+        router.push(`/programar-entrenamiento?${params.toString()}`);
+    };
+
     if (loadingUser) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
@@ -154,7 +163,7 @@ function ProgramarEntrenamientoContent() {
                         </div>
                     ) : (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <CalendarioTeams key={refreshKey} initialDate={initialDate} userType={userType} />
+                            <CalendarioTeams key={refreshKey} initialDate={initialDate} userType={userType} onEventClick={handleEventClick} />
                         </div>
                     )}
                 </div>

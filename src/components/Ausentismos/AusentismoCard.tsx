@@ -6,7 +6,7 @@ import { differenceInDays, parseISO, isValid } from 'date-fns';
 import { substring } from '@/lib/utils';
 
 export interface Ausentismo {
-    id: number;
+    Id: number;
     'Título'?: number | null; // Cédula
     'Nombre Completo': string;
     'Motivo Ausentismo': string;
@@ -19,6 +19,7 @@ export interface Ausentismo {
     'Contrato'?: string | null;
     'Cargo'?: string | null;
     'Descontar nomina'?: string | null;
+    'Datos adjuntos'?: string | null;
     'Creado'?: string | null;
 }
 

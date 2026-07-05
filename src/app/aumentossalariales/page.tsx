@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS, AUMENTOS_SALARIALES_LEVELS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS, AUMENTOS_SALARIALES_LEVELS, JEFES_MOLDES } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -123,7 +123,7 @@ export default function AumentosSalarialesPage() {
 
                     // Check for access permission
                     const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(mappedLevel as any)
-                    const hasAccess = isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(mappedLevel as any)
+                    const hasAccess = isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(mappedLevel as any) || (user?.email && JEFES_MOLDES.includes(user.email))
                     
                     if (!hasAccess) {
                         toast.error('No tienes permisos para acceder a este módulo')
@@ -245,14 +245,18 @@ export default function AumentosSalarialesPage() {
                     // Validar permisos: un usuario normal solo puede ver a los empleados donde él figura como jefe
                     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(currentUser?.nivelCargo as any)
                     
+                    const isMoldesRestricted = currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo);
+
                     const permitidosData = activosData.filter(emp => {
                         if (isSystemAdmin) return true;
-    
+
+                        if (isMoldesRestricted) return emp.planta === 'Moldes' || emp.area === 'Moldes';
+
                         const empJefe = (emp.jefe || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                         const myName = (currentUser?.nombre || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
+
                         if (!empJefe || !myName || empJefe.length < 3 || myName.length < 3) return false;
-    
+
                         return empJefe.includes(myName) || myName.includes(empJefe);
                     })
 

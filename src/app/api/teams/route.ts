@@ -1,5 +1,21 @@
 import { NextResponse } from 'next/server';
 
+// Colombia (America/Bogota) is fixed at UTC-05:00 year-round, with no daylight saving time.
+const BOGOTA_UTC_OFFSET_HOURS = 5;
+
+// Converts a naive local datetime string ("YYYY-MM-DDTHH:mm:ss") representing
+// America/Bogota wall-clock time into an explicit UTC ISO string. This avoids
+// relying on Microsoft Graph to correctly interpret the IANA "America/Bogota"
+// timeZone name, which it does not always honor consistently.
+function bogotaLocalToUtcIso(localDateTime: string): string {
+    const [datePart, timePart] = localDateTime.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute, second] = (timePart || '00:00:00').split(':').map(Number);
+
+    const utcMs = Date.UTC(year, month - 1, day, hour + BOGOTA_UTC_OFFSET_HOURS, minute, second || 0);
+    return new Date(utcMs).toISOString();
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -51,12 +67,12 @@ export async function POST(request: Request) {
                 content: content
             },
             start: {
-                dateTime: startDateTime,
-                timeZone: "America/Bogota"
+                dateTime: bogotaLocalToUtcIso(startDateTime),
+                timeZone: "UTC"
             },
             end: {
-                dateTime: endDateTime,
-                timeZone: "America/Bogota"
+                dateTime: bogotaLocalToUtcIso(endDateTime),
+                timeZone: "UTC"
             },
             isOnlineMeeting: true,
             onlineMeetingProvider: "teamsForBusiness"

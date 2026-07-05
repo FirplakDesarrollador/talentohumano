@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS, JEFES_MOLDES } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -106,7 +106,7 @@ export default function MenuPage() {
             title: 'Aumentos salariales',
             href: '/aumentossalariales',
             icon: TrendingUp,
-            visible: isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(userLevel as any)
+            visible: isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail)
         },
         {
             title: 'Cesantías',
@@ -124,13 +124,13 @@ export default function MenuPage() {
             title: 'Gestor de personal',
             href: '/gestor-de-personal',
             icon: Users,
-            visible: !GESTOR_EXCLUDED_EMAILS.includes(user?.email) && (isSystemAdmin || GESTOR_LEVELS.includes(userLevel as any))
+            visible: !GESTOR_EXCLUDED_EMAILS.includes(user?.email) && (isSystemAdmin || GESTOR_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail))
         },
         {
             title: 'Ausentismos',
             href: '/ausentismos',
             icon: UserX,
-            visible: isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any)
+            visible: isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail)
         },
         {
             title: 'Procesos Disciplinarios',

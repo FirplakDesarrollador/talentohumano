@@ -8,9 +8,10 @@ import { type Ausentismo } from './AusentismoCard';
 
 interface AusentismoRowProps {
     ausentismo: Ausentismo;
+    onClick?: () => void;
 }
 
-export const AusentismoRow: React.FC<AusentismoRowProps> = ({ ausentismo }) => {
+export const AusentismoRow: React.FC<AusentismoRowProps> = ({ ausentismo, onClick }) => {
     const calculateDays = () => {
         try {
             const start = parseISO(ausentismo.FechaInicio);
@@ -27,7 +28,7 @@ export const AusentismoRow: React.FC<AusentismoRowProps> = ({ ausentismo }) => {
     const days = calculateDays();
 
     return (
-        <div className="bg-white border-b border-gray-100 hover:bg-blue-50/30 transition-all duration-200 group">
+        <div onClick={onClick} className="bg-white border-b border-gray-100 hover:bg-blue-50/30 transition-all duration-200 group cursor-pointer">
             <div className="px-4 py-3 flex flex-row items-center gap-4">
                 {/* Left: Employee Info */}
                 <div className="flex items-center gap-3 w-1/3 min-w-[200px]">

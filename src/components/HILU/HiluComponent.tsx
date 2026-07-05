@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS, SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_ALMACEN_CEDI, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
+import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS, SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_ALMACEN_CEDI, SUPERVISORES_MUEBLES_CEFI, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
 import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
@@ -193,7 +193,8 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             SUPERVISORES_MUEBLES_CEFI.includes(email) ||
             email === 'jakeline.chaverra@firplak.com' ||
             email === 'maria.perez@firplak.com' ||
-            email === 'sara.aguilar@firplak.com'
+            email === 'sara.aguilar@firplak.com' ||
+            HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(email)
         ) {
             if (phase === 'U') return false
             return true
@@ -387,6 +388,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             if (phase === 'I') {
                 isDone = !!(currentData.fi_estandar_hdt &&
                     currentData.fi_entrenamiento_calidad &&
+                    currentData.fi_mantenimiento_autonomo &&
                     currentData.fi_hace_acompanado &&
                     currentData.fi_hace_solo &&
                     currentData.fi_curso_5s &&
@@ -727,6 +729,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             const checks = [
                 localEmpleado.fi_estandar_hdt,
                 localEmpleado.fi_entrenamiento_calidad,
+                localEmpleado.fi_mantenimiento_autonomo,
                 localEmpleado.fi_hace_acompanado,
                 localEmpleado.fi_hace_solo,
                 localEmpleado.fi_curso_5s,
@@ -736,7 +739,7 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
                 (localEmpleado.fi_conocimiento || 0) > 0
             ]
             const completed = checks.filter(Boolean).length
-            progress = Math.round((completed / 9) * 100)
+            progress = Math.round((completed / 10) * 100)
         } else {
             const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))
@@ -893,10 +896,11 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
             const checks = [
                 localEmpleado.fl_cumple_calidad,
                 localEmpleado.fl_cumple_estandar,
-                localEmpleado.fl_cumple_tiempo
+                localEmpleado.fl_cumple_tiempo,
+                localEmpleado.fl_cumple_mantenimiento_autonomo
             ]
             const completed = checks.filter(Boolean).length
-            progress = Math.round((completed / 3) * 100)
+            progress = Math.round((completed / 4) * 100)
         } else {
             const availableTools = role === 'SUPERVISOR_MEDIO'
                 ? TOOLS_LIST.filter(t => !['OPT SIS', 'QRQC'].includes(t))

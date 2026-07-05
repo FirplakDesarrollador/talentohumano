@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLANTAS } from './GestorFilters';
-import { ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO } from '@/lib/constants/roles';
+import { ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, JEFES_MOLDES, DIRECTORES_CON_ACCESO } from '@/lib/constants/roles';
 import Image from 'next/image';
 import type { Database } from '@/lib/supabase/types';
 
@@ -138,7 +138,7 @@ const FormField: React.FC<{
 const inputClass = "h-11 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-medium text-sm";
 const selectClass = "flex h-11 w-full rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all font-medium";
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled }: { options: string[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled, clearLabel = 'Ninguno' }: { options: string[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean, clearLabel?: string }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
     const containerRef = useRef<HTMLDivElement>(null);
@@ -185,7 +185,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled }: {
                                 setSearch("");
                             }}
                         >
-                            Seleccione un jefe
+                            {clearLabel}
                         </div>
                         {filteredOptions.length > 0 ? filteredOptions.map((opt) => (
                             <div
@@ -235,7 +235,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 setCurrentUser(user);
                 setIsRestrictedSupervisor(RESTRICTED_SUPERVISORS.includes(user.email || ''));
                 setIsRestrictedCoordinator(COORDINADORES_CON_ACCESO.includes(user.email || ''));
-                setIsRestrictedJefe(JEFES_CON_ACCESO.includes(user.email || '') || JEFES_MUEBLES_CEFI.includes(user.email || '') || JEFES_ALMACEN_CEDI.includes(user.email || '') || JEFES_INGENIERIA_MOLDES.includes(user.email || ''));
+                setIsRestrictedJefe(JEFES_CON_ACCESO.includes(user.email || '') || JEFES_MUEBLES_CEFI.includes(user.email || '') || JEFES_ALMACEN_CEDI.includes(user.email || '') || JEFES_INGENIERIA_MOLDES.includes(user.email || '') || JEFES_MOLDES.includes(user.email || ''));
                 setIsRestrictedDirector(DIRECTORES_CON_ACCESO.includes(user.email || ''));
                 setIsAdmin(ADMIN_EMAILS.includes(user.email || ''));
             }
@@ -789,33 +789,40 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
 
             <FormSection title="Información Laboral" icon={<Briefcase className="h-5 w-5" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
-                        <FormField label="Cargo Actual" icon={<Briefcase className="h-3 w-3" />}>
-                            <Input list="cargos-list" value={formData.cargo} onChange={(e) => updateField('cargo', e.target.value)} className={inputClass} />
-                            <datalist id="cargos-list">{existingCargos.map(c => <option key={c} value={c} />)}</datalist>
-                        </FormField>
+                    <div className="md:col-span-2 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-end">
+                            <FormField label="Cargo Actual" icon={<Briefcase className="h-3 w-3" />}>
+                                <SearchableSelect
+                                    options={existingCargos}
+                                    value={formData.cargo}
+                                    onChange={(val) => updateField('cargo', val)}
+                                    placeholder="Seleccione un cargo"
+                                    clearLabel="Seleccione un cargo"
+                                />
+                            </FormField>
 
-                        <div className="hidden md:flex flex-col items-center justify-center pb-2">
-                            <button 
-                                type="button"
-                                title="Intercambiar cargo actual por polivalencia"
-                                onClick={() => {
-                                    const polyToSwap = selectedPolyToSwap || formData.polivalenciasSeleccionadas[0];
-                                    if (polyToSwap) {
-                                        updateField('cargo', polyToSwap);
-                                        toast.success(`Cargo actualizado a ${polyToSwap}`);
-                                    }
-                                }}
-                                disabled={formData.polivalenciasSeleccionadas.length === 0}
-                                className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all text-slate-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <ArrowRightLeft className="h-5 w-5" />
-                            </button>
+                            <div className="hidden md:flex flex-col items-center justify-center pb-2">
+                                <button
+                                    type="button"
+                                    title="Intercambiar cargo actual por polivalencia"
+                                    onClick={() => {
+                                        const polyToSwap = selectedPolyToSwap || formData.polivalenciasSeleccionadas[0];
+                                        if (polyToSwap) {
+                                            updateField('cargo', polyToSwap);
+                                            toast.success(`Cargo actualizado a ${polyToSwap}`);
+                                        }
+                                    }}
+                                    disabled={formData.polivalenciasSeleccionadas.length === 0}
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all text-slate-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <ArrowRightLeft className="h-5 w-5" />
+                                </button>
+                            </div>
                         </div>
 
                         <FormField label="Polivalencia" icon={<Users className="h-3 w-3" />}>
                             <div className="flex gap-2">
-                                <div className={`${inputClass} flex-1 overflow-x-auto whitespace-nowrap flex items-center gap-2 py-1.5 px-2`}>
+                                <div className={`${inputClass} !h-auto min-h-11 flex-1 flex flex-wrap items-center gap-2 py-1.5 px-2`}>
                                     {formData.polivalenciasSeleccionadas.length > 0 ? (
                                         formData.polivalenciasSeleccionadas.map(p => {
                                             const isSelected = (selectedPolyToSwap || formData.polivalenciasSeleccionadas[0]) === p;
@@ -825,8 +832,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                                     type="button"
                                                     onClick={() => setSelectedPolyToSwap(p)}
                                                     className={`px-3 py-1 text-sm rounded-lg transition-colors border ${
-                                                        isSelected 
-                                                            ? 'bg-slate-100 text-slate-800 border-slate-200 shadow-sm font-medium' 
+                                                        isSelected
+                                                            ? 'bg-slate-100 text-slate-800 border-slate-200 shadow-sm font-medium'
                                                             : 'bg-transparent text-gray-500 hover:bg-gray-50 border-transparent hover:border-gray-200'
                                                     }`}
                                                 >
@@ -838,7 +845,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                         <span className="text-gray-400 italic text-sm px-2">Sin polivalencias</span>
                                     )}
                                 </div>
-                                <button 
+                                <button
                                     type="button"
                                     title="Intercambiar cargo actual por polivalencia"
                                     onClick={() => {
@@ -869,6 +876,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             value={formData.jefe}
                             onChange={(val) => updateField('jefe', val)}
                             placeholder="Seleccione un jefe"
+                            clearLabel="Seleccione un jefe"
                         />
                     </FormField>
                     <FormField label="Empresa" icon={<Building2 className="h-3 w-3" />}>
@@ -1425,6 +1433,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                     <option value="Despido sin justa causa">Despido sin justa causa</option>
                                     <option value="Despido con justa causa">Despido con justa causa</option>
                                     <option value="Terminación de contrato obra o labor">Terminación de contrato obra o labor</option>
+                                    <option value="Cumplimiento de Contrato">Cumplimiento de Contrato</option>
                                     <option value="Otro">Otro</option>
                                 </select>
                             </FormField>

@@ -1,12 +1,15 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, UserX } from 'lucide-react'
 import { FormularioAusentismo } from '@/components/Ausentismos/FormularioAusentismo'
 
-export default function NuevoAusentismoPage() {
+function NuevoAusentismoContent() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const editId = searchParams.get('edit')
 
     return (
         <div className="min-h-screen bg-[#F1F4F8]">
@@ -27,8 +30,8 @@ export default function NuevoAusentismoPage() {
                                 <UserX className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-black tracking-tight uppercase">Nuevo Ausentismo</h1>
-                                <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Registro individual</p>
+                                <h1 className="text-xl font-black tracking-tight uppercase">{editId ? 'Editar Ausentismo' : 'Nuevo Ausentismo'}</h1>
+                                <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">{editId ? 'Modificar registro existente' : 'Registro individual'}</p>
                             </div>
                         </div>
                     </div>
@@ -36,8 +39,16 @@ export default function NuevoAusentismoPage() {
             </header>
 
             <main className="max-w-4xl mx-auto px-6 py-12">
-                <FormularioAusentismo />
+                <FormularioAusentismo editId={editId} />
             </main>
         </div>
+    )
+}
+
+export default function NuevoAusentismoPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F1F4F8]"><UserX className="h-8 w-8 text-blue-500 animate-pulse" /></div>}>
+            <NuevoAusentismoContent />
+        </Suspense>
     )
 }

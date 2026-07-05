@@ -13,9 +13,18 @@ import {
     History as HistoryIcon,
     Loader2,
     FileText,
-    ShieldCheck
+    ShieldCheck,
+    ShieldAlert
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+    ADMIN_LEVELS,
+    ADMIN_EMAILS,
+    ANALISTAS_CON_ACCESO,
+    getPlantasPermitidas,
+    PROCESOS_DISCIPLINARIOS_LEVELS,
+    PROCESOS_DISCIPLINARIOS_EMAILS
+} from '@/lib/constants/roles'
 
 export default function DetalleProcesosDisciplinarioPage() {
     const router = useRouter()
@@ -28,6 +37,7 @@ export default function DetalleProcesosDisciplinarioPage() {
     const [loading, setLoading] = useState(true)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [editingProceso, setEditingProceso] = useState<any>(null)
+    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
 
     // 1. Fetch Data
     const fetchData = useCallback(async () => {
@@ -77,6 +87,103 @@ export default function DetalleProcesosDisciplinarioPage() {
         fetchData()
     }, [fetchData])
 
+    // Authorization: block direct access to employees the current user isn't allowed to see
+    // (mirrors the visibility rules applied in the Procesos Disciplinarios list page).
+    useEffect(() => {
+        const checkAuthorization = async () => {
+            if (!empleado) return
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user?.email) {
+                    setIsAuthorized(false)
+                    return
+                }
+
+                const email = user.email
+                const systemAdmin = ADMIN_EMAILS.includes(email)
+
+                const { data: empCurrent } = await supabase
+                    .from('empleados')
+                    .select('nivelCargo, nombreCompleto')
+                    .eq('correo_electronico', email)
+                    .maybeSingle()
+
+                let currentLevel = ''
+                let nombreActual = ''
+
+                if ((empCurrent as any)?.nivelCargo) {
+                    currentLevel = (empCurrent as any).nivelCargo
+                    nombreActual = (empCurrent as any).nombreCompleto || ''
+                } else {
+                    const { data: profile } = await supabase
+                        .from('usuarios')
+                        .select('rol, nombre')
+                        .eq('correo', email)
+                        .maybeSingle()
+
+                    if ((profile as any)?.rol) {
+                        const roleMap: Record<string, string> = {
+                            'admin': 'Administrador',
+                            'desarrollador': 'Administrador',
+                            'jefe': 'Jefe',
+                            'gerente': 'Gerente',
+                            'director': 'Director',
+                            'coordinador': 'Coordinador',
+                            'analista': 'Analista',
+                            'supervisor': 'Supervisor'
+                        }
+                        currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
+                        nombreActual = (profile as any).nombre || ''
+                    }
+                }
+
+                const moduleAllowed = systemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(currentLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(email)
+                if (!moduleAllowed) {
+                    setIsAuthorized(false)
+                    return
+                }
+
+                const isAdmin = systemAdmin || (ADMIN_LEVELS as any).includes(currentLevel)
+                const isAnalyst = ANALISTAS_CON_ACCESO.includes(email)
+                const fullAccessEmails = ['hector.chinchilla@firplak.com', 'estiven.londono@firplak.com']
+
+                if (isAdmin || isAnalyst || fullAccessEmails.includes(email)) {
+                    setIsAuthorized(true)
+                    return
+                }
+
+                // Can always see their own record
+                if (empleado.correo_electronico === email) {
+                    setIsAuthorized(true)
+                    return
+                }
+
+                // Direct reports
+                const nombreNorm = nombreActual.toLowerCase().trim()
+                const jefeNorm = (empleado.jefe || '').toLowerCase().trim()
+                if (nombreNorm && jefeNorm === nombreNorm) {
+                    setIsAuthorized(true)
+                    return
+                }
+
+                // Plant-wide access — never applies to Supervisors, who are restricted to
+                // their own direct reports so they can't see other supervisors' teams.
+                const isSupervisor = currentLevel.toLowerCase() === 'supervisor'
+                const plantas = getPlantasPermitidas(email)
+                if (!isSupervisor && plantas && plantas.includes(empleado.planta)) {
+                    setIsAuthorized(true)
+                    return
+                }
+
+                setIsAuthorized(false)
+            } catch (err) {
+                console.error('Error checking authorization:', err)
+                setIsAuthorized(false)
+            }
+        }
+        checkAuthorization()
+    }, [empleado, supabase])
+
     const handleEdit = (proceso: any) => {
         setEditingProceso(proceso)
         setIsCreateModalOpen(true)
@@ -85,6 +192,21 @@ export default function DetalleProcesosDisciplinarioPage() {
     const handleCloseModal = () => {
         setIsCreateModalOpen(false)
         setEditingProceso(null)
+    }
+
+    if (!loading && isAuthorized === false) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+                <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
+                <h1 className="text-2xl font-black text-[#1D3557] uppercase tracking-tighter mb-2">Acceso No Autorizado</h1>
+                <p className="text-gray-500 text-center max-w-md mb-8">
+                    No tienes permisos para ver el expediente disciplinario de este colaborador.
+                </p>
+                <Button onClick={() => router.push('/procesos-disciplinarios')} className="bg-[#1D3557] text-white rounded-xl px-8">
+                    Volver al Listado
+                </Button>
+            </div>
+        )
     }
 
     return (
@@ -113,7 +235,7 @@ export default function DetalleProcesosDisciplinarioPage() {
             </div>
 
             <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                {loading ? (
+                {loading || isAuthorized === null ? (
                     <div className="flex flex-col items-center justify-center py-32 space-y-4">
                         <Loader2 className="h-10 w-10 text-[#1D3557] animate-spin opacity-40" />
                         <p className="text-gray-400 font-medium text-sm animate-pulse">Abriendo expediente...</p>

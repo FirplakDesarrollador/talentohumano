@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 import { Plus, Calendar, User, CheckCircle2, XCircle, AlertCircle, Trash2, Loader2 } from 'lucide-react'
-import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
+import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
@@ -50,7 +50,8 @@ export function AuditoriaCard({ empleadoId, cargo, auditorias, onUpdate, current
             email === 'juliana.ramirez@firplak.com' ||
             email === 'sara.aguilar@firplak.com' ||
             email === 'analistaabastecimiento@firplak.com' ||
-            email === 'hector.chinchilla@firplak.com'
+            email === 'hector.chinchilla@firplak.com' ||
+            HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(email)
         ) return false
         
         return true

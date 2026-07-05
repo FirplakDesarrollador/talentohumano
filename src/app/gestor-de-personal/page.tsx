@@ -18,7 +18,7 @@ import {
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
 import { CargosModal } from '@/components/Gestor/CargosModal'
-import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, RESTRICTED_SUPERVISORS, GESTOR_EXCLUDED_EMAILS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, RESTRICTED_SUPERVISORS, GESTOR_EXCLUDED_EMAILS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, JEFES_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/supabase/types'
 
@@ -315,7 +315,7 @@ export default function GestorPersonalPage() {
                 {/* Actions Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        {!((user?.email && (RESTRICTED_SUPERVISORS.includes(user.email) || COORDINADORES_CON_ACCESO.includes(user.email) || JEFES_CON_ACCESO.includes(user.email) || JEFES_MUEBLES_CEFI.includes(user.email) || JEFES_ALMACEN_CEDI.includes(user.email) || JEFES_INGENIERIA_MOLDES.includes(user.email) || DIRECTORES_CON_ACCESO.includes(user.email) || ANALISTAS_CON_ACCESO.includes(user.email)))) && (
+                        {!((user?.email && (RESTRICTED_SUPERVISORS.includes(user.email) || COORDINADORES_CON_ACCESO.includes(user.email) || JEFES_CON_ACCESO.includes(user.email) || JEFES_MUEBLES_CEFI.includes(user.email) || JEFES_ALMACEN_CEDI.includes(user.email) || JEFES_INGENIERIA_MOLDES.includes(user.email) || JEFES_MOLDES.includes(user.email) || DIRECTORES_CON_ACCESO.includes(user.email) || ANALISTAS_CON_ACCESO.includes(user.email)))) && (
                             <Button
                                 onClick={() => router.push('/gestor-de-personal/nuevo')}
                                 className="bg-[#1e2f3d] hover:bg-[#2d4356] text-white flex items-center gap-2 px-6 rounded-xl shadow-md h-11"

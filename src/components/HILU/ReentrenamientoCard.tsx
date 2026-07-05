@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
 import { Plus, RotateCcw, Calendar, CheckCircle, Clock, Trash2, Loader2, AlertCircle } from 'lucide-react'
-import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
+import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
@@ -59,7 +59,8 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
             email === 'maria.perez@firplak.com' ||
             email === 'juliana.ramirez@firplak.com' ||
             email === 'sara.aguilar@firplak.com' ||
-            email === 'analistaabastecimiento@firplak.com'
+            email === 'analistaabastecimiento@firplak.com' ||
+            HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(email)
         ) return false
 
         return true

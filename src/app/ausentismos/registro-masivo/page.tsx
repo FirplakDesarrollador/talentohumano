@@ -25,18 +25,18 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 
 const MOTIVOS = [
-    'Pendiente',
     'Ausencia Injustificada',
-    'incapacidad Enfermedad General',
-    'Incapacidad Accidente de Trabajo',
-    'Licencia de Maternidad',
-    'Licencia de Paternidad',
-    'Licencia por Luto',
-    'Permiso Remunerado',
-    'Permiso No Remunerado',
-    'Suspension',
     'Calamidad Domestica',
-    'Otro'
+    'Cumpleaños',
+    'Incapacidad Accidente de Tránsito',
+    'Incapacidad ARL',
+    'Incapacidad Enfermedad General',
+    'Licencia',
+    'Licencia No Remunerada',
+    'Pendiente',
+    'Permiso',
+    'Suspensión',
+    'Vacaciones'
 ].sort();
 
 export default function RegistroMasivoPage() {

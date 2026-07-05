@@ -61,12 +61,16 @@ export default function BuscadorProcesosDisciplinariosPage() {
                     
                     if (!fullAccessEmails.includes(userProfile.correo)) {
                         const nombreABuscar = userProfile.nombre || userProfile.nombreCompleto || '';
-                        
-                        if (plantas && plantas.length > 0) {
+                        // Supervisors are restricted to only their own direct reports and themselves,
+                        // regardless of any plant-wide access list — they should not see other
+                        // supervisors' teams within the same plant.
+                        const isSupervisor = (userProfile.nivelCargo || '').toLowerCase() === 'supervisor';
+
+                        if (plantas && plantas.length > 0 && !isSupervisor) {
                             // Can see specific plants OR direct reports OR themselves
                             query = query.or(`planta.in.(${plantas.map(p => `"${p}"`).join(',')}),jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
                         } else {
-                            // If no plants allowed, ONLY see direct reports OR themselves
+                            // If no plants allowed (or user is a Supervisor), ONLY see direct reports OR themselves
                             query = query.or(`jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
                         }
                     }
