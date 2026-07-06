@@ -38,6 +38,7 @@ export default function BuscadorHiluAdminPage() {
     const [userEmail, setUserEmail] = useState<string>('')
     const [userName, setUserName] = useState<string>('')
     const [userArea, setUserArea] = useState<string>('')
+    const [userId, setUserId] = useState<number | null>(null)
     const [programaciones, setProgramaciones] = useState<any[]>([])
     const [showProgramaciones, setShowProgramaciones] = useState(false)
 
@@ -82,11 +83,12 @@ export default function BuscadorHiluAdminPage() {
                 setUserEmail(user.email || '')
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo, nombreCompleto, area')
+                    .select('id, nivelCargo, nombreCompleto, area')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
                 setUserArea((empleado as any)?.area || '')
+                setUserId((empleado as any)?.id ?? null)
 
                 if ((empleado as any)?.nivelCargo) {
                     setUserLevel((empleado as any).nivelCargo)
@@ -212,9 +214,11 @@ export default function BuscadorHiluAdminPage() {
 
                 // 2. Empleados se ven a sí mismos.
                 // 3. Jefes pueden ver a los empleados que tienen a cargo.
+                // Nota: query_estado_hilu no tiene columna correo_electronico, por eso el
+                // "verse a si mismo" se filtra por id (unico y siempre presente en la vista).
                 let baseOr = '';
-                if (userEmail) {
-                    baseOr += `correo_electronico.eq.${userEmail}`;
+                if (userId) {
+                    baseOr += `id.eq.${userId}`;
                 }
                 if (userName) {
                     baseOr += baseOr ? `,jefe.ilike.%${userName}%` : `jefe.ilike.%${userName}%`;
@@ -295,7 +299,7 @@ export default function BuscadorHiluAdminPage() {
             setLoading(true) // Pre-loader while processing
             setTimeout(() => setLoading(false), 10)
         }
-    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase, isSystemAdmin, userName, userEmail, userLevel])
+    }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase, isSystemAdmin, userName, userEmail, userLevel, userId])
 
     useEffect(() => {
         const handleFocus = () => {
