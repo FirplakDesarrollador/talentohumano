@@ -37,6 +37,7 @@ export default function BuscadorHiluAdminPage() {
     const [userLevel, setUserLevel] = useState<string>('')
     const [userEmail, setUserEmail] = useState<string>('')
     const [userName, setUserName] = useState<string>('')
+    const [userArea, setUserArea] = useState<string>('')
     const [programaciones, setProgramaciones] = useState<any[]>([])
     const [showProgramaciones, setShowProgramaciones] = useState(false)
 
@@ -81,9 +82,11 @@ export default function BuscadorHiluAdminPage() {
                 setUserEmail(user.email || '')
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo, nombreCompleto')
+                    .select('nivelCargo, nombreCompleto, area')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
+
+                setUserArea((empleado as any)?.area || '')
 
                 if ((empleado as any)?.nivelCargo) {
                     setUserLevel((empleado as any).nivelCargo)
@@ -157,7 +160,7 @@ export default function BuscadorHiluAdminPage() {
     }, [])
 
     const isSystemAdmin = (userEmail && ADMIN_EMAILS.includes(userEmail)) || ADMIN_LEVELS.includes(userLevel as any)
-    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel)
+    const canSeeHilu = isSystemAdmin || ['Jefe', 'Coordinador', 'Director', 'Gerente', 'Analista', 'Supervisor'].includes(userLevel) || AREAS_ADMINISTRATIVAS.includes(userArea)
 
     const fetchFilters = useCallback(async () => {
         try {
