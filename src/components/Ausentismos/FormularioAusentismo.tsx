@@ -210,6 +210,11 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
             return;
         }
 
+        if (formData.motivo.toLowerCase().includes('incapacidad') && !formData.documentoSoporte) {
+            toast.error('Debe adjuntar el documento soporte de la incapacidad');
+            return;
+        }
+
         setLoading(true);
         try {
             const { data: userData } = await supabase.auth.getUser();
@@ -364,7 +369,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
 
                     {(formData.motivo.toLowerCase().includes('incapacidad')) && (
                         <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
-                            <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Documento Soporte de Incapacidad</Label>
+                            <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Documento Soporte de Incapacidad <span className="text-red-500">*</span></Label>
                             <div className="flex items-center gap-3">
                                 <Input
                                     type="file"
@@ -469,7 +474,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 </Button>
                 <Button
                     type="submit"
-                    disabled={loading || loadingEdit}
+                    disabled={loading || loadingEdit || uploadingDocumento}
                     className="flex-[2] h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
                 >
                     {loading ? (

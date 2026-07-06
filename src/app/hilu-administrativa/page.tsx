@@ -43,6 +43,10 @@ export default function BuscadorHiluAdminPage() {
     const [showProgramaciones, setShowProgramaciones] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
+    // Tracks the most recent fetchEmpleados call so a slower, stale response
+    // (e.g. the initial unfiltered fetch that fires before user data loads)
+    // can never overwrite a newer, correctly-filtered one.
+    const fetchRequestId = useRef(0)
 
     // Load filters from localStorage on mount
     useEffect(() => {
@@ -178,6 +182,7 @@ export default function BuscadorHiluAdminPage() {
 
     const fetchEmpleados = useCallback(async () => {
         if (!isInitialized) return;
+        const requestId = ++fetchRequestId.current
         setLoading(true)
         try {
             let query = supabase
@@ -268,6 +273,10 @@ export default function BuscadorHiluAdminPage() {
 
             if (error) throw error
 
+            // A newer fetchEmpleados call started after this one — discard this
+            // stale response instead of letting it overwrite the latest state.
+            if (requestId !== fetchRequestId.current) return
+
             const empData = data as any[]
 
             if (empData.length > 0) {
@@ -276,6 +285,8 @@ export default function BuscadorHiluAdminPage() {
                     .from('hilu_administrativa')
                     .select('empleado_id, fh_completado, fi_completado, fl_completado')
                     .in('empleado_id', ids)
+
+                if (requestId !== fetchRequestId.current) return
 
                 const adminMap = new Map()
                 if (adminRecords) {
@@ -288,7 +299,7 @@ export default function BuscadorHiluAdminPage() {
                     ...r,
                     adminData: adminMap.get(r.id) || null
                 }))
-                
+
                 setEmpleados(merged as EmpleadoHILU[])
             } else {
                 setEmpleados([])
@@ -296,8 +307,10 @@ export default function BuscadorHiluAdminPage() {
         } catch (error) {
             console.error('Error fetching empleados:', error)
         } finally {
-            setLoading(true) // Pre-loader while processing
-            setTimeout(() => setLoading(false), 10)
+            if (requestId === fetchRequestId.current) {
+                setLoading(true) // Pre-loader while processing
+                setTimeout(() => setLoading(false), 10)
+            }
         }
     }, [isInitialized, selectedStatus, selectedNiveles, selectedPlanta, busqueda, supabase, isSystemAdmin, userName, userEmail, userLevel, userId])
 
