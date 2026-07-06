@@ -81,7 +81,7 @@ export default function BuscadorHiluAdminPage() {
                 setUserEmail(user.email || '')
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivelCargo, nombreCompleto')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
@@ -202,7 +202,10 @@ export default function BuscadorHiluAdminPage() {
                 // Evaluamos si el usuario actual tiene HILU de Sistemas de Producción
                 const normalizedUser = (userName || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, ' ');
                 const specialNames = ['hector jose chinchilla', 'hector chinchilla', 'jakeline chaverra', 'sara maria aguilar', 'carlos jose mier', 'ederson estiven', 'juliana ramirez', 'maria isabel escobar'];
-                const isSpecialUser = (userLevel || '').toLowerCase().includes('supervisor') || specialNames.some(name => normalizedUser.includes(name));
+                // Solo esta lista puntual de personas tiene visibilidad ampliada (ver a todos los
+                // supervisores). Ser Supervisor por nivel de cargo NO otorga esa visibilidad —
+                // un supervisor cualquiera solo debe verse a sí mismo y a su personal a cargo.
+                const isSpecialUser = specialNames.some(name => normalizedUser.includes(name));
 
                 // 2. Empleados se ven a sí mismos.
                 // 3. Jefes pueden ver a los empleados que tienen a cargo.

@@ -108,7 +108,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 // 1. Fetch cargo level from empleados
                 const { data: empleado } = await supabase
                     .from('empleados')
-                    .select('nivelCargo')
+                    .select('nivelCargo, nombreCompleto')
                     .eq('correo_electronico', email)
                     .maybeSingle()
 
