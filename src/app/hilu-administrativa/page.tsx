@@ -546,9 +546,10 @@ export default function BuscadorHiluAdminPage() {
                                 />
                             </div>
                             <Button
+                                type="button"
                                 variant="outline"
                                 className="h-10 w-10 p-0 border-gray-200 text-gray-600"
-                                onClick={() => { }}
+                                onClick={() => fetchEmpleados()}
                             >
                                 <Search className="h-5 w-5" />
                             </Button>

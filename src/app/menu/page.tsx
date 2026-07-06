@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS, JEFES_MOLDES } from '@/lib/constants/roles'
+import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS, JEFES_MOLDES, ANALISTAS_CON_ACCESO } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -100,6 +100,11 @@ export default function MenuPage() {
 
     const normalizedUserEmail = (user?.email || '').toLowerCase().trim()
     const isSystemAdmin = (normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)) || ADMIN_LEVELS.includes(userLevel as any)
+    // An Analista from an administrative area only gets Gestor de Personal if explicitly
+    // allow-listed — otherwise they'd see the tile but the page itself only ever shows them
+    // their own record, so hide it to match "personal administrativo ve solo Cesantías/
+    // Vacaciones/HILU".
+    const isUnlistedAdminAreaAnalyst = userLevel === 'Analista' && AREAS_ADMINISTRATIVAS.includes(userArea) && !ANALISTAS_CON_ACCESO.includes(user?.email)
 
     const menuItems = [
         {
@@ -124,7 +129,7 @@ export default function MenuPage() {
             title: 'Gestor de personal',
             href: '/gestor-de-personal',
             icon: Users,
-            visible: !GESTOR_EXCLUDED_EMAILS.includes(user?.email) && (isSystemAdmin || GESTOR_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail))
+            visible: !GESTOR_EXCLUDED_EMAILS.includes(user?.email) && !isUnlistedAdminAreaAnalyst && (isSystemAdmin || GESTOR_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail))
         },
         {
             title: 'Ausentismos',

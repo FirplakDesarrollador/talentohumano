@@ -44,21 +44,28 @@ export default function BuscadorProcesosDisciplinariosPage() {
     const fetchEmpleados = useCallback(async (userProfile: any) => {
         setLoading(true)
         try {
-            let query = supabase
+            // Fetch the whole active roster once. We need it in memory anyway to walk the
+            // jefe -> nombreCompleto chain (jefe de jefe, etc.), so filtering happens
+            // client-side below instead of via a single-level SQL "jefe.eq" match.
+            const { data, error } = await supabase
                 .from('empleados')
                 .select('*')
                 .eq('activo', true)
+                .order('nombreCompleto', { ascending: true })
+
+            if (error) throw error
+            let result = (data || []) as any[]
 
             if (userProfile) {
                 const isAdmin = ADMIN_EMAILS.includes(userProfile.correo) || (ADMIN_LEVELS as any).includes(userProfile.nivelCargo);
                 const isAnalyst = ANALISTAS_CON_ACCESO.includes(userProfile.correo);
-                
+
                 if (!isAdmin && !isAnalyst) {
                     const plantas = getPlantasPermitidas(userProfile.correo);
-                    // For specific users like estiven.londono or hector.chinchilla, getPlantasPermitidas returns null 
+                    // For specific users like estiven.londono or hector.chinchilla, getPlantasPermitidas returns null
                     // meaning they have access to all plants (null means no restriction for them in Gestor).
                     const fullAccessEmails = ['hector.chinchilla@firplak.com', 'estiven.londono@firplak.com'];
-                    
+
                     if (!fullAccessEmails.includes(userProfile.correo)) {
                         const nombreABuscar = userProfile.nombre || userProfile.nombreCompleto || '';
                         // Supervisors are restricted to only their own direct reports and themselves,
@@ -66,23 +73,38 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         // supervisors' teams within the same plant.
                         const isSupervisor = (userProfile.nivelCargo || '').toLowerCase() === 'supervisor';
 
-                        if (plantas && plantas.length > 0 && !isSupervisor) {
-                            // Can see specific plants OR direct reports OR themselves
-                            query = query.or(`planta.in.(${plantas.map(p => `"${p}"`).join(',')}),jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
-                        } else {
-                            // If no plants allowed (or user is a Supervisor), ONLY see direct reports OR themselves
-                            query = query.or(`jefe.eq."${nombreABuscar}",correo_electronico.eq."${userProfile.correo}"`)
+                        const normalize = (s: string) => (s || '').trim().toLowerCase();
+
+                        // Walk the full chain of command downward: start with the current user
+                        // and keep adding anyone whose jefe is already in the set, so a director
+                        // sees not only their direct reports but also the reports of jefes who
+                        // report to them (jefe de jefe), at any depth.
+                        const chainNames = new Set<string>([normalize(nombreABuscar)]);
+                        let expanded = true;
+                        while (expanded) {
+                            expanded = false;
+                            for (const emp of result) {
+                                const empJefe = normalize(emp.jefe);
+                                const empNombre = normalize(emp.nombreCompleto);
+                                if (empJefe && chainNames.has(empJefe) && !chainNames.has(empNombre)) {
+                                    chainNames.add(empNombre);
+                                    expanded = true;
+                                }
+                            }
                         }
+
+                        result = result.filter(emp => {
+                            if (emp.correo_electronico === userProfile.correo) return true;
+                            if (chainNames.has(normalize(emp.nombreCompleto))) return true;
+                            if (plantas && plantas.length > 0 && !isSupervisor && plantas.includes(emp.planta)) return true;
+                            return false;
+                        });
                     }
                 }
             }
 
-            const { data, error } = await query
-                .order('nombreCompleto', { ascending: true })
-
-            if (error) throw error
-            setEmpleados(data || [])
-            setFilteredEmpleados(data || [])
+            setEmpleados(result)
+            setFilteredEmpleados(result)
         } catch (err: any) {
             console.error('Error fetching empleados:', err)
             toast.error('No se pudieron cargar los empleados')
