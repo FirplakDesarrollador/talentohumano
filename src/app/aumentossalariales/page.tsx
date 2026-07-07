@@ -102,13 +102,24 @@ export default function AumentosSalarialesPage() {
             // Fetch current app user
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
+                // Prefer the employee's real, current nivelCargo from empleados — the
+                // usuarios.rol field can go stale (e.g. left as "visitante") even when
+                // the person has since been promoted/moved, so it's only a fallback.
+                const { data: empleadoActual } = await supabase
+                    .from('empleados')
+                    .select('nivelCargo, nombreCompleto')
+                    .eq('correo_electronico', user.email!)
+                    .maybeSingle()
+
                 const { data: profile } = await supabase
                     .from('usuarios')
                     .select('*')
                     .eq('correo', user.email!)
-                    .single()
+                    .maybeSingle()
 
-                if (profile) {
+                let mappedLevel: string | undefined = (empleadoActual as any)?.nivelCargo
+
+                if (!mappedLevel && profile) {
                     const roleMap: Record<string, string> = {
                         'admin': 'Jefe',
                         'desarrollador': 'Jefe',
@@ -118,13 +129,21 @@ export default function AumentosSalarialesPage() {
                         'coordinador': 'Coordinador',
                         'analista': 'Analista'
                     }
-                    const mappedLevel = roleMap[(profile as any).rol?.toLowerCase()] || (profile as any).rol
-                    setCurrentUser({ ...(profile as any), correo: user.email, nivelCargo: mappedLevel })
+                    mappedLevel = roleMap[(profile as any).rol?.toLowerCase()] || (profile as any).rol
+                }
+
+                if (mappedLevel) {
+                    setCurrentUser({
+                        ...(profile as any),
+                        correo: user.email,
+                        nombre: (empleadoActual as any)?.nombreCompleto || (profile as any)?.nombre,
+                        nivelCargo: mappedLevel
+                    })
 
                     // Check for access permission
                     const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(mappedLevel as any)
                     const hasAccess = isSystemAdmin || AUMENTOS_SALARIALES_LEVELS.includes(mappedLevel as any) || (user?.email && JEFES_MOLDES.includes(user.email))
-                    
+
                     if (!hasAccess) {
                         toast.error('No tienes permisos para acceder a este módulo')
                         router.push('/menu')
