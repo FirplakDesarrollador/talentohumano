@@ -129,7 +129,7 @@ export default function MenuPage() {
             title: 'Gestor de personal',
             href: '/gestor-de-personal',
             icon: Users,
-            visible: !GESTOR_EXCLUDED_EMAILS.includes(user?.email) && !isUnlistedAdminAreaAnalyst && (isSystemAdmin || GESTOR_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail))
+            visible: isSystemAdmin || (!GESTOR_EXCLUDED_EMAILS.includes(user?.email) && !isUnlistedAdminAreaAnalyst && (GESTOR_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail)))
         },
         {
             title: 'Ausentismos',
