@@ -76,8 +76,10 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
     // del seguimiento Operativo. El nivel de cargo (Jefe, Coordinador, etc.) solo
     // determina si también necesita el seguimiento Administrativo, no si se le oculta
     // el Operativo — un Jefe de Mantenimiento, por ejemplo, sigue necesitando ambos.
+    // "Todos" (sin planta específica, ej. Presidente de la Junta) tampoco pertenece
+    // a ninguna planta de producción, así que cuenta como área administrativa.
     const isAreaAdministrativa =
-        ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa'].includes(empArea);
+        ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Administrativa', 'Todos'].includes(empArea);
 
     const isNivelAdministrativo =
         ['analista', 'jefe', 'gerente', 'director', 'coordinador', 'administrador', 'desarrollador'].includes(empNivel) ||
