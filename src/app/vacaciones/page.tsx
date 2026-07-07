@@ -438,14 +438,16 @@ export default function VacacionesPage() {
                                         <History className="h-8 w-8 text-gray-700" />
                                         Visualizar Historial
                                     </Button>
-                                    <Button
-                                        onClick={handleDownloadReport}
-                                        variant="outline"
-                                        className="h-32 flex flex-col gap-2 border-2 border-blue-200 hover:bg-blue-50 transition-all font-bold text-lg uppercase tracking-tight text-blue-700"
-                                    >
-                                        <Download className="h-8 w-8" />
-                                        Descargar Reporte
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button
+                                            onClick={handleDownloadReport}
+                                            variant="outline"
+                                            className="h-32 flex flex-col gap-2 border-2 border-blue-200 hover:bg-blue-50 transition-all font-bold text-lg uppercase tracking-tight text-blue-700"
+                                        >
+                                            <Download className="h-8 w-8" />
+                                            Descargar Reporte
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </div>
