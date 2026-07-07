@@ -88,8 +88,10 @@ export default function HiluAdministrativaPage() {
 
                 await fetchAuditorias(empRecordAny.id)
 
-                // Check if employee is in an administrative area
-                const AREAS_ADMINISTRATIVAS = ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial']
+                // Check if employee is in an administrative area. "Todos" (sin planta
+                // especifica, ej. Presidente de la Junta) tampoco pertenece a ninguna
+                // planta de produccion, asi que cuenta como area administrativa.
+                const AREAS_ADMINISTRATIVAS = ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Todos']
                 const isAdministrative = AREAS_ADMINISTRATIVAS.includes(empRecordAny.area)
 
                 // Fetch Operative HILU Record (for HILU Sistema) ONLY if not strictly administrative
