@@ -295,22 +295,31 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (email === 'hector.chinchilla@firplak.com') return null;
     // estiven.londono tiene visibilidad total para ver coordinadores, directores y jefes de todas las plantas
     if (email === 'estiven.londono@firplak.com') return null;
-    if (SUPERVISORES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
-    if (SUPERVISORES_CALIDAD.includes(email)) return ['Calidad'];
-    if (SUPERVISORES_MARMOL.includes(email)) return ['Marmol sintetico'];
-    if (SUPERVISORES_ALMACEN_CEDI.includes(email)) return ['Almacen', 'CEDI'];
+
+    // Un mismo correo puede aparecer en varias listas de plantas (p. ej. un supervisor
+    // agregado a un grupo adicional sin quitarlo del suyo original), así que se acumulan
+    // todas las coincidencias en vez de devolver solo la primera lista que aplique.
+    const plantas = new Set<string>();
+
+    if (SUPERVISORES_MUEBLES_CEFI.includes(email)) { plantas.add('Muebles'); plantas.add('Cefi'); }
+    if (SUPERVISORES_CALIDAD.includes(email)) plantas.add('Calidad');
+    if (SUPERVISORES_MARMOL.includes(email)) plantas.add('Marmol sintetico');
+    if (SUPERVISORES_ALMACEN_CEDI.includes(email)) { plantas.add('Almacen'); plantas.add('CEDI'); }
     if (SUPERVISORES_RTM_FIBRA.includes(email)) {
-        if (email === 'david.ramirez@firplak.com') return ['RTM', 'Fibra de vidrio', 'Marmol sintetico'];
-        return ['RTM', 'Fibra de vidrio'];
+        plantas.add('RTM');
+        plantas.add('Fibra de vidrio');
+        if (email === 'david.ramirez@firplak.com') plantas.add('Marmol sintetico');
     }
-    if (COORDINADORES_CON_ACCESO.includes(email)) return PLANTAS_COORDINADORES_PERMITIDAS;
-    if (JEFES_CON_ACCESO.includes(email)) return PLANTAS_COORDINADORES_PERMITIDAS;
-    if (JEFES_MUEBLES_CEFI.includes(email)) return ['Muebles', 'Cefi'];
-    if (JEFES_ALMACEN_CEDI.includes(email)) return ['Almacen', 'CEDI'];
-    if (JEFES_INGENIERIA_MOLDES.includes(email)) return ['Ingenieria', 'Moldes'];
-    if (JEFES_MOLDES.includes(email)) return ['Moldes'];
-    if (DIRECTORES_CON_ACCESO.includes(email)) return PLANTAS_DIRECTORES_PERMITIDAS;
-    return null;
+    if (COORDINADORES_CON_ACCESO.includes(email)) PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
+    if (JEFES_CON_ACCESO.includes(email)) PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
+    if (JEFES_MUEBLES_CEFI.includes(email)) { plantas.add('Muebles'); plantas.add('Cefi'); }
+    if (JEFES_ALMACEN_CEDI.includes(email)) { plantas.add('Almacen'); plantas.add('CEDI'); }
+    if (JEFES_INGENIERIA_MOLDES.includes(email)) { plantas.add('Ingenieria'); plantas.add('Moldes'); }
+    if (JEFES_MOLDES.includes(email)) plantas.add('Moldes');
+    if (DIRECTORES_CON_ACCESO.includes(email)) PLANTAS_DIRECTORES_PERMITIDAS.forEach(p => plantas.add(p));
+
+    if (plantas.size === 0) return null;
+    return Array.from(plantas);
 }
 
 export const AREAS_ADMINISTRATIVAS = [
