@@ -256,6 +256,16 @@ export const ANALISTAS_CON_ACCESO = [
 ];
 
 /**
+ * Users who can see the Ausentismos list but must not be able to open the
+ * detail/edit view of any record.
+ */
+export const AUSENTISMOS_SIN_DETALLE = [
+    'diana.morales@firplak.com',
+    'marcela.gomez@firplak.com',
+    'juan.marin@firplak.com',
+];
+
+/**
  * Emails of users with full administrative privileges.
  * These emails override the 'nivelCargo' logic.
  */
