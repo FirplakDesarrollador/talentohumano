@@ -14,7 +14,8 @@ import {
     Search,
     Eraser,
     FileUp,
-    ShieldAlert
+    ShieldAlert,
+    Calendar
 } from 'lucide-react'
 import { AusentismoCard, type Ausentismo } from '@/components/Ausentismos/AusentismoCard'
 import { AusentismoRow } from '@/components/Ausentismos/AusentismoRow'
@@ -39,6 +40,8 @@ export default function AusentismosPage() {
     // UI State
     const [busqueda, setBusqueda] = useState('')
     const [filtroReciente, setFiltroReciente] = useState(false)
+    const [fechaDesde, setFechaDesde] = useState('')
+    const [fechaHasta, setFechaHasta] = useState('')
     const [pendingEdit, setPendingEdit] = useState<Ausentismo | null>(null)
 
     // 1. Fetch Ausentismos
@@ -117,12 +120,14 @@ export default function AusentismosPage() {
 
                 // Table name with spaces as hinted by Flutter code
                 // Trying 'ausentismos' first as it was successful in probe
+                // Order by FechaInicio (a real date column) rather than "Creado" (stored as
+                // free-form text in inconsistent formats, so it doesn't sort chronologically).
                 const { data, error } = await applyScope(
-                    supabase.from('ausentismos' as any).select('*').order('Creado', { ascending: false })
+                    supabase.from('ausentismos' as any).select('*').order('FechaInicio', { ascending: false })
                 )
 
                 if (error) {
-                    // Try without ordering if 'Creado' doesn't exist either
+                    // Try without ordering if 'FechaInicio' doesn't exist either
                     const { data: dataNoOrder, error: errorNoOrder } = await applyScope(
                         supabase.from('ausentismos' as any).select('*')
                     )
@@ -196,8 +201,29 @@ export default function AusentismosPage() {
             )
         }
 
+        // Date range filter: keep records whose absence period overlaps the selected range
+        if (fechaDesde) {
+            filtered = filtered.filter(a => {
+                const fin = a['FechaFinal' as keyof Ausentismo] as unknown as string | null
+                return !!fin && fin >= fechaDesde
+            })
+        }
+        if (fechaHasta) {
+            filtered = filtered.filter(a => {
+                const inicio = a['FechaInicio' as keyof Ausentismo] as unknown as string | null
+                return !!inicio && inicio <= fechaHasta
+            })
+        }
+
+        // Most recent absence first
+        filtered.sort((a, b) => {
+            const fa = (a['FechaInicio' as keyof Ausentismo] as unknown as string) || ''
+            const fb = (b['FechaInicio' as keyof Ausentismo] as unknown as string) || ''
+            return fb.localeCompare(fa)
+        })
+
         setFilteredAusentismos(filtered)
-    }, [busqueda, ausentismos, filtroReciente])
+    }, [busqueda, ausentismos, filtroReciente, fechaDesde, fechaHasta])
 
     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(userLevel as any)
     const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || (currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo))
@@ -258,6 +284,43 @@ export default function AusentismosPage() {
                                 Últimos 5 Meses
                             </Button>
                         </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Desde</span>
+                            <div className="relative">
+                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <Input
+                                    type="date"
+                                    value={fechaDesde}
+                                    onChange={(e) => setFechaDesde(e.target.value)}
+                                    className="pl-11 h-11 bg-gray-50/50 border-none rounded-2xl focus-visible:ring-1 focus-visible:ring-blue-100 transition-all font-medium w-full sm:w-48"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Hasta</span>
+                            <div className="relative">
+                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <Input
+                                    type="date"
+                                    value={fechaHasta}
+                                    onChange={(e) => setFechaHasta(e.target.value)}
+                                    className="pl-11 h-11 bg-gray-50/50 border-none rounded-2xl focus-visible:ring-1 focus-visible:ring-blue-100 transition-all font-medium w-full sm:w-48"
+                                />
+                            </div>
+                        </div>
+                        {(fechaDesde || fechaHasta) && (
+                            <Button
+                                variant="outline"
+                                onClick={() => { setFechaDesde(''); setFechaHasta('') }}
+                                className="h-11 rounded-2xl px-4 font-bold text-xs tracking-widest uppercase text-gray-500 flex items-center gap-2"
+                            >
+                                <Eraser className="h-4 w-4" />
+                                Limpiar Fechas
+                            </Button>
+                        )}
                     </div>
                 </div>
 
