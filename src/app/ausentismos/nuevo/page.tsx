@@ -1,15 +1,40 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, UserX } from 'lucide-react'
+import { ArrowLeft, UserX, Loader2 } from 'lucide-react'
 import { FormularioAusentismo } from '@/components/Ausentismos/FormularioAusentismo'
+import { createClient } from '@/lib/supabase/client'
+import { AUSENTISMOS_SIN_DETALLE } from '@/lib/constants/roles'
 
 function NuevoAusentismoContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const editId = searchParams.get('edit')
+    const supabase = createClient()
+    const [checkingAccess, setCheckingAccess] = useState(!!editId)
+
+    useEffect(() => {
+        if (!editId) return
+        const checkAccess = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.email && AUSENTISMOS_SIN_DETALLE.includes(user.email)) {
+                router.replace('/ausentismos')
+                return
+            }
+            setCheckingAccess(false)
+        }
+        checkAccess()
+    }, [editId, supabase, router])
+
+    if (checkingAccess) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#F1F4F8]">
+                <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-[#F1F4F8]">

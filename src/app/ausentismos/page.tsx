@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS, ANALISTAS_CON_ACCESO, JEFES_MOLDES, getPlantasPermitidas } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS, ANALISTAS_CON_ACCESO, JEFES_MOLDES, AUSENTISMOS_SIN_DETALLE, getPlantasPermitidas } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -227,6 +227,7 @@ export default function AusentismosPage() {
 
     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(userLevel as any)
     const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || (currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo))
+    const canViewDetalle = !(currentUser?.correo && AUSENTISMOS_SIN_DETALLE.includes(currentUser.correo))
 
     if (!loading && !hasAccess) {
         return (
@@ -357,7 +358,14 @@ export default function AusentismosPage() {
                 ) : filteredAusentismos.length > 0 ? (
                     <div className="flex flex-col gap-3">
                         {filteredAusentismos.map((a, index) => (
-                            <AusentismoRow key={`${a.Id}-${index}`} ausentismo={a} onClick={() => setPendingEdit(a)} />
+                            <AusentismoRow
+                                key={`${a.Id}-${index}`}
+                                ausentismo={a}
+                                onClick={() => {
+                                    if (!canViewDetalle) return
+                                    setPendingEdit(a)
+                                }}
+                            />
                         ))}
                     </div>
                 ) : (
