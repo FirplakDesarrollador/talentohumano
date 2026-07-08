@@ -30,10 +30,32 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
     const [isUploading, setIsUploading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [supportPaymentUrl, setSupportPaymentUrl] = useState(solicitud["SOPORTE RETIRO"] || '')
+    const [pagado, setPagado] = useState<boolean>(!!solicitud["Pagado"])
+    const [isSavingPagado, setIsSavingPagado] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
+
+    const handleTogglePagado = async (checked: boolean) => {
+        setPagado(checked)
+        setIsSavingPagado(true)
+        try {
+            const { error: updateError } = await (supabase as any)
+                .from('Cesantias')
+                .update({ Pagado: checked })
+                .eq('id', solicitud.id as number)
+
+            if (updateError) throw updateError
+            onUpdate()
+        } catch (err: any) {
+            console.error('Error updating Pagado:', err)
+            setPagado(!checked)
+            setError(err.message || 'Error al actualizar el estado de pago')
+        } finally {
+            setIsSavingPagado(false)
+        }
+    }
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
@@ -165,6 +187,21 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                         }`} />
                                     {solicitud["Aprobación THT"]}
                                 </div>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase">Pagado</p>
+                                <label className={`inline-flex items-center gap-2 cursor-pointer ${isSavingPagado ? 'opacity-60 pointer-events-none' : ''}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={pagado}
+                                        onChange={(e) => handleTogglePagado(e.target.checked)}
+                                        className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                                    />
+                                    <span className={`text-sm font-bold ${pagado ? 'text-green-700' : 'text-gray-500'}`}>
+                                        {pagado ? 'Pagado' : 'Sin pagar'}
+                                    </span>
+                                    {isSavingPagado && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+                                </label>
                             </div>
                         </div>
 
