@@ -109,19 +109,23 @@ export default function GestorPersonalPage() {
 
     // 3. Filtering Logic (Based on userLevel)
     const filterByRole = useCallback((empleado: Empleado) => {
-        if (!user || !userLevel) return false
+        if (!user) return false
 
         // NEW: Check if user is explicitly excluded (e.g., Pablo Carrizosa)
         if (user?.email && GESTOR_EXCLUDED_EMAILS.includes(user.email)) {
             return false
         }
 
-        // Admin Power: Full list visibility
+        // Admin Power: Full list visibility. Checked before requiring userLevel —
+        // some admin accounts are shared mailboxes (e.g. talentos@firplak.com) with
+        // no row in empleados or usuarios, so nivelCargo never resolves for them.
         const isSystemAdmin = (user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)
-        
+
         if (isSystemAdmin) {
             return true
         }
+
+        if (!userLevel) return false
 
         // Analistas con acceso: can see ALL employees (list only, no edit)
         if (user?.email && ANALISTAS_CON_ACCESO.includes(user.email)) {
@@ -234,7 +238,11 @@ export default function GestorPersonalPage() {
     }, [supabase, busqueda, selectedJefe, selectedPlanta, statusActivo, orderDate, filterByRole, selectedNiveles])
 
     useEffect(() => {
-        if (user && userLevel) {
+        // Also proceed for known admin emails even without a resolved userLevel —
+        // shared admin mailboxes (no empleados/usuarios row) would otherwise wait
+        // forever and leave the page stuck on the loading spinner.
+        const isKnownAdminEmail = !!(user?.email && ADMIN_EMAILS.includes(user.email))
+        if (user && (userLevel || isKnownAdminEmail)) {
             fetchEmpleados()
         }
     }, [fetchEmpleados, user, userLevel])
