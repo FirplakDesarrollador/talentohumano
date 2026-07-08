@@ -206,7 +206,9 @@ export default function VacacionesPage() {
 
             const { data, error } = await query
             if (error) throw error
-            setHistory((data as unknown as Solicitud[]) || [])
+            const result = (data as unknown as Solicitud[]) || []
+            setHistory(result)
+            return result
         } catch (err: any) {
             console.error('Error fetching history:', err)
             if (err.message?.includes('does not exist')) {
@@ -214,14 +216,22 @@ export default function VacacionesPage() {
             } else {
                 setError(err.message || 'Error al cargar el historial')
             }
+            return []
         } finally {
             setHistoryLoading(false)
         }
     }, [supabase, filterCedula, isAdmin, currentUser])
 
-    const handleDownloadReport = () => {
-        if (history.length === 0) return;
-        descargarQueryVacaciones(history);
+    const handleDownloadReport = async () => {
+        // "Descargar Reporte" is also reachable from the welcome screen, before the
+        // history has ever been fetched (history would still be empty there), so
+        // fetch fresh data on demand instead of silently doing nothing.
+        const data = history.length > 0 ? history : await fetchHistory()
+        if (!data || data.length === 0) {
+            toast.error('No hay solicitudes de vacaciones para descargar')
+            return
+        }
+        descargarQueryVacaciones(data)
     }
 
     useEffect(() => {
@@ -712,14 +722,16 @@ export default function VacacionesPage() {
                                                 className="pl-9 h-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:bg-white/20 focus:border-white/40"
                                             />
                                         </div>
-                                        <Button
-                                            onClick={handleDownloadReport}
-                                            variant="outline"
-                                            className="h-10 bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2 font-bold px-4"
-                                        >
-                                            <Download className="h-4 w-4" />
-                                            REPORTES
-                                        </Button>
+                                        {isAdmin && (
+                                            <Button
+                                                onClick={handleDownloadReport}
+                                                variant="outline"
+                                                className="h-10 bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2 font-bold px-4"
+                                            >
+                                                <Download className="h-4 w-4" />
+                                                REPORTES
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </CardHeader>
