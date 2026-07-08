@@ -124,8 +124,7 @@ export const SUPERVISORES_MUEBLES_CEFI = [
  */
 export const SUPERVISORES_CALIDAD = [
     'supervisorcalidad3@firplak.com',
-    'supervisorcalidad2@firplak.com',
-    'supervisorcalidad@firplak.com'
+    'supervisorcalidad2@firplak.com'
 ];
 
 /**
