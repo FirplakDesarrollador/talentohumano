@@ -35,7 +35,11 @@ export default function HiluAdministrativaPage() {
         if (!currentUser) return false
         const email = currentUser.email || ''
         const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
-        return isAdmin || ['Jefe', 'Director', 'Gerente', 'Coordinador'].includes(currentUser.nivelCargo)
+        // Cualquier usuario puede editar los Reemplazos/Polivalencias de su propio
+        // perfil (es informacion de autoservicio: quien lo cubre a el en su ausencia),
+        // sin importar su nivel de cargo.
+        const isOwnProfile = !!currentUser.empleadoId && !!empleado && Number(currentUser.empleadoId) === Number(empleado.id)
+        return isAdmin || isOwnProfile || ['Jefe', 'Director', 'Gerente', 'Coordinador'].includes(currentUser.nivelCargo)
     }
 
     const fetchAuditorias = useCallback(async (cedula: string) => {
@@ -57,11 +61,11 @@ export default function HiluAdministrativaPage() {
                 if (session?.user) {
                     const { data: empData } = await supabase
                         .from('empleados')
-                        .select('nivelCargo')
+                        .select('id, nivelCargo')
                         .eq('correo_electronico', session.user.email!)
                         .maybeSingle()
                     userLevel = (empData as any)?.nivelCargo || ''
-                    setCurrentUser({ ...session.user, nivelCargo: userLevel })
+                    setCurrentUser({ ...session.user, nivelCargo: userLevel, empleadoId: (empData as any)?.id ?? null })
 
                     const { data: usuarioData } = await supabase
                         .from('usuarios')
