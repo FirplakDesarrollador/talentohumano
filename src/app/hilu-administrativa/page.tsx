@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
-import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO, HILU_ADMIN_EDIT_OVERRIDES } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -234,6 +234,15 @@ export default function BuscadorHiluAdminPage() {
                     const specialNamesFilter = specialNames.map(n => `nombreCompleto.ilike.%${n}%`).join(',');
                     const opHiluFilter = `nivelCargo.ilike.%supervisor%,${specialNamesFilter}`;
                     baseOr += baseOr ? `,${opHiluFilter}` : opHiluFilter;
+                }
+
+                // 5. Overrides puntuales: un usuario especifico puede ver/editar la
+                // HILU Administrativa de un empleado especifico (sin ampliar ningun
+                // otro permiso suyo).
+                const overrideIds = userEmail ? HILU_ADMIN_EDIT_OVERRIDES[userEmail] : undefined;
+                if (overrideIds && overrideIds.length > 0) {
+                    const overrideFilter = overrideIds.map(id => `id.eq.${id}`).join(',');
+                    baseOr += baseOr ? `,${overrideFilter}` : overrideFilter;
                 }
 
                 if (baseOr) {

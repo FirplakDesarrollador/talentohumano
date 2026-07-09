@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_EMAILS, ADMIN_LEVELS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, DIRECTORES_CON_ACCESO, JEFES_CON_ACCESO } from '@/lib/constants/roles'
+import { ADMIN_EMAILS, ADMIN_LEVELS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, DIRECTORES_CON_ACCESO, JEFES_CON_ACCESO, HILU_ADMIN_EDIT_OVERRIDES } from '@/lib/constants/roles'
 import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { CrearFirma, VerFirma } from './FirmaComponents'
@@ -206,6 +206,8 @@ export function HiluAdministrativaComponent({ empleado, hiluData, currentUser, o
         const email = currentUser.email || ''
         const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(currentUser.nivelCargo || '')
         if (isAdmin) return true
+        // Scoped override: user allowed to edit only this specific employee's record
+        if (HILU_ADMIN_EDIT_OVERRIDES[email]?.includes(hiluData.empleado_id)) return true
         // Same permissions as HILU Operativa
         if (
             email === 'hector.chinchilla@firplak.com' ||
