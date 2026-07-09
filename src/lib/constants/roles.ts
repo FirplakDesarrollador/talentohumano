@@ -331,6 +331,17 @@ export function getPlantasPermitidas(email: string): string[] | null {
     return Array.from(plantas);
 }
 
+/**
+ * Scoped overrides that grant a specific user edit access to a specific
+ * employee's HILU Administrativa record, without affecting any other
+ * permission the user has (or doesn't have).
+ * Key: user email. Value: list of employee ids (cedula) they may edit.
+ */
+export const HILU_ADMIN_EDIT_OVERRIDES: Record<string, number[]> = {
+    // Andrey Uribe Cano -> puede editar unicamente la HILU Administrativa de Jesus Angel Villalobos Rincon
+    'practicontabilidad@firplak.com': [6524368],
+};
+
 export const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI',
     'Talento y Cultura', 'Negociacion y compras',
