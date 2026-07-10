@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,15 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
     const [instructorSearchQuery, setInstructorSearchQuery] = useState('');
     const [showInstructorResults, setShowInstructorResults] = useState(false);
     const [fetchingInstructors, setFetchingInstructors] = useState(false);
+
+    // Refs para abrir el selector nativo de hora al hacer click en cualquier
+    // parte del recuadro (no solo en el iconito del reloj)
+    const horaInicioRef = useRef<HTMLInputElement>(null);
+    const horaFinRef = useRef<HTMLInputElement>(null);
+    const openTimePicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+        const input = ref.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+        input?.showPicker?.();
+    };
 
     // Form State
     const [formData, setFormData] = useState({
@@ -517,12 +526,16 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-500 mb-1.5 block text-center">Hora Inicial</Label>
-                            <div className="relative">
+                            <div
+                                className="relative cursor-pointer"
+                                onClick={() => openTimePicker(horaInicioRef)}
+                            >
                                 <Input
+                                    ref={horaInicioRef}
                                     type="time"
                                     value={formData.hora_inicio}
                                     onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
-                                    className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold text-center"
+                                    className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold text-center cursor-pointer"
                                 />
                                 <Clock className="absolute right-3.5 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
                             </div>
@@ -530,12 +543,16 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
 
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-500 mb-1.5 block text-center">Hora Final</Label>
-                            <div className="relative">
+                            <div
+                                className="relative cursor-pointer"
+                                onClick={() => openTimePicker(horaFinRef)}
+                            >
                                 <Input
+                                    ref={horaFinRef}
                                     type="time"
                                     value={formData.hora_fin}
                                     onChange={(e) => setFormData({ ...formData, hora_fin: e.target.value })}
-                                    className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold text-center"
+                                    className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm font-semibold text-center cursor-pointer"
                                 />
                                 <Clock className="absolute right-3.5 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
                             </div>

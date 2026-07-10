@@ -10,16 +10,18 @@ import {
     Calendar, 
     User, 
     Clock, 
-    CheckCircle2, 
+    CheckCircle2,
     XCircle,
     MoreHorizontal,
     ChevronRight,
     MapPin,
     BookOpen,
-    Briefcase
+    Briefcase,
+    Trash2
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CalendarioTeams } from '@/components/Programacion/CalendarioTeams';
@@ -43,6 +45,11 @@ function HistorialEntrenamientosContent() {
     const [plantas, setPlantas] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState('list');
     const [pendingEdit, setPendingEdit] = useState<any>(null);
+    const [pendingDelete, setPendingDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [pendingComplete, setPendingComplete] = useState<any>(null);
+    const [pendingCompleteRedirect, setPendingCompleteRedirect] = useState<any>(null);
+    const [pendingNoRealizado, setPendingNoRealizado] = useState<any>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -200,6 +207,28 @@ function HistorialEntrenamientosContent() {
         if (urlTipo) params.set('tipo', urlTipo);
         router.push(`/programar-entrenamiento?${params.toString()}`);
         setPendingEdit(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!pendingDelete) return;
+        setIsDeleting(true);
+        try {
+            const { error } = await (supabase as any)
+                .from('hilu_programacion')
+                .delete()
+                .eq('id', pendingDelete.id);
+
+            if (error) throw error;
+
+            setEntrenamientos(prev => prev.filter(item => item.id !== pendingDelete.id));
+            toast.success('Entrenamiento eliminado correctamente');
+        } catch (err) {
+            console.error('Error deleting entrenamiento:', err);
+            toast.error('Error al eliminar el entrenamiento');
+        } finally {
+            setIsDeleting(false);
+            setPendingDelete(null);
+        }
     };
 
     const handleExport = () => {
@@ -409,10 +438,9 @@ function HistorialEntrenamientosContent() {
                                             
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={async (e) => {
+                                                    onClick={(e) => {
                                                         e.stopPropagation();
-                                                        await handleUpdateEstado(item.id, 'Entrenamiento Realizado');
-                                                        router.push(`/entrenamiento/${item.empleado_id}`);
+                                                        setPendingComplete(item);
                                                     }}
                                                     title="Entrenamiento Realizado → Ver HILU"
                                                     className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors shadow-sm ${
@@ -424,10 +452,9 @@ function HistorialEntrenamientosContent() {
                                                     <CheckCircle2 className="h-5 w-5" />
                                                 </button>
                                                 <button
-                                                    onClick={async (e) => {
+                                                    onClick={(e) => {
                                                         e.stopPropagation();
-                                                        await handleUpdateEstado(item.id, 'No Realizado');
-                                                        router.push(`/programar-entrenamiento?tab=form&empleadoId=${item.empleado_id}`);
+                                                        setPendingNoRealizado(item);
                                                     }}
                                                     title="No Realizado → Programar nuevo entrenamiento"
                                                     className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors shadow-sm ${
@@ -437,6 +464,16 @@ function HistorialEntrenamientosContent() {
                                                     }`}
                                                 >
                                                     <XCircle className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPendingDelete(item);
+                                                    }}
+                                                    title="Eliminar entrenamiento"
+                                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm"
+                                                >
+                                                    <Trash2 className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         </div>
@@ -465,6 +502,68 @@ function HistorialEntrenamientosContent() {
                 cancelLabel="Cancelar"
                 onConfirm={handleConfirmEdit}
                 onCancel={() => setPendingEdit(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={!!pendingDelete}
+                variant="danger"
+                title="¿Eliminar este entrenamiento?"
+                description={`Se eliminará permanentemente el registro de ${pendingDelete?.empleados?.nombreCompleto || 'este colaborador'} programado el ${pendingDelete ? format(parseISO(pendingDelete.fecha_programada), 'dd MMM yyyy', { locale: es }) : ''}. Esta acción no se puede deshacer.`}
+                confirmLabel={isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
+                cancelLabel="Cancelar"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setPendingDelete(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={!!pendingComplete}
+                variant="info"
+                title="¿Completar este entrenamiento?"
+                description={`Se marcará como Entrenamiento Realizado el registro de ${pendingComplete?.empleados?.nombreCompleto || 'este colaborador'} programado el ${pendingComplete ? format(parseISO(pendingComplete.fecha_programada), 'dd MMM yyyy', { locale: es }) : ''}.`}
+                confirmLabel="Sí, completar"
+                cancelLabel="Cancelar"
+                onConfirm={() => {
+                    const item = pendingComplete;
+                    setPendingComplete(null);
+                    setPendingCompleteRedirect(item);
+                }}
+                onCancel={() => setPendingComplete(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={!!pendingCompleteRedirect}
+                variant="info"
+                title="¿Deseas ir a la HILU del empleado?"
+                description={`El entrenamiento de ${pendingCompleteRedirect?.empleados?.nombreCompleto || 'este colaborador'} se marcará como realizado. ¿Quieres ir ahora a su HILU?`}
+                confirmLabel="Sí, ir a la HILU"
+                cancelLabel="No, quedarme aquí"
+                onConfirm={async () => {
+                    const item = pendingCompleteRedirect;
+                    setPendingCompleteRedirect(null);
+                    await handleUpdateEstado(item.id, 'Entrenamiento Realizado');
+                    router.push(`/entrenamiento/${item.empleado_id}`);
+                }}
+                onCancel={async () => {
+                    const item = pendingCompleteRedirect;
+                    setPendingCompleteRedirect(null);
+                    await handleUpdateEstado(item.id, 'Entrenamiento Realizado');
+                }}
+            />
+
+            <ConfirmDialog
+                isOpen={!!pendingNoRealizado}
+                variant="danger"
+                title="¿Confirmas que el entrenamiento no fue realizado?"
+                description={`Se marcará como No Realizado el registro de ${pendingNoRealizado?.empleados?.nombreCompleto || 'este colaborador'} y se abrirá el formulario para reprogramarlo.`}
+                confirmLabel="Sí, confirmar"
+                cancelLabel="Cancelar"
+                onConfirm={async () => {
+                    const item = pendingNoRealizado;
+                    setPendingNoRealizado(null);
+                    await handleUpdateEstado(item.id, 'No Realizado');
+                    router.push(`/programar-entrenamiento?tab=form&empleadoId=${item.empleado_id}`);
+                }}
+                onCancel={() => setPendingNoRealizado(null)}
             />
         </div>
     );
