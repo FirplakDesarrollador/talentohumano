@@ -38,13 +38,16 @@ function ProgramarEntrenamientoContent() {
                 const email = user.email || '';
                 const nivelCargo = user.user_metadata?.nivelCargo || '';
                 const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(nivelCargo);
-                
-                if (isAdmin) {
-                    if (urlTipo === 'operativa' || urlTipo === 'administrativa') {
-                        setUserType(urlTipo);
-                    } else {
-                        setUserType('admin');
-                    }
+
+                // El parametro de la URL indica desde donde entro el usuario (HILU
+                // Operativa vs HILU Administrativa) y siempre tiene prioridad sobre
+                // el area/planta del propio empleado: alguien cuya propia area es
+                // "administrativa" (ej. Manufactura) puede igualmente necesitar
+                // buscar y programar entrenamientos de personal operativo.
+                if (urlTipo === 'operativa' || urlTipo === 'administrativa') {
+                    setUserType(urlTipo);
+                } else if (isAdmin) {
+                    setUserType('admin');
                 } else {
                     const { data: empData } = await supabase.from('empleados').select('area, planta').eq('correo_electronico', email).single();
                     if (empData) {
