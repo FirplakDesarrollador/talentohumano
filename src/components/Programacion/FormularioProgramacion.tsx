@@ -43,6 +43,8 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
     const [loading, setLoading] = useState(false);
     const [fetchingEmployees, setFetchingEmployees] = useState(false);
     const [plantas, setPlantas] = useState<any[]>([]);
+    const [cargosDisponibles, setCargosDisponibles] = useState<{ id: number; cargo: string }[]>([]);
+    const [fetchingCargos, setFetchingCargos] = useState(false);
 
     // Employee search state
     const [employees, setEmployees] = useState<any[]>([]);
@@ -69,6 +71,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
         empleado_id: '',
         nombreCompleto: '',
         planta: '',
+        puesto: '',
         fecha_programada: format(new Date(), 'yyyy-MM-dd'),
         tipo: 'Entrenamiento',
         instructor: '',
@@ -114,6 +117,49 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
         fetchPlantas();
     }, [supabase, userType]);
 
+    // Fetch cargos (puestos) available for the selected planta, so the user can
+    // pick the specific position the collaborator is being trained on.
+    useEffect(() => {
+        const fetchCargos = async () => {
+            if (!formData.planta || formData.planta === 'Todas las áreas') {
+                setCargosDisponibles([]);
+                return;
+            }
+
+            setFetchingCargos(true);
+            try {
+                if (formData.planta === 'Administrativa') {
+                    // cargos.planta es un enum de Postgres cuyas etiquetas no siempre
+                    // coinciden en mayusculas/minusculas con AREAS_ADMINISTRATIVAS
+                    // (ej. "I+D+i" vs "I+D+I"), y un valor invalido para el enum hace
+                    // que la consulta entera falle. Se filtra en el cliente para
+                    // evitar depender de la casing exacta del enum.
+                    const { data, error } = await (supabase as any)
+                        .from('cargos')
+                        .select('id, cargo, planta')
+                        .order('cargo');
+                    if (error) throw error;
+                    const adminSet = new Set(AREAS_ADMINISTRATIVAS.map(a => a.toLowerCase()));
+                    setCargosDisponibles((data || []).filter((c: any) => adminSet.has((c.planta || '').toLowerCase())));
+                } else {
+                    const { data, error } = await (supabase as any)
+                        .from('cargos')
+                        .select('id, cargo')
+                        .eq('planta', formData.planta)
+                        .order('cargo');
+                    if (error) throw error;
+                    setCargosDisponibles(data || []);
+                }
+            } catch (err: any) {
+                console.error('Error fetching cargos:', err?.message || err);
+                setCargosDisponibles([]);
+            } finally {
+                setFetchingCargos(false);
+            }
+        };
+        fetchCargos();
+    }, [formData.planta, supabase]);
+
     // Fetch data for edit mode
     useEffect(() => {
         const fetchEditData = async () => {
@@ -134,6 +180,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         empleado_id: d.empleado_id.toString(),
                         nombreCompleto: d.empleados?.nombreCompleto || '',
                         planta: d.planta || '',
+                        puesto: d.puesto || '',
                         fecha_programada: d.fecha_programada,
                         tipo: d.tipo || 'Entrenamiento',
                         instructor: d.instructor || '',
@@ -291,6 +338,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
             const dataToSave = {
                 empleado_id: parseInt(formData.empleado_id),
                 planta: formData.planta,
+                puesto: formData.puesto,
                 fecha_programada: formData.fecha_programada,
                 tipo: formData.tipo,
                 instructor: formData.instructor,
@@ -330,7 +378,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                             body: JSON.stringify({
                                 instructor_correo: formData.instructor_correo,
                                 subject: `Entrenamiento: ${formData.tipo} - Fase ${formData.fase_hilu}`,
-                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}<br><b>Instructor:</b> ${formData.instructor}`,
+                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}${formData.puesto ? `<br><b>Puesto:</b> ${formData.puesto}` : ''}<br><b>Instructor:</b> ${formData.instructor}`,
                                 startDateTime: startDateTimeStr,
                                 endDateTime: endDateTimeStr
                             })
@@ -443,17 +491,37 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Detalles de Programación</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Planta de Entrenamiento</Label>
                             <select
                                 value={formData.planta}
-                                onChange={(e) => setFormData({ ...formData, planta: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, planta: e.target.value, puesto: '' })}
                                 className="flex h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all font-semibold text-gray-700"
                             >
                                 <option value="">Seleccione una planta...</option>
                                 {plantas.map(p => <option key={p.planta} value={p.planta}>{p.planta}</option>)}
                             </select>
+                        </div>
+
+                        <div className="space-y-1.5 relative">
+                            <Label className="text-xs font-bold text-gray-500 mb-1.5 block">Puesto a Entrenar</Label>
+                            <select
+                                value={formData.puesto}
+                                onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
+                                disabled={!formData.planta || formData.planta === 'Todas las áreas'}
+                                className="flex h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all font-semibold text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <option value="">
+                                    {formData.planta && formData.planta !== 'Todas las áreas' ? 'Seleccione un puesto...' : 'Seleccione primero una planta'}
+                                </option>
+                                {cargosDisponibles.map(c => <option key={c.id} value={c.cargo}>{c.cargo}</option>)}
+                            </select>
+                            {fetchingCargos && (
+                                <div className="absolute right-3.5 top-[38px]">
+                                    <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">

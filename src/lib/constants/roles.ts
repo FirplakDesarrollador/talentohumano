@@ -346,5 +346,5 @@ export const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI',
     'Talento y Cultura', 'Negociacion y compras',
     'Mercadeo', 'Servicios', 'I+D+I', 'Logistica',
-    'Manufactura', 'Comercial'
+    'Comercial'
 ];
