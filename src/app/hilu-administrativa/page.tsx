@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/Navbar'
-import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO, HILU_ADMIN_EDIT_OVERRIDES } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, NIVELES_CARGO, HILU_ADMIN_EDIT_OVERRIDES, getPlantasPermitidas } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -243,6 +243,15 @@ export default function BuscadorHiluAdminPage() {
                 if (overrideIds && overrideIds.length > 0) {
                     const overrideFilter = overrideIds.map(id => `id.eq.${id}`).join(',');
                     baseOr += baseOr ? `,${overrideFilter}` : overrideFilter;
+                }
+
+                // 6. Jefes/supervisores/coordinadores con acceso restringido por planta
+                // (mismo helper centralizado que usa Gestor de Personal) ven a todos
+                // los empleados de sus plantas asignadas, no solo a sus reportes directos.
+                const permittedPlants = userEmail ? getPlantasPermitidas(userEmail) : null;
+                if (permittedPlants) {
+                    const plantFilter = permittedPlants.map(p => `area.eq.${p}`).join(',');
+                    baseOr += baseOr ? `,${plantFilter}` : plantFilter;
                 }
 
                 if (baseOr) {
