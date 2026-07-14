@@ -15,7 +15,8 @@ import {
     Eraser,
     FileUp,
     ShieldAlert,
-    Calendar
+    Calendar,
+    Download
 } from 'lucide-react'
 import { AusentismoCard, type Ausentismo } from '@/components/Ausentismos/AusentismoCard'
 import { AusentismoRow } from '@/components/Ausentismos/AusentismoRow'
@@ -229,6 +230,36 @@ export default function AusentismosPage() {
     const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || (currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo))
     const canViewDetalle = !(currentUser?.correo && AUSENTISMOS_SIN_DETALLE.includes(currentUser.correo))
 
+    const handleDownloadExcel = async () => {
+        const toastId = toast.loading('Generando archivo Excel...')
+        try {
+            const { data, error } = await supabase
+                .from('ausentismos' as any)
+                .select('*')
+                .order('FechaInicio', { ascending: false })
+
+            if (error) throw error
+
+            if (!data || data.length === 0) {
+                toast.error('No hay datos para exportar', { id: toastId })
+                return
+            }
+
+            const XLSX = await import('xlsx')
+            const worksheet = XLSX.utils.json_to_sheet(data)
+            const workbook = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Ausentismos')
+
+            const date = new Date().toLocaleDateString('es-CO').replace(/\//g, '-')
+            XLSX.writeFile(workbook, `Base_Datos_Ausentismos_${date}.xlsx`)
+
+            toast.success('Archivo Excel descargado correctamente', { id: toastId })
+        } catch (error: any) {
+            console.error('Error downloading excel:', error)
+            toast.error('Error al descargar Excel: ' + error.message, { id: toastId })
+        }
+    }
+
     if (!loading && !hasAccess) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -277,6 +308,17 @@ export default function AusentismosPage() {
                             >
                                 Todos
                             </Button>
+                            {isSystemAdmin && (
+                                <Button
+                                    variant="outline"
+                                    onClick={handleDownloadExcel}
+                                    title="Descargar toda la base de datos de ausentismos en Excel"
+                                    className="h-12 rounded-2xl px-6 font-bold text-xs tracking-widest uppercase transition-all border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 flex gap-2"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Descargar Excel</span>
+                                </Button>
+                            )}
                             <Button
                                 variant={filtroReciente ? 'default' : 'outline'}
                                 onClick={() => setFiltroReciente(true)}
