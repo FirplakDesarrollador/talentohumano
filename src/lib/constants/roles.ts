@@ -289,6 +289,13 @@ export const ADMIN_EMAILS = [
 export const SUPER_ADMIN_EMAILS = [
     'milton.rendon@firplak.com',
     'angie.zapata@firplak.com',
+    'renata.lainez@firplak.com',
+    'camila.jimenez@firplak.com',
+    'analista2.desarrollo@firplak.com',
+    'alejandro.isaza@firplak.com',
+    'daniel.jimenez@firplak.com',
+    'juan.bedoya@firplak.com',
+    'talentos@firplak.com'
 ];
 
 // For backward compatibility during migration

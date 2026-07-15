@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { parseISO } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -150,21 +151,21 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
                                     <p className="text-[9px] font-black text-gray-400 uppercase">Fecha Salida</p>
                                     <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
                                         <Calendar className="h-4 w-4 text-blue-500" />
-                                        {solicitud.FechaInicial ? new Date(solicitud.FechaInicial).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+                                        {solicitud.FechaInicial ? parseISO(solicitud.FechaInicial).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[9px] font-black text-gray-400 uppercase">Fecha Fin</p>
                                     <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
                                         <Calendar className="h-4 w-4 text-red-500" />
-                                        {solicitud.FechaFinal ? new Date(solicitud.FechaFinal).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+                                        {solicitud.FechaFinal ? parseISO(solicitud.FechaFinal).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-[9px] font-black text-gray-400 uppercase">Fecha Regreso</p>
                                     <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
                                         <Clock className="h-4 w-4 text-green-500" />
-                                        {solicitud.FechaIngreso ? new Date(solicitud.FechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+                                        {solicitud.FechaIngreso ? parseISO(solicitud.FechaIngreso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
                                     </div>
                                 </div>
                             </div>
