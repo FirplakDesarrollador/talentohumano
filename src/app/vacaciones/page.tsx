@@ -37,6 +37,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { parseISO } from 'date-fns'
 import { cargarEmpleadoPorCedula, vacacionesValidarCalcular, descargarQueryVacaciones } from '@/lib/vacation-utils'
 
 export interface Empleado {
@@ -788,11 +789,11 @@ export default function VacacionesPage() {
                                                         <td className="px-6 py-4">
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-1.5 font-bold text-xs text-gray-700">
-                                                                    <span>{solicitud.FechaInicial ? new Date(solicitud.FechaInicial).toLocaleDateString('es-CO') : 'N/A'}</span>
+                                                                    <span>{solicitud.FechaInicial ? parseISO(solicitud.FechaInicial).toLocaleDateString('es-CO') : 'N/A'}</span>
                                                                     <ArrowRight className="h-3 w-3 text-gray-400" />
-                                                                    <span>{solicitud.FechaFinal ? new Date(solicitud.FechaFinal).toLocaleDateString('es-CO') : 'N/A'}</span>
+                                                                    <span>{solicitud.FechaFinal ? parseISO(solicitud.FechaFinal).toLocaleDateString('es-CO') : 'N/A'}</span>
                                                                 </div>
-                                                                <span className="text-[10px] text-gray-400 font-medium italic">Regresa: {solicitud.FechaIngreso ? new Date(solicitud.FechaIngreso).toLocaleDateString('es-CO') : 'N/A'}</span>
+                                                                <span className="text-[10px] text-gray-400 font-medium italic">Regresa: {solicitud.FechaIngreso ? parseISO(solicitud.FechaIngreso).toLocaleDateString('es-CO') : 'N/A'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">
