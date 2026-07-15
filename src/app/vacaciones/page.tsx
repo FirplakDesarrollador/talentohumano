@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, getPlantasPermitidas, type NivelCargo } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { VacacionesDetalle } from '@/components/Vacaciones/VacacionesDetalle'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,7 +34,8 @@ import {
     UserCircle,
     ClipboardList,
     Wallet,
-    Download
+    Download,
+    Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -87,6 +89,8 @@ export default function VacacionesPage() {
     const [currentUser, setCurrentUser] = useState<{correo?: string; nombre?: string; nivelCargo?: string} | null>(null)
     const [showInstructions, setShowInstructions] = useState(false)
     const [selectedSolicitud, setSelectedSolicitud] = useState<Solicitud | null>(null)
+    const [pendingDelete, setPendingDelete] = useState<Solicitud | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Form state for new request
     const [formData, setFormData] = useState({
@@ -222,6 +226,28 @@ export default function VacacionesPage() {
             setHistoryLoading(false)
         }
     }, [supabase, filterCedula, isAdmin, currentUser])
+
+    const handleConfirmDelete = async () => {
+        if (!pendingDelete) return
+        setIsDeleting(true)
+        try {
+            const { error } = await (supabase as any)
+                .from('Vacaciones')
+                .delete()
+                .eq('id', pendingDelete.id)
+
+            if (error) throw error
+
+            setHistory(prev => prev.filter(item => item.id !== pendingDelete.id))
+            toast.success('Solicitud eliminada correctamente')
+        } catch (err: any) {
+            console.error('Error deleting solicitud:', err)
+            toast.error('Error al eliminar la solicitud: ' + (err.message || ''))
+        } finally {
+            setIsDeleting(false)
+            setPendingDelete(null)
+        }
+    }
 
     const handleDownloadReport = async () => {
         // "Descargar Reporte" is also reachable from the welcome screen, before the
@@ -807,15 +833,28 @@ export default function VacacionesPage() {
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-black text-xs"
-                                                                onClick={() => setSelectedSolicitud(solicitud)}
-                                                            >
-                                                                DETALLE
-                                                                <ChevronRight className="h-4 w-4 ml-1" />
-                                                            </Button>
+                                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {isAdmin && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        title="Eliminar solicitud"
+                                                                        className="bg-red-50 text-red-500 hover:bg-red-600 hover:text-white font-black text-xs px-2"
+                                                                        onClick={(e) => { e.stopPropagation(); setPendingDelete(solicitud) }}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-black text-xs"
+                                                                    onClick={() => setSelectedSolicitud(solicitud)}
+                                                                >
+                                                                    DETALLE
+                                                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                                                </Button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -832,10 +871,22 @@ export default function VacacionesPage() {
             {selectedSolicitud && (
                 <VacacionesDetalle
                     solicitud={selectedSolicitud}
+                    isAdmin={!!isAdmin}
                     onClose={() => setSelectedSolicitud(null)}
                     onUpdate={fetchHistory}
                 />
             )}
+
+            <ConfirmDialog
+                isOpen={!!pendingDelete}
+                variant="danger"
+                title="¿Eliminar esta solicitud?"
+                description={`Se eliminará permanentemente la solicitud de vacaciones de ${pendingDelete?.Empleado_Que_Disfruta || 'este colaborador'}. Esta acción no se puede deshacer.`}
+                confirmLabel={isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
+                cancelLabel="Cancelar"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setPendingDelete(null)}
+            />
         </div>
     )
 }
