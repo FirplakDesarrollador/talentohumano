@@ -22,11 +22,12 @@ import {
 
 interface VacacionesDetalleProps {
     solicitud: any
+    isAdmin: boolean
     onClose: () => void
     onUpdate: () => void
 }
 
-export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud, onClose, onUpdate }) => {
+export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud, isAdmin, onClose, onUpdate }) => {
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
@@ -193,8 +194,8 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
                                 </div>
                             </div>
 
-                            {/* Actions if Pending */}
-                            {solicitud.Aprobacion_Jefe === 'Pendiente' && (
+                            {/* Actions if Pending — solo administradores pueden aprobar/rechazar */}
+                            {isAdmin && solicitud.Aprobacion_Jefe === 'Pendiente' && (
                                 <div className="flex gap-4 pt-4">
                                     <Button
                                         onClick={() => handleUpdateStatus('Rechazado')}
