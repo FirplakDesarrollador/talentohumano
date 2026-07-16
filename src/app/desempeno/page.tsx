@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_EMAILS, ADMIN_LEVELS, SUPER_ADMIN_EMAILS } from '@/lib/constants/roles'
+import { ADMIN_EMAILS, ADMIN_LEVELS, SUPER_ADMIN_EMAILS, NIVELES_CARGO } from '@/lib/constants/roles'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CompetenciaCard } from '@/components/Desempeno/CompetenciaCard'
@@ -17,7 +17,8 @@ import {
     Building2,
     UserCircle,
     ShieldAlert,
-    CalendarRange
+    CalendarRange,
+    Gauge
 } from 'lucide-react'
 import {
     Select,
@@ -46,15 +47,24 @@ export default function DesempenoBuscadorPage() {
     const [selectedArea, setSelectedArea] = useState('all')
     const [selectedJefe, setSelectedJefe] = useState('all')
 
+    // Scores de desempeño por empleado, reportados por cada CompetenciaCard
+    // a medida que terminan de calcularse (para promediar por área sin
+    // recalcular todo en la página).
+    const [scoresById, setScoresById] = useState<Record<number, number | null>>({})
+    const handleScoreLoaded = useCallback((id: number, scoreFinal: number | null) => {
+        setScoresById(prev => (prev[id] === scoreFinal ? prev : { ...prev, [id]: scoreFinal }))
+    }, [])
+
     // 1. Fetch Initial Data
     const fetchInitialData = useCallback(async () => {
         setLoading(true)
         try {
-            // Fetch all active employees
+            // Fetch all active employees, excluding Operarios (Desempeño no aplica para ellos)
             const { data: empData, error: empError } = await supabase
                 .from('empleados')
-                .select('id, nombreCompleto, cargo, planta, jefe, foto, activo, correo_electronico')
+                .select('id, nombreCompleto, cargo, planta, jefe, foto, activo, correo_electronico, nivelCargo')
                 .eq('activo', true)
+                .neq('nivelCargo', NIVELES_CARGO.OPERARIO)
                 .order('nombreCompleto', { ascending: true })
 
             if (empError) throw empError
@@ -142,6 +152,26 @@ export default function DesempenoBuscadorPage() {
 
         setFilteredEmpleados(result)
     }, [busqueda, selectedArea, selectedJefe, empleados])
+
+    // Promedio de desempeño de los empleados visibles, solo cuando hay un área
+    // seleccionada. Se calcula con los scores que ya reportaron las tarjetas
+    // (puede quedar incompleto mientras las últimas terminan de cargar).
+    const areaScoreStats = useMemo(() => {
+        if (selectedArea === 'all' || filteredEmpleados.length === 0) return null
+
+        const ids = filteredEmpleados.map(e => e.id)
+        const loadedScores = ids
+            .map(id => scoresById[id])
+            .filter((s): s is number => typeof s === 'number')
+
+        return {
+            average: loadedScores.length > 0
+                ? Math.round(loadedScores.reduce((a, b) => a + b, 0) / loadedScores.length)
+                : null,
+            loadedCount: loadedScores.length,
+            total: ids.length,
+        }
+    }, [selectedArea, filteredEmpleados, scoresById])
 
     // 3. Reset Filters
     const resetFilters = () => {
@@ -269,6 +299,36 @@ export default function DesempenoBuscadorPage() {
                     </div>
                 </div>
 
+                {/* Promedio de desempeño del área filtrada */}
+                {areaScoreStats && (
+                    <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 p-2 rounded-xl text-white">
+                                <Gauge className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-[#2d4356]">
+                                    Desempeño promedio — {selectedArea}
+                                </h3>
+                                <p className="text-xs text-gray-400">
+                                    Promedio de {areaScoreStats.loadedCount} de {areaScoreStats.total} empleados
+                                    {areaScoreStats.loadedCount < areaScoreStats.total && ' (calculando...)'}
+                                </p>
+                            </div>
+                        </div>
+                        {areaScoreStats.average === null ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                        ) : (
+                            <span className={`text-2xl font-black ${
+                                areaScoreStats.average >= 80 ? 'text-green-600' :
+                                areaScoreStats.average >= 60 ? 'text-yellow-600' : 'text-red-500'
+                            }`}>
+                                {areaScoreStats.average}%
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 {/* Results Section */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between px-2">
@@ -290,7 +350,7 @@ export default function DesempenoBuscadorPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
                             {filteredEmpleados.map((empleado) => (
                                 <div key={empleado.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <CompetenciaCard empleado={empleado} />
+                                    <CompetenciaCard empleado={empleado} onScoreLoaded={handleScoreLoaded} />
                                 </div>
                             ))}
                         </div>

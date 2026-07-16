@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,15 +17,26 @@ interface CompetenciaCardProps {
         foto: string | null
         correo_electronico?: string | null
     }
+    onScoreLoaded?: (id: number, scoreFinal: number | null) => void
 }
 
-export function CompetenciaCard({ empleado }: CompetenciaCardProps) {
+export function CompetenciaCard({ empleado, onScoreLoaded }: CompetenciaCardProps) {
     const router = useRouter()
     const { scoreFinal, loading } = useDesempenoScore(
         empleado.id,
         empleado.cargo || '',
         empleado.correo_electronico || undefined
     )
+
+    // Reporta el score ya calculado hacia el buscador, para que pueda
+    // promediarlo por área sin recalcularlo de nuevo.
+    const lastReported = useRef<number | null | undefined>(undefined)
+    useEffect(() => {
+        if (!loading && onScoreLoaded && lastReported.current !== scoreFinal) {
+            lastReported.current = scoreFinal
+            onScoreLoaded(empleado.id, scoreFinal)
+        }
+    }, [loading, scoreFinal, empleado.id, onScoreLoaded])
 
     const scoreColor =
         scoreFinal === null ? 'text-gray-400'

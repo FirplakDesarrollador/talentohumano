@@ -303,8 +303,15 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
     )
 }
 
+// Color segun el valor: 0-59 rojo, 60-79 naranja, 80-100 verde
+function getNivelColor(value: number): string {
+    if (value < 60) return '#ef4444'
+    if (value < 80) return '#f97316'
+    return '#22c55e'
+}
+
 // --- Sub-component: Editable Competency Card ---
-function CompetenciaEditCard({ comp, saving, onSave }: { 
+function CompetenciaEditCard({ comp, saving, onSave }: {
     comp: CompetenciaItem; 
     saving: boolean;
     onSave: (comp: CompetenciaItem, nivel: number, esperado: number, comentario: string) => void 
@@ -344,7 +351,7 @@ function CompetenciaEditCard({ comp, saving, onSave }: {
             <div className="mb-4">
                 <div className="flex justify-between items-center mb-1">
                     <label className="text-xs font-bold text-gray-500">competencia</label>
-                    <span className="text-sm font-bold text-[#2d4356]">{nivel.toFixed(1)}</span>
+                    <span className="text-sm font-bold" style={{ color: getNivelColor(nivel) }}>{nivel.toFixed(1)}</span>
                 </div>
                 <input
                     type="range"
@@ -353,7 +360,11 @@ function CompetenciaEditCard({ comp, saving, onSave }: {
                     step="0.5"
                     value={nivel}
                     onChange={(e) => handleNivelChange(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#2d4356]"
+                    style={{
+                        accentColor: getNivelColor(nivel),
+                        background: `linear-gradient(to right, ${getNivelColor(nivel)} ${nivel}%, #e5e7eb ${nivel}%)`
+                    }}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
                     <span>0</span>
@@ -365,7 +376,7 @@ function CompetenciaEditCard({ comp, saving, onSave }: {
             <div className="mb-4">
                 <div className="flex justify-between items-center mb-1">
                     <label className="text-xs font-bold text-gray-500">Nivel esperado de competencia</label>
-                    <span className="text-sm font-bold text-[#2d4356]">{esperado.toFixed(1)}</span>
+                    <span className="text-sm font-bold" style={{ color: getNivelColor(esperado) }}>{esperado.toFixed(1)}</span>
                 </div>
                 <input
                     type="range"
@@ -374,7 +385,11 @@ function CompetenciaEditCard({ comp, saving, onSave }: {
                     step="0.5"
                     value={esperado}
                     onChange={(e) => handleEsperadoChange(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#2d4356]"
+                    style={{
+                        accentColor: getNivelColor(esperado),
+                        background: `linear-gradient(to right, ${getNivelColor(esperado)} ${esperado}%, #e5e7eb ${esperado}%)`
+                    }}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
                     <span>0</span>
