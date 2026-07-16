@@ -10,7 +10,8 @@ export interface DesempenoScores {
     scorePlanner: number | null        // 20% del bloque Desempeño
     scorePotencial: number | null      // bloque Potencial completo
 
-    // Totales ponderados
+    // Totales ponderados. Null solo antes de la primera carga; una vez
+    // calculados, un submodulo sin datos cuenta como 0 (no se excluye).
     scoreDesempeno: number | null      // 70% del score final
     scoreFinal: number | null          // Score total del empleado
 
@@ -29,6 +30,10 @@ export interface DesempenoScores {
  *   - Promedio de las 4 respuestas (0-100 cada una)
  *
  * Score Final = Desempeño × 70% + Potencial × 30%
+ *
+ * Si a un empleado le falta informacion en algun submodulo (Competencias,
+ * Indicadores, Planner o Potencial), ese submodulo cuenta como 0 en vez de
+ * excluirse/renormalizar los pesos entre los datos disponibles.
  */
 export function useDesempenoScore(
     cedula: number | string,
@@ -151,33 +156,18 @@ export function useDesempenoScore(
 
             // ── 5. PONDERACIONES FINALES ─────────────────────────────────────
             // Desempeño = Competencias×20% + Indicadores×60% + Planner×20%
-            // Solo calculamos si al menos hay un dato disponible
-            let scoreDesempeno: number | null = null
-            {
-                let sumPeso = 0
-                let sumValor = 0
-                if (scoreCompetencias !== null) { sumValor += scoreCompetencias * 0.20; sumPeso += 0.20 }
-                if (scoreIndicadores !== null)  { sumValor += scoreIndicadores * 0.60;  sumPeso += 0.60 }
-                if (scorePlanner !== null)      { sumValor += scorePlanner * 0.20;      sumPeso += 0.20 }
-
-                if (sumPeso > 0) {
-                    // Normalizamos proporcionalmente si faltan datos
-                    scoreDesempeno = Math.round(sumValor / sumPeso)
-                }
-            }
+            // Si falta informacion de algun submodulo, cuenta como 0 (no se
+            // renormalizan los pesos entre los datos disponibles).
+            const scoreDesempeno = Math.round(
+                (scoreCompetencias ?? 0) * 0.20 +
+                (scoreIndicadores ?? 0) * 0.60 +
+                (scorePlanner ?? 0) * 0.20
+            )
 
             // Score Final = Desempeño×70% + Potencial×30%
-            let scoreFinal: number | null = null
-            {
-                let sumPeso = 0
-                let sumValor = 0
-                if (scoreDesempeno !== null) { sumValor += scoreDesempeno * 0.70; sumPeso += 0.70 }
-                if (scorePotencial !== null) { sumValor += scorePotencial * 0.30; sumPeso += 0.30 }
-
-                if (sumPeso > 0) {
-                    scoreFinal = Math.round(sumValor / sumPeso)
-                }
-            }
+            const scoreFinal = Math.round(
+                scoreDesempeno * 0.70 + (scorePotencial ?? 0) * 0.30
+            )
 
             setScores({
                 scoreCompetencias,
