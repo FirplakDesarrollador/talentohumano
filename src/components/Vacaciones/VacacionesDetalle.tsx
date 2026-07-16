@@ -17,7 +17,8 @@ import {
     UserCheck,
     MapPin,
     Briefcase,
-    Building2
+    Building2,
+    Wallet
 } from 'lucide-react'
 
 interface VacacionesDetalleProps {
@@ -124,6 +125,13 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Persona Encargada</p>
                                 <div className="text-sm font-bold text-gray-700 bg-gray-50 p-3 rounded-xl border border-gray-100 italic">
                                     {solicitud.PersonaEncargada || 'No especificado'}
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tipo de Pago</p>
+                                <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                    <Wallet className="h-4 w-4 text-gray-400" />
+                                    {solicitud.TipoDePAgo || 'N/A'}
                                 </div>
                             </div>
                         </div>
