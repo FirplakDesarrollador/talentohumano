@@ -171,6 +171,7 @@ export function PlannerView({ empleadoEmail, nombre }: PlannerViewProps) {
     const [kpis, setKpis] = useState<KPIs | null>(null)
     const [loading, setLoading] = useState(true)
     const [showAllTasks, setShowAllTasks] = useState(false)
+    const [statusFilter, setStatusFilter] = useState<'all' | 'completadas' | 'en_progreso' | 'pendientes'>('all')
     const [noData, setNoData] = useState(false)
     const [lastSync, setLastSync] = useState<string | null>(null)
 
@@ -294,7 +295,13 @@ export function PlannerView({ empleadoEmail, nombre }: PlannerViewProps) {
 
     useEffect(() => { loadData() }, [loadData])
 
-    const visibleTasks = showAllTasks ? tasks : tasks.slice(0, 5)
+    const filteredTasks = tasks.filter(t => {
+        if (statusFilter === 'completadas') return t.percent_complete === 100
+        if (statusFilter === 'en_progreso') return t.percent_complete > 0 && t.percent_complete < 100
+        if (statusFilter === 'pendientes') return t.percent_complete === 0
+        return true
+    })
+    const visibleTasks = showAllTasks ? filteredTasks : filteredTasks.slice(0, 5)
 
     // ── Empty / Loading states ───────────────────────────────────────────────
     if (loading) {
@@ -412,7 +419,7 @@ export function PlannerView({ empleadoEmail, nombre }: PlannerViewProps) {
 
             {/* Task list */}
             <div className="bg-white rounded-[32px] p-5 shadow-sm border border-gray-100 space-y-2">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <h3 className="font-bold text-[#2d4356] text-sm uppercase tracking-wide">Listado de Tareas</h3>
                     {lastSync && (
                         <span className="text-[10px] text-gray-300">
@@ -420,17 +427,43 @@ export function PlannerView({ empleadoEmail, nombre }: PlannerViewProps) {
                         </span>
                     )}
                 </div>
+
+                {/* Filtro por estado */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                    {([
+                        { id: 'all', label: 'Todas' },
+                        { id: 'completadas', label: 'Completadas' },
+                        { id: 'en_progreso', label: 'En Progreso' },
+                        { id: 'pendientes', label: 'Pendientes' },
+                    ] as const).map(opt => (
+                        <button
+                            key={opt.id}
+                            onClick={() => { setStatusFilter(opt.id); setShowAllTasks(false) }}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
+                                statusFilter === opt.id
+                                    ? 'bg-orange-600 text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+
                 {visibleTasks.map(task => (
                     <TaskItem key={task.id} task={task} />
                 ))}
-                {tasks.length > 5 && (
+                {filteredTasks.length === 0 && (
+                    <p className="text-center text-sm text-gray-400 py-6">No hay tareas para este filtro.</p>
+                )}
+                {filteredTasks.length > 5 && (
                     <button
                         onClick={() => setShowAllTasks(v => !v)}
                         className="w-full flex items-center justify-center gap-2 py-2 text-sm text-orange-600 font-semibold hover:bg-orange-50 rounded-xl transition-colors"
                     >
                         {showAllTasks
                             ? <><ChevronUp className="h-4 w-4" /> Ver menos</>
-                            : <><ChevronDown className="h-4 w-4" /> Ver las {tasks.length - 5} tareas restantes</>
+                            : <><ChevronDown className="h-4 w-4" /> Ver las {filteredTasks.length - 5} tareas restantes</>
                         }
                     </button>
                 )}

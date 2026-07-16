@@ -130,6 +130,15 @@ export default function DesempenoDetailPage() {
         }
     }
 
+    const getTabScore = (tabId: TabId): number => {
+        switch (tabId) {
+            case 'competencias': return desempenoScore.scoreCompetencias ?? 0
+            case 'kpis': return desempenoScore.scoreIndicadores ?? 0
+            case 'planner': return desempenoScore.scorePlanner ?? 0
+            case 'potencial': return desempenoScore.scorePotencial ?? 0
+        }
+    }
+
     const getTabColorClasses = (tabId: string, isActive: boolean) => {
         const colors: Record<string, { active: string; inactive: string }> = {
             blue: { active: 'bg-blue-600 text-white shadow-lg shadow-blue-200', inactive: 'text-gray-500 hover:bg-blue-50 hover:text-blue-600' },
@@ -227,6 +236,7 @@ export default function DesempenoDetailPage() {
                     {TABS.map((tab) => {
                         const Icon = tab.icon
                         const isActive = activeTab === tab.id
+                        const tabScore = getTabScore(tab.id)
                         return (
                             <button
                                 key={tab.id}
@@ -235,6 +245,9 @@ export default function DesempenoDetailPage() {
                             >
                                 <Icon className="h-4 w-4" />
                                 <span className="hidden sm:inline">{tab.label}</span>
+                                <span className={`text-xs font-black ${isActive ? 'text-white/90' : 'text-gray-400'}`}>
+                                    {desempenoScore.loading ? '…' : `${tabScore}%`}
+                                </span>
                             </button>
                         )
                     })}
