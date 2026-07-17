@@ -337,6 +337,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
         try {
             const dataToSave = {
                 empleado_id: parseInt(formData.empleado_id),
+                nombre_empleado: formData.nombreCompleto,
                 planta: formData.planta,
                 puesto: formData.puesto,
                 fecha_programada: formData.fecha_programada,
