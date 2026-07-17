@@ -40,6 +40,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { parseISO } from 'date-fns'
+import { HolidayDatePicker } from '@/components/ui/HolidayDatePicker'
 import { cargarEmpleadoPorCedula, vacacionesValidarCalcular, descargarQueryVacaciones } from '@/lib/vacation-utils'
 
 export interface Empleado {
@@ -357,6 +358,10 @@ export default function VacacionesPage() {
             setError('Debe buscar un empleado primero')
             return
         }
+        if (!formData.fechaInicio || !formData.fechaFin || !formData.fechaRegreso) {
+            setError('Debe seleccionar Fecha Inicio, Fecha Fin y Fecha Regreso')
+            return
+        }
 
         setIsSubmitting(true)
         setError(null)
@@ -634,34 +639,25 @@ export default function VacacionesPage() {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
                                                     <label className="text-xs font-black text-gray-500 uppercase">Fecha Inicio *</label>
-                                                    <Input
-                                                        type="date"
-                                                        required
+                                                    <HolidayDatePicker
                                                         value={formData.fechaInicio}
-                                                        onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
-                                                        className="h-12 bg-gray-50 font-medium"
+                                                        onChange={(v) => setFormData({ ...formData, fechaInicio: v })}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-xs font-black text-gray-500 uppercase">Fecha Fin *</label>
-                                                    <Input
-                                                        type="date"
-                                                        required
+                                                    <HolidayDatePicker
                                                         value={formData.fechaFin}
-                                                        onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })}
-                                                        className="h-12 bg-gray-50 font-medium"
+                                                        onChange={(v) => setFormData({ ...formData, fechaFin: v })}
                                                     />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
                                                     <label className="text-xs font-black text-gray-500 uppercase">Fecha Regreso *</label>
-                                                    <Input
-                                                        type="date"
-                                                        required
+                                                    <HolidayDatePicker
                                                         value={formData.fechaRegreso}
-                                                        onChange={(e) => setFormData({ ...formData, fechaRegreso: e.target.value })}
-                                                        className="h-12 bg-gray-50 font-medium"
+                                                        onChange={(v) => setFormData({ ...formData, fechaRegreso: v })}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
