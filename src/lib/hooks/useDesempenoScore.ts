@@ -113,26 +113,26 @@ export function useDesempenoScore(
                     .maybeSingle()
 
                 if (plannerUser) {
+                    // Embebe planner_tasks via la foreign key en vez de traer los
+                    // task_id y volver a consultar con `.in(taskIds)`: con usuarios
+                    // que tienen muchas tareas asignadas esa lista de IDs en la URL
+                    // puede superar el limite de longitud del gateway.
                     const { data: assignments } = await supabase
                         .from('planner_task_assignments')
-                        .select('task_id')
+                        .select('planner_tasks (percent_complete)')
                         .eq('user_id', (plannerUser as any).id)
 
-                    if (assignments && (assignments as any[]).length > 0) {
-                        const taskIds = (assignments as any[]).map((a: any) => a.task_id)
-                        const { data: taskData } = await supabase
-                            .from('planner_tasks')
-                            .select('percent_complete')
-                            .in('id', taskIds)
+                    const taskData = (assignments as any[] | null)
+                        ?.map((a: any) => a.planner_tasks)
+                        .filter(Boolean)
 
-                        if (taskData && (taskData as any[]).length > 0) {
-                            const completadas = (taskData as any[]).filter(
-                                (t: any) => t.percent_complete === 100
-                            ).length
-                            scorePlanner = Math.round(
-                                (completadas / (taskData as any[]).length) * 100
-                            )
-                        }
+                    if (taskData && taskData.length > 0) {
+                        const completadas = (taskData as any[]).filter(
+                            (t: any) => t.percent_complete === 100
+                        ).length
+                        scorePlanner = Math.round(
+                            (completadas / (taskData as any[]).length) * 100
+                        )
                     }
                 }
             }
