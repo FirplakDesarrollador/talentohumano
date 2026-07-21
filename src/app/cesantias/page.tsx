@@ -193,9 +193,17 @@ export default function CesantiasPage() {
 
         try {
             // 1. Upload files
+            // Supabase Storage rechaza keys con tildes/eñes u otros caracteres
+            // no ASCII (ej. "Londoño" -> error "Invalid key"), por eso se
+            // normaliza el nombre de la carpeta antes de usarlo en la ruta.
+            const carpetaEmpleado = empleado.nombreCompleto
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '')
+                .replace(/[^a-zA-Z0-9]/g, '_')
+
             const uploadPromises = formData.archivos.map(async (file) => {
                 const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-                const filePath = `${empleado.nombreCompleto}/${fileName}`
+                const filePath = `${carpetaEmpleado}/${fileName}`
 
                 const { data, error } = await supabase.storage
                     .from('Cesantias')
