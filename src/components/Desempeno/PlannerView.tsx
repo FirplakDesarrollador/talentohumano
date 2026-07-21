@@ -210,34 +210,47 @@ export function PlannerView({ empleadoEmail, nombre }: PlannerViewProps) {
                 return
             }
 
-            // Get all task assignments for this user
-            const { data: assignments } = await supabase
+            // Get task assignments for this user, embebiendo la tarea directamente
+            // via la foreign key (task_id -> planner_tasks.id) en vez de traer los
+            // IDs por separado y luego filtrar con `.in(taskIds)`: con usuarios que
+            // tienen muchas tareas asignadas (ej. cientos), esa lista de IDs en la
+            // URL puede superar el limite de longitud del gateway y la peticion
+            // falla por completo.
+            const { data: assignments, error } = await supabase
                 .from('planner_task_assignments')
-                .select('task_id')
+                .select(`
+                    planner_tasks (
+                        id, title, state, percent_complete, priority,
+                        due_date_time, completed_date_time, created_date_time,
+                        checklist_item_count, checklist_checked_count, plan_id,
+                        planner_planes (title),
+                        planner_buckets (name)
+                    )
+                `)
                 .eq('user_id', (plannerUser as any).id)
+
+            if (error) throw error
 
             if (!assignments || assignments.length === 0) {
                 setNoData(true)
                 return
             }
 
-            const taskIds = (assignments as any[]).map(a => a.task_id)
+            const rows = (assignments as any[])
+                .map(a => a.planner_tasks)
+                .filter(Boolean) as TaskRow[]
 
-            // Get full task data
-            const { data: taskData, error } = await supabase
-                .from('planner_tasks')
-                .select(`
-                    id, title, state, percent_complete, priority,
-                    due_date_time, completed_date_time, created_date_time,
-                    checklist_item_count, checklist_checked_count, plan_id,
-                    planner_planes (title),
-                    planner_buckets (name)
-                `)
-                .in('id', taskIds)
-                .order('due_date_time', { ascending: true, nullsFirst: false })
+            rows.sort((a, b) => {
+                if (!a.due_date_time) return 1
+                if (!b.due_date_time) return -1
+                return a.due_date_time.localeCompare(b.due_date_time)
+            })
 
-            if (error) throw error
-            const rows = (taskData || []) as TaskRow[]
+            if (rows.length === 0) {
+                setNoData(true)
+                return
+            }
+
             setTasks(rows)
 
             // Calculate KPIs
