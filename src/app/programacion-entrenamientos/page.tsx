@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, History, ArrowLeft, PlusCircle, ClipboardList } from 'lucide-react'
+import { Calendar, History, ArrowLeft, PlusCircle, ClipboardList, BarChart3, ExternalLink } from 'lucide-react'
 import { Suspense } from 'react'
 
 function ProgramacionEntrenamientosContent() {
@@ -32,9 +32,9 @@ function ProgramacionEntrenamientosContent() {
                 <div className="w-8" />
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 py-12">
+            <div className="max-w-6xl mx-auto px-4 py-12">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Programar Entrenamiento */}
                     <Card 
                         className="group cursor-pointer hover:shadow-2xl transition-all duration-500 border-none ring-1 ring-gray-200 hover:ring-blue-500 bg-white overflow-hidden"
@@ -73,6 +73,27 @@ function ProgramacionEntrenamientosContent() {
                             <div className="mt-8 flex items-center text-orange-600 font-bold group-hover:gap-2 transition-all">
                                 <span>VER REGISTROS</span>
                                 <ClipboardList className="h-5 w-5 ml-1 opacity-0 group-hover:opacity-100 transition-all" />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Indicadores */}
+                    <Card
+                        className="group cursor-pointer hover:shadow-2xl transition-all duration-500 border-none ring-1 ring-gray-200 hover:ring-green-500 bg-white overflow-hidden"
+                        onClick={() => router.push('/indicadores-entrenamientos')}
+                    >
+                        <div className="absolute top-0 left-0 w-2 h-full bg-green-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
+                        <CardContent className="p-10 flex flex-col items-center text-center relative">
+                            <div className="w-24 h-24 rounded-3xl bg-green-50 text-green-600 flex items-center justify-center mb-8 group-hover:bg-green-600 group-hover:text-white transition-all duration-500 transform group-hover:rotate-6 shadow-sm">
+                                <BarChart3 className="h-12 w-12" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-3">Indicadores</h2>
+                            <p className="text-gray-500 text-base leading-relaxed">
+                                Consulta el tablero de indicadores de entrenamiento en tiempo real.
+                            </p>
+                            <div className="mt-8 flex items-center text-green-600 font-bold group-hover:gap-2 transition-all">
+                                <span>VER INDICADORES</span>
+                                <ExternalLink className="h-5 w-5 ml-1 opacity-0 group-hover:opacity-100 transition-all" />
                             </div>
                         </CardContent>
                     </Card>
