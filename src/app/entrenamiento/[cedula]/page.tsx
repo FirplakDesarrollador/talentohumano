@@ -37,6 +37,10 @@ import {
     RESTRICTED_SUPERVISORS,
     COORDINADORES_CON_ACCESO,
     JEFES_CON_ACCESO,
+    JEFES_MUEBLES_CEFI,
+    JEFES_ALMACEN_CEDI,
+    JEFES_INGENIERIA_MOLDES,
+    JEFES_MOLDES,
     DIRECTORES_CON_ACCESO,
     HILU_OPERATIVA_RESTRINGIDA_MOLDES
 } from '@/lib/constants/roles'
@@ -210,9 +214,13 @@ export default function EntrenamientoDetailPage() {
             const isAdmin = ADMIN_EMAILS.includes(email) || (ADMIN_LEVELS as any).includes(userRoleName)
 
             // Initial generic check (if they are in any list or admin)
-            const isRestricted = RESTRICTED_SUPERVISORS.includes(email) || 
-                                COORDINADORES_CON_ACCESO.includes(email) || 
+            const isRestricted = RESTRICTED_SUPERVISORS.includes(email) ||
+                                COORDINADORES_CON_ACCESO.includes(email) ||
                                 JEFES_CON_ACCESO.includes(email) ||
+                                JEFES_MUEBLES_CEFI.includes(email) ||
+                                JEFES_ALMACEN_CEDI.includes(email) ||
+                                JEFES_INGENIERIA_MOLDES.includes(email) ||
+                                JEFES_MOLDES.includes(email) ||
                                 DIRECTORES_CON_ACCESO.includes(email)
 
             if (!isAdmin && !isRestricted) {
