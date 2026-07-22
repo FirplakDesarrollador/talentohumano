@@ -397,10 +397,18 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     useEffect(() => {
         const fetchHelpers = async () => {
             try {
+                // Combina los valores del campo "jefe" en uso con todos los
+                // Jefes/Supervisores/Coordinadores/Gerentes/Directores activos,
+                // aunque en este momento no tengan ningun reporte directo activo
+                // (ej. un supervisor cuyo equipo completo fue retirado).
                 const { data: bosses } = await supabase.from('empleados').select('jefe').not('jefe', 'is', null).eq('activo', true);
+                const { data: lideres } = await supabase.from('empleados').select('nombreCompleto').eq('activo', true).in('nivelCargo', ['Jefe', 'Supervisor', 'Coordinador', 'Gerente', 'Director']);
                 const { data: jobs } = await (supabase as any).from('cargos').select('cargo');
 
-                if (bosses) setExistingJefes(Array.from(new Set((bosses as any[]).map((e: any) => e.jefe).filter(Boolean))).sort() as string[]);
+                const jefesSet = new Set<string>();
+                (bosses as any[] | null)?.forEach((e: any) => { if (e.jefe) jefesSet.add(e.jefe); });
+                (lideres as any[] | null)?.forEach((e: any) => { if (e.nombreCompleto) jefesSet.add(e.nombreCompleto); });
+                setExistingJefes(Array.from(jefesSet).sort());
                 if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map(j => j.cargo).filter(Boolean))).sort() as string[]);
                 
                 const { data: polyData } = await (supabase.from('polivalencia') as any).select('"Puesto polivalencia"');
