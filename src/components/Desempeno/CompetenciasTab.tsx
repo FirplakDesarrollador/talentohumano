@@ -2,16 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { 
-    Award, 
+import {
+    Award,
     Loader2,
     Plus,
     Save,
-    X
+    X,
+    Pencil,
+    Check
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface CompetenciasTabProps {
     cedula: number
@@ -37,6 +40,12 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
     const [registroId, setRegistroId] = useState<string | null>(null)
     // Store raw row data for upsert
     const [rawRow, setRawRow] = useState<any>(null)
+
+    // Edicion del nombre de una competencia (chips de "Competencias actuales")
+    const [editingIndex, setEditingIndex] = useState<number | null>(null)
+    const [editValue, setEditValue] = useState('')
+    const [pendingEdit, setPendingEdit] = useState<number | null>(null)
+    const [pendingSave, setPendingSave] = useState<{ index: number; newValue: string } | null>(null)
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -194,6 +203,71 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
         }
     }
 
+    const handleRename = async (comp: CompetenciaItem, newName: string) => {
+        const trimmed = newName.trim()
+        if (!trimmed || trimmed === comp.nombre) return
+
+        setSaving(comp.nombre)
+        try {
+            const currentComps: Record<string, boolean> = {}
+            const currentNiveles: Record<string, number> = {}
+            const currentEsperados: Record<string, number> = {}
+            const currentComentarios: Record<string, string> = {}
+
+            if (rawRow) {
+                Object.assign(currentComps, rawRow.competencias || {})
+                Object.assign(currentNiveles, rawRow.nivel || {})
+                Object.assign(currentEsperados, rawRow.nivel_esperado || {})
+                Object.assign(currentComentarios, rawRow.comentario || {})
+            }
+
+            // Quita el nombre anterior (si existia) y agrega el nuevo con los mismos valores
+            delete currentComps[comp.nombre]
+            delete currentNiveles[comp.nombre]
+            delete currentEsperados[comp.nombre]
+            delete currentComentarios[comp.nombre]
+
+            currentComps[trimmed] = true
+            currentNiveles[trimmed] = comp.nivel
+            currentEsperados[trimmed] = comp.nivel_esperado
+            currentComentarios[trimmed] = comp.comentario
+
+            if (registroId) {
+                const { error } = await (supabase.from('ComptEmpleados') as any)
+                    .update({
+                        competencias: currentComps,
+                        nivel: currentNiveles,
+                        nivel_esperado: currentEsperados,
+                        comentario: currentComentarios,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', registroId)
+
+                if (error) throw error
+            } else {
+                const { error } = await (supabase.from('ComptEmpleados') as any)
+                    .insert({
+                        cedula: String(cedula),
+                        nombre: nombre,
+                        cargo: cargo,
+                        competencias: currentComps,
+                        nivel: currentNiveles,
+                        nivel_esperado: currentEsperados,
+                        comentario: currentComentarios,
+                    })
+
+                if (error) throw error
+            }
+
+            await fetchData()
+        } catch (error) {
+            console.error('Error renombrando competencia:', error)
+            alert('Error al renombrar la competencia')
+        } finally {
+            setSaving(null)
+        }
+    }
+
     const handleAddNew = async () => {
         if (!newCompName.trim()) return
         // Add via the same save mechanism
@@ -237,23 +311,94 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Competencias actuales</p>
                 <div className="flex flex-wrap gap-2">
                     {competencias.map((c, i) => (
-                        <span
+                        <div
                             key={i}
-                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all
-                                ${c.isPlaceholder 
-                                    ? 'bg-gray-100 text-gray-400 border border-dashed border-gray-300' 
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all
+                                ${c.isPlaceholder
+                                    ? 'bg-gray-100 text-gray-400 border border-dashed border-gray-300'
                                     : 'bg-[#2d4356] text-white shadow-sm'
                                 }`}
                         >
-                            {c.nombre}
-                            {c.isPlaceholder && <span className="ml-1 text-[10px]">(Pendiente)</span>}
-                        </span>
+                            {editingIndex === i ? (
+                                <>
+                                    <input
+                                        autoFocus
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className={`bg-transparent border-b outline-none min-w-0 w-40 ${
+                                            c.isPlaceholder ? 'border-gray-400 text-gray-700' : 'border-white/50 text-white'
+                                        }`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setPendingSave({ index: i, newValue: editValue })}
+                                        disabled={!editValue.trim()}
+                                        className="shrink-0 opacity-90 hover:opacity-100 hover:scale-110 transition-all disabled:opacity-40"
+                                        title="Guardar o cancelar edición"
+                                    >
+                                        <Check className="h-3.5 w-3.5" />
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <span>{c.nombre}</span>
+                                    {c.isPlaceholder && <span className="text-[10px]">(Pendiente)</span>}
+                                    <button
+                                        type="button"
+                                        onClick={() => setPendingEdit(i)}
+                                        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
+                                        title="Editar nombre de la competencia"
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     ))}
                     {competencias.length === 0 && (
                         <p className="text-gray-400 text-sm">No hay competencias definidas para este cargo.</p>
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={pendingEdit !== null}
+                variant="info"
+                title="¿Editar esta competencia?"
+                description={pendingEdit !== null ? `Vas a editar el nombre de "${competencias[pendingEdit].nombre}".` : ''}
+                confirmLabel="Editar"
+                cancelLabel="Cancelar"
+                onConfirm={() => {
+                    if (pendingEdit === null) return
+                    setEditValue(competencias[pendingEdit].nombre)
+                    setEditingIndex(pendingEdit)
+                    setPendingEdit(null)
+                }}
+                onCancel={() => setPendingEdit(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={pendingSave !== null}
+                variant="info"
+                title="¿Guardar los cambios?"
+                description={
+                    pendingSave !== null
+                        ? `"${competencias[pendingSave.index].nombre}" pasará a llamarse "${pendingSave.newValue.trim()}".`
+                        : ''
+                }
+                confirmLabel="Guardar"
+                cancelLabel="Cancelar edición"
+                onConfirm={() => {
+                    if (pendingSave === null) return
+                    handleRename(competencias[pendingSave.index], pendingSave.newValue)
+                    setEditingIndex(null)
+                    setPendingSave(null)
+                }}
+                onCancel={() => {
+                    setEditingIndex(null)
+                    setPendingSave(null)
+                }}
+            />
 
             {/* Competency Cards with Sliders */}
             <div className="grid grid-cols-1 gap-4">
