@@ -93,16 +93,27 @@ export default function GestorPersonalPage() {
     // 2. Fetch Initial Data (Jefes)
     useEffect(() => {
         const fetchJefes = async () => {
-            const { data } = await supabase
-                .from('empleados')
-                .select('jefe')
-                .not('jefe', 'is', null)
-                .eq('activo', true)
+            // Combina dos fuentes: 1) los valores del campo "jefe" en uso (para no
+            // perder nombres de jefes que no tienen fila propia en empleados) y
+            // 2) todos los Jefes/Supervisores/Coordinadores/Gerentes/Directores
+            // activos, aunque en este momento no tengan ningun reporte directo
+            // activo (ej. un supervisor cuyo equipo completo fue retirado).
+            const [jefeFieldRes, lideresRes] = await Promise.all([
+                supabase.from('empleados').select('jefe').not('jefe', 'is', null).eq('activo', true),
+                supabase.from('empleados').select('nombreCompleto').eq('activo', true).in('nivelCargo', [
+                    NIVELES_CARGO.JEFE,
+                    NIVELES_CARGO.SUPERVISOR,
+                    NIVELES_CARGO.COORDINADOR,
+                    NIVELES_CARGO.GERENTE,
+                    NIVELES_CARGO.DIRECTOR,
+                ])
+            ])
 
-            if (data) {
-                const uniqueJefes = Array.from(new Set((data as any[]).map(e => e.jefe).filter(Boolean))) as string[]
-                setJefes(uniqueJefes.sort())
-            }
+            const jefesSet = new Set<string>()
+            ;(jefeFieldRes.data as any[] | null)?.forEach(e => { if (e.jefe) jefesSet.add(e.jefe) })
+            ;(lideresRes.data as any[] | null)?.forEach(e => { if (e.nombreCompleto) jefesSet.add(e.nombreCompleto) })
+
+            setJefes(Array.from(jefesSet).sort())
         }
         fetchJefes()
     }, [supabase])
