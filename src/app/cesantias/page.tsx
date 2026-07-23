@@ -224,7 +224,7 @@ export default function CesantiasPage() {
             const { error: insertError } = await (supabase as any)
                 .from('Cesantias')
                 .insert({
-                    Cedula: empleado.cedula,
+                    Cedula: empleado.id,
                     Nombre: empleado.nombreCompleto,
                     Correo: currentUser?.correo || '',
                     "Tipo de Cesantias": formData.tipoDeCesantias,

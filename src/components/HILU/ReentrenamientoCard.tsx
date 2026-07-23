@@ -50,11 +50,12 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
         if (email === 'hector.chinchilla@firplak.com') return true
 
         // Restricted users cannot edit reentrenamientos
+        // (SUPERVISORES_MUEBLES_CEFI SI puede: necesitan agendar reentrenamientos
+        // para su personal a cargo)
         if (
             email === 'david.ramirez@firplak.com' ||
             SUPERVISORES_MARMOL.includes(email) ||
             SUPERVISORES_CALIDAD.includes(email) ||
-            SUPERVISORES_MUEBLES_CEFI.includes(email) ||
             email === 'jakeline.chaverra@firplak.com' ||
             email === 'maria.perez@firplak.com' ||
             email === 'juliana.ramirez@firplak.com' ||

@@ -41,6 +41,7 @@ import {
     JEFES_ALMACEN_CEDI,
     JEFES_INGENIERIA_MOLDES,
     JEFES_MOLDES,
+    JEFES_MANTENIMIENTO,
     DIRECTORES_CON_ACCESO,
     HILU_OPERATIVA_RESTRINGIDA_MOLDES
 } from '@/lib/constants/roles'
@@ -221,6 +222,7 @@ export default function EntrenamientoDetailPage() {
                                 JEFES_ALMACEN_CEDI.includes(email) ||
                                 JEFES_INGENIERIA_MOLDES.includes(email) ||
                                 JEFES_MOLDES.includes(email) ||
+                                JEFES_MANTENIMIENTO.includes(email) ||
                                 DIRECTORES_CON_ACCESO.includes(email)
 
             if (!isAdmin && !isRestricted) {
