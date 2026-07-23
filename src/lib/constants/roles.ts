@@ -215,6 +215,14 @@ export const JEFES_INGENIERIA_MOLDES = [
 ];
 
 /**
+ * Jefes with access restricted to Mantenimiento only (HILU Operativa:
+ * entrar, ver y editar los empleados de esa planta).
+ */
+export const JEFES_MANTENIMIENTO = [
+    'roberto.aguilar@firplak.com',
+];
+
+/**
  * Non-supervisor employees explicitly granted access to the HILU Operativa
  * module, restricted to viewing/editing (phases H, I, L — not U) employees
  * from the Moldes plant only.
@@ -332,6 +340,7 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (JEFES_ALMACEN_CEDI.includes(email)) { plantas.add('Almacen'); plantas.add('CEDI'); }
     if (JEFES_INGENIERIA_MOLDES.includes(email)) { plantas.add('Ingenieria'); plantas.add('Moldes'); }
     if (JEFES_MOLDES.includes(email)) plantas.add('Moldes');
+    if (JEFES_MANTENIMIENTO.includes(email)) plantas.add('Mantenimiento');
     if (DIRECTORES_CON_ACCESO.includes(email)) PLANTAS_DIRECTORES_PERMITIDAS.forEach(p => plantas.add(p));
 
     if (plantas.size === 0) return null;
@@ -347,6 +356,8 @@ export function getPlantasPermitidas(email: string): string[] | null {
 export const HILU_ADMIN_EDIT_OVERRIDES: Record<string, number[]> = {
     // Andrey Uribe Cano -> puede editar unicamente la HILU Administrativa de Jesus Angel Villalobos Rincon
     'practicontabilidad@firplak.com': [6524368],
+    // Roberto Aguilar (Jefe de Mantenimiento) -> puede ver/editar unicamente la HILU Administrativa de Maria Elena Perez Ospina
+    'roberto.aguilar@firplak.com': [1017173682],
 };
 
 export const AREAS_ADMINISTRATIVAS = [
