@@ -37,6 +37,17 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
     const fileInputRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
+    // Soporte de compra: comprobante de en qué se usó el dinero de las
+    // cesantías (factura, escritura, etc.), distinto del "SOPORTE RETIRO"
+    // (comprobante de que la empresa pagó el retiro). Se pide 15 días
+    // después de aprobada la solicitud mediante un recordatorio por correo.
+    const [comprobanteCompraUrl, setComprobanteCompraUrl] = useState(solicitud["Soporte2"] || '')
+    const [isUploadingCompra, setIsUploadingCompra] = useState(false)
+    const [isSavingCompra, setIsSavingCompra] = useState(false)
+    const [errorCompra, setErrorCompra] = useState<string | null>(null)
+    const [successCompra, setSuccessCompra] = useState<string | null>(null)
+    const compraFileInputRef = useRef<HTMLInputElement>(null)
+
     const handleTogglePagado = async (checked: boolean) => {
         setPagado(checked)
         setIsSavingPagado(true)
@@ -103,7 +114,8 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                 .update({
                     "¿Entregó soporte de pago?": true,
                     "SOPORTE RETIRO": supportPaymentUrl,
-                    "Aprobación THT": 'Aprobado' // Assuming payment means approval in this context
+                    "Aprobación THT": 'Aprobado', // Assuming payment means approval in this context
+                    "Fecha Aprobación": new Date().toISOString()
                 })
                 .eq('id', solicitud.id as number)
 
@@ -119,6 +131,64 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
             setError(err.message || 'Error al guardar los cambios')
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    const handleCompraFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return
+
+        setIsUploadingCompra(true)
+        setErrorCompra(null)
+        const file = e.target.files[0]
+
+        try {
+            const fileName = `compra_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
+            const filePath = `SoporteCompra/${solicitud.Nombre}/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('Cesantias')
+                .upload(filePath, file)
+
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('Cesantias')
+                .getPublicUrl(filePath)
+
+            setComprobanteCompraUrl(publicUrl)
+            setSuccessCompra('Comprobante subido. No olvides guardar los cambios.')
+        } catch (err: any) {
+            console.error('Error uploading purchase support:', err)
+            setErrorCompra(err.message || 'Error al subir el archivo')
+        } finally {
+            setIsUploadingCompra(false)
+        }
+    }
+
+    const handleSaveCompra = async () => {
+        if (!comprobanteCompraUrl) {
+            setErrorCompra('Debes subir un comprobante antes de guardar.')
+            return
+        }
+
+        setIsSavingCompra(true)
+        setErrorCompra(null)
+
+        try {
+            const { error: updateError } = await (supabase as any)
+                .from('Cesantias')
+                .update({ Soporte2: comprobanteCompraUrl })
+                .eq('id', solicitud.id as number)
+
+            if (updateError) throw updateError
+
+            setSuccessCompra('Comprobante de compra guardado correctamente.')
+            onUpdate()
+        } catch (err: any) {
+            console.error('Error saving purchase support:', err)
+            setErrorCompra(err.message || 'Error al guardar el comprobante')
+        } finally {
+            setIsSavingCompra(false)
         }
     }
 
@@ -341,6 +411,85 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                 </div>
                             )}
                         </div>
+
+                        {/* Soporte de Compra: comprobante de en qué se gastaron las cesantías */}
+                        {solicitud["Aprobación THT"] === 'Aprobado' && (
+                            <div className="md:col-span-2 border-t pt-6 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                                        <Paperclip className="h-5 w-5 text-blue-600" />
+                                        Soporte de Compra
+                                    </h4>
+                                </div>
+
+                                {!solicitud["Soporte2"] ? (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-500">
+                                            Sube el comprobante de en qué usaste el dinero de las cesantías (factura, escritura, recibo, etc.).
+                                            Recuerda que a los 15 días de aprobada la solicitud te llegará un recordatorio por correo si aún no lo has subido.
+                                        </p>
+
+                                        <div
+                                            onClick={() => !isUploadingCompra && compraFileInputRef.current?.click()}
+                                            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer group ${comprobanteCompraUrl ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:border-blue-400'
+                                                }`}
+                                        >
+                                            <input
+                                                type="file"
+                                                ref={compraFileInputRef}
+                                                className="hidden"
+                                                onChange={handleCompraFileUpload}
+                                                accept=".pdf,.jpg,.jpeg,.png"
+                                                disabled={isUploadingCompra}
+                                            />
+                                            {isUploadingCompra ? (
+                                                <div className="space-y-2">
+                                                    <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
+                                                    <p className="text-sm font-bold text-blue-600">Subiendo archivo...</p>
+                                                </div>
+                                            ) : comprobanteCompraUrl ? (
+                                                <div className="space-y-2">
+                                                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto" />
+                                                    <p className="text-sm font-bold text-green-800 italic">¡Comprobante cargado!</p>
+                                                    <a href={comprobanteCompraUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver archivo subido</a>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <Upload className="h-8 w-8 text-gray-400 mx-auto group-hover:text-blue-500 transition-colors" />
+                                                    <p className="text-sm font-bold text-gray-700">Subir soporte de compra</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {errorCompra && <p className="text-xs text-red-600 font-bold">{errorCompra}</p>}
+                                        {successCompra && <p className="text-xs text-green-600 font-bold">{successCompra}</p>}
+
+                                        <Button
+                                            onClick={handleSaveCompra}
+                                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                                            disabled={isSavingCompra || isUploadingCompra || !comprobanteCompraUrl}
+                                        >
+                                            {isSavingCompra ? <Loader2 className="animate-spin mr-2" /> : 'GUARDAR COMPROBANTE'}
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                                <FileText className="h-5 w-5 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-green-800">Soporte de Compra Entregado</p>
+                                                <p className="text-xs text-green-600">Gracias por confirmar el uso de tus cesantías.</p>
+                                            </div>
+                                        </div>
+                                        <a href={solicitud["Soporte2"]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md text-sm font-bold border border-green-200 text-green-700 hover:bg-green-100 h-9 px-3 transition-colors">
+                                            VER COMPROBANTE
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

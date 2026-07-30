@@ -546,6 +546,9 @@ export interface Database {
                     Soporte2: string | null
                     "SOPORTE RETIRO": string | null
                     Correo: string | null
+                    Pagado: boolean
+                    "Fecha Aprobación": string | null
+                    "Recordatorio Soporte Enviado": boolean
                 }
                 Insert: {
                     id?: number
@@ -561,6 +564,9 @@ export interface Database {
                     Soporte2?: string | null
                     "SOPORTE RETIRO"?: string | null
                     Correo?: string | null
+                    Pagado?: boolean
+                    "Fecha Aprobación"?: string | null
+                    "Recordatorio Soporte Enviado"?: boolean
                 }
                 Update: {
                     id?: number
@@ -576,6 +582,9 @@ export interface Database {
                     Soporte2?: string | null
                     "SOPORTE RETIRO"?: string | null
                     Correo?: string | null
+                    Pagado?: boolean
+                    "Fecha Aprobación"?: string | null
+                    "Recordatorio Soporte Enviado"?: boolean
                 }
             }
             Vacaciones: {
