@@ -11,7 +11,6 @@ import { Plus, RotateCcw, Clock, Trash2, Loader2, User, CheckCircle } from 'luci
 import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { CrearFirma, VerFirma } from './FirmaComponents'
 
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
 
@@ -87,15 +86,13 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     const [horas, setHoras] = useState('')
     const [completado, setCompletado] = useState(false)
     const [comentario, setComentario] = useState('')
-    const [firmaEmpleado, setFirmaEmpleado] = useState<string | null>(null)
-    const [firmaSupervisor, setFirmaSupervisor] = useState<string | null>(null)
 
-    const canSubmit = !!(reentrenadoPor.trim() && parseFloat(horas) > 0 && motivo.trim() && comentario.trim() && firmaEmpleado && firmaSupervisor)
+    const canSubmit = !!(reentrenadoPor.trim() && parseFloat(horas) > 0 && motivo.trim() && comentario.trim())
 
     const handleAddReentrenamiento = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!canSubmit) {
-            toast.error('Completa todos los campos y ambas firmas antes de guardar')
+            toast.error('Completa todos los campos antes de guardar')
             return
         }
 
@@ -115,8 +112,6 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                     reentrenado_por: reentrenadoPor.trim(),
                     horas: parseFloat(horas),
                     comentario: comentario.trim(),
-                    firma_empleado: firmaEmpleado,
-                    firma_supervisor: firmaSupervisor,
                     created_by: usuarioId,
                     fecha_inicio: fechaInicio || null,
                     fecha_fin: fechaFin || null,
@@ -175,8 +170,6 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
         setHoras('')
         setCompletado(false)
         setComentario('')
-        setFirmaEmpleado(null)
-        setFirmaSupervisor(null)
     }
 
     return (
@@ -301,35 +294,6 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400">Firma Empleado</Label>
-                                {firmaEmpleado ? (
-                                    <div className="space-y-1">
-                                        <VerFirma firmaUrl={firmaEmpleado} />
-                                        <button type="button" onClick={() => setFirmaEmpleado(null)} className="text-[10px] font-bold text-orange-600 hover:underline">
-                                            Volver a firmar
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <CrearFirma onFirmaGuardada={setFirmaEmpleado} />
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400">Firma Supervisor</Label>
-                                {firmaSupervisor ? (
-                                    <div className="space-y-1">
-                                        <VerFirma firmaUrl={firmaSupervisor} />
-                                        <button type="button" onClick={() => setFirmaSupervisor(null)} className="text-[10px] font-bold text-orange-600 hover:underline">
-                                            Volver a firmar
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <CrearFirma onFirmaGuardada={setFirmaSupervisor} />
-                                )}
-                            </div>
-                        </div>
-
                         <div className="flex justify-end pt-2">
                             <Button type="submit" disabled={loading || !canSubmit} className="bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest px-8 py-6 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50">
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Registro'}
@@ -408,17 +372,6 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                         <p className="text-xs text-gray-600 leading-relaxed italic">&quot;{item.comentario}&quot;</p>
                                     </div>
                                 )}
-
-                                <div className="grid grid-cols-2 gap-4 mt-4">
-                                    <div>
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Firma Empleado</p>
-                                        <VerFirma firmaUrl={item.firma_empleado} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Firma Supervisor</p>
-                                        <VerFirma firmaUrl={item.firma_supervisor} />
-                                    </div>
-                                </div>
 
                                 <div className="absolute -bottom-4 -right-4 text-gray-50 opacity-20 transform -rotate-12">
                                     <RotateCcw className="h-24 w-24" />

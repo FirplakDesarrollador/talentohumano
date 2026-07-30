@@ -1017,8 +1017,8 @@ export interface Database {
                     cargo: string
                     created_at: string
                     created_by: number
-                    firma_empleado: string
-                    firma_supervisor: string
+                    firma_empleado: string | null
+                    firma_supervisor: string | null
                     comentario: string
                     reentrenado_por: string
                     horas: number
@@ -1033,8 +1033,8 @@ export interface Database {
                     cargo: string
                     created_at?: string
                     created_by: number
-                    firma_empleado: string
-                    firma_supervisor: string
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
                     comentario: string
                     reentrenado_por: string
                     horas: number
@@ -1049,8 +1049,8 @@ export interface Database {
                     cargo?: string
                     created_at?: string
                     created_by?: number
-                    firma_empleado?: string
-                    firma_supervisor?: string
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
                     comentario?: string
                     reentrenado_por?: string
                     horas?: number
