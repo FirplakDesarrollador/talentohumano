@@ -61,21 +61,28 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
                 console.error('Error fetching employee competencias:', empError)
             }
 
-            // 2. Obtener la plantilla de competencias para el CARGO
-            const { data: cargoData, error: cargoError } = await supabase
+            // 2. Obtener la plantilla de competencias para el CARGO.
+            // Se compara sin distinguir mayusculas/minusculas ni espacios extra,
+            // porque "empleados.cargo" y "cargos_competencias.cargo" a veces
+            // difieren solo en eso (ej. "Pintor" vs "Pintor ") y un .eq() exacto
+            // los deja sin coincidir, mostrando la plantilla vacia.
+            const normalizeCargo = (s: string) => s.trim().toLowerCase()
+            const { data: allCargoData, error: cargoError } = await supabase
                 .from('cargos_competencias' as any)
-                .select('competencias')
-                .eq('cargo', cargo)
-                .limit(1)
+                .select('cargo, competencias')
 
             if (cargoError) {
                 console.error('Error fetching cargo template:', cargoError)
             }
 
+            const cargoData = (allCargoData as any[] | null)?.filter(
+                (row: any) => normalizeCargo(row.cargo || '') === normalizeCargo(cargo || '')
+            ) || []
+
             // 3. Extraer competencias del cargo (lista oficial)
             const cargoCompNames = new Set<string>()
-            if (cargoData && (cargoData as any[]).length > 0) {
-                const row = (cargoData as any[])[0]
+            if (cargoData.length > 0) {
+                const row = cargoData[0]
                 // El formato en BD es: competencias: { competencias: ["Comp1", "Comp2"] }
                 const compsJson = row.competencias
                 if (compsJson && Array.isArray(compsJson.competencias)) {

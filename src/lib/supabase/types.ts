@@ -1022,6 +1022,10 @@ export interface Database {
                     comentario: string
                     reentrenado_por: string
                     horas: number
+                    fecha_inicio: string | null
+                    fecha_fin: string | null
+                    motivo: string | null
+                    completado: boolean | null
                 }
                 Insert: {
                     id?: number
@@ -1034,6 +1038,10 @@ export interface Database {
                     comentario: string
                     reentrenado_por: string
                     horas: number
+                    fecha_inicio?: string | null
+                    fecha_fin?: string | null
+                    motivo?: string | null
+                    completado?: boolean | null
                 }
                 Update: {
                     id?: number
@@ -1046,6 +1054,10 @@ export interface Database {
                     comentario?: string
                     reentrenado_por?: string
                     horas?: number
+                    fecha_inicio?: string | null
+                    fecha_fin?: string | null
+                    motivo?: string | null
+                    completado?: boolean | null
                 }
             }
         }
