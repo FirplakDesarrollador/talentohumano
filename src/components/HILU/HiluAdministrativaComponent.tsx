@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { ADMIN_EMAILS, ADMIN_LEVELS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, DIRECTORES_CON_ACCESO, JEFES_CON_ACCESO, HILU_ADMIN_EDIT_OVERRIDES } from '@/lib/constants/roles'
-import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star, Pencil } from 'lucide-react'
+import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CrearFirma, VerFirma } from './FirmaComponents'
 import { EvidenciasComponent } from './EvidenciasComponent'
@@ -15,7 +15,8 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 // Datos legados guardaron el texto literal "true"/"false" en los campos de firma
 // en vez de un booleano real o una firma dibujada (data URI). Como "false" es un
 // string truthy en JS, hay que interpretarlo explícitamente en vez de usar el valor crudo.
-const isFirmado = (value?: string | boolean | null) => value === true || (typeof value === 'string' && value !== 'false')
+// Una firma eliminada se guarda como '' (string vacío), que tampoco cuenta como firmado.
+const isFirmado = (value?: string | boolean | null) => value === true || (typeof value === 'string' && value !== 'false' && value !== '')
 
 interface HiluAdminRow {
     id: number;
@@ -128,6 +129,7 @@ const SignatureWidget = ({
 }) => {
     const [isEditing, setIsEditing] = useState(false)
     const [pendingEdit, setPendingEdit] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState(false)
 
     // Solo un string distinto de "true"/"false" es una firma dibujada real (data URI).
     const isRealSignature = typeof value === 'string' && value !== 'true' && value !== 'false';
@@ -154,6 +156,14 @@ const SignatureWidget = ({
                             title="Editar firma"
                         >
                             <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPendingDelete(true)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Eliminar firma"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
                         </button>
                     </div>
                 )}
@@ -182,6 +192,17 @@ const SignatureWidget = ({
                 cancelLabel="Cancelar"
                 onConfirm={() => { setIsEditing(true); setPendingEdit(false) }}
                 onCancel={() => setPendingEdit(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={pendingDelete}
+                variant="danger"
+                title="¿Eliminar esta firma?"
+                description="Se eliminará la firma guardada. Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { onSave(''); setPendingDelete(false) }}
+                onCancel={() => setPendingDelete(false)}
             />
         </div>
     )

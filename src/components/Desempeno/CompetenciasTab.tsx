@@ -117,9 +117,14 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
                 })
             }
 
-            // Competencias del cargo no registradas en el empleado
+            // Competencias del cargo no registradas en el empleado, salvo las que
+            // este empleado en particular haya eliminado (no afecta a otros
+            // empleados con el mismo cargo, que siguen viendo la plantilla completa).
+            const excluidas = new Set<string>(
+                Array.isArray(empRow?.competencias_excluidas) ? empRow.competencias_excluidas : []
+            )
             cargoCompNames.forEach(compName => {
-                if (!registeredNames.has(compName)) {
+                if (!registeredNames.has(compName) && !excluidas.has(compName)) {
                     result.push({
                         nombre: compName,
                         nivel: 0,
@@ -270,31 +275,50 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
     }
 
     const handleDelete = async (comp: CompetenciaItem) => {
-        if (!rawRow || !registroId) return
-
         setSaving(comp.nombre)
         try {
-            const currentComps: Record<string, boolean> = { ...(rawRow.competencias || {}) }
-            const currentNiveles: Record<string, number> = { ...(rawRow.nivel || {}) }
-            const currentEsperados: Record<string, number> = { ...(rawRow.nivel_esperado || {}) }
-            const currentComentarios: Record<string, string> = { ...(rawRow.comentario || {}) }
+            const currentComps: Record<string, boolean> = { ...(rawRow?.competencias || {}) }
+            const currentNiveles: Record<string, number> = { ...(rawRow?.nivel || {}) }
+            const currentEsperados: Record<string, number> = { ...(rawRow?.nivel_esperado || {}) }
+            const currentComentarios: Record<string, string> = { ...(rawRow?.comentario || {}) }
+            const currentExcluidas: string[] = Array.isArray(rawRow?.competencias_excluidas)
+                ? [...rawRow.competencias_excluidas]
+                : []
 
             delete currentComps[comp.nombre]
             delete currentNiveles[comp.nombre]
             delete currentEsperados[comp.nombre]
             delete currentComentarios[comp.nombre]
 
-            const { error } = await (supabase.from('ComptEmpleados') as any)
-                .update({
-                    competencias: currentComps,
-                    nivel: currentNiveles,
-                    nivel_esperado: currentEsperados,
-                    comentario: currentComentarios,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', registroId)
+            // Se marca como excluida siempre (no solo si viene de la plantilla del
+            // cargo), asi no reaparece como "Pendiente" en el siguiente refresco.
+            if (!currentExcluidas.includes(comp.nombre)) currentExcluidas.push(comp.nombre)
 
-            if (error) throw error
+            const payload = {
+                competencias: currentComps,
+                nivel: currentNiveles,
+                nivel_esperado: currentEsperados,
+                comentario: currentComentarios,
+                competencias_excluidas: currentExcluidas,
+            }
+
+            if (registroId) {
+                const { error } = await (supabase.from('ComptEmpleados') as any)
+                    .update({ ...payload, updated_at: new Date().toISOString() })
+                    .eq('id', registroId)
+
+                if (error) throw error
+            } else {
+                const { error } = await (supabase.from('ComptEmpleados') as any)
+                    .insert({
+                        cedula: String(cedula),
+                        nombre: nombre,
+                        cargo: cargo,
+                        ...payload,
+                    })
+
+                if (error) throw error
+            }
 
             await fetchData()
         } catch (error) {
@@ -520,18 +544,16 @@ function CompetenciaEditCard({ comp, saving, onSave, onDelete }: {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {!comp.isPlaceholder && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setPendingDelete(true)}
-                            disabled={saving}
-                            className="rounded-xl border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 gap-1"
-                            title="Eliminar competencia"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                    )}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPendingDelete(true)}
+                        disabled={saving}
+                        className="rounded-xl border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 gap-1"
+                        title="Eliminar competencia"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                     {dirty && (
                         <Button
                             size="sm"
@@ -550,7 +572,11 @@ function CompetenciaEditCard({ comp, saving, onSave, onDelete }: {
                 isOpen={pendingDelete}
                 variant="danger"
                 title="¿Eliminar esta competencia?"
-                description={`Se eliminará "${comp.nombre}" de las competencias calificadas de este empleado. Esta acción no se puede deshacer.`}
+                description={
+                    comp.isPlaceholder
+                        ? `"${comp.nombre}" es parte de la plantilla del cargo. Se eliminará solo para este empleado (los demás con el mismo cargo la seguirán viendo). Esta acción no se puede deshacer.`
+                        : `Se eliminará "${comp.nombre}" de las competencias calificadas de este empleado. Esta acción no se puede deshacer.`
+                }
                 confirmLabel="Eliminar"
                 cancelLabel="Cancelar"
                 onConfirm={() => { onDelete(comp); setPendingDelete(false) }}

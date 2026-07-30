@@ -73,11 +73,19 @@ export default function HiluAdministrativaPage() {
                         .maybeSingle()
                     currentUsuarioId = (usuarioData as any)?.id || 1
 
-                    // "usuarioId" es el id de la tabla "usuarios" (bigint, referenciado por
-                    // las FK created_by/modified_by de auditorias y reentrenamientos). Es
-                    // distinto de "id", que al venir del spread de session.user es el UUID
-                    // de autenticación y NO sirve como esa referencia.
-                    setCurrentUser({ ...session.user, nivelCargo: userLevel, empleadoId: (empData as any)?.id ?? null, usuarioId: currentUsuarioId })
+                    // El spread de session.user trae su propio "id" (el UUID de
+                    // autenticación), que NO sirve como referencia para las columnas
+                    // bigint (created_by, modified_by, *_responsable_id) que usan tanto
+                    // este componente como HiluComponent/HiluAdministrativaComponent. Se
+                    // sobreescribe "id" con el id real de la tabla "usuarios" (y se deja
+                    // "usuarioId" como alias explícito para mayor claridad).
+                    setCurrentUser({
+                        ...session.user,
+                        id: currentUsuarioId,
+                        usuarioId: currentUsuarioId,
+                        nivelCargo: userLevel,
+                        empleadoId: (empData as any)?.id ?? null,
+                    })
                 }
 
                 // Fetch Employee Info

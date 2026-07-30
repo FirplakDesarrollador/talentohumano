@@ -11,7 +11,7 @@ import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS, SUPERVISORES_MARMOL, SUPERVISORES_CA
 import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
-import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star, Pencil } from 'lucide-react'
+import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
@@ -106,6 +106,7 @@ const SignatureWidget = ({
 }) => {
     const [isEditing, setIsEditing] = useState(false)
     const [pendingEdit, setPendingEdit] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState(false)
     const showForm = !value || isEditing
 
     return (
@@ -128,6 +129,14 @@ const SignatureWidget = ({
                             title="Editar firma"
                         >
                             <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPendingDelete(true)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Eliminar firma"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
                         </button>
                     </div>
                 )}
@@ -154,6 +163,17 @@ const SignatureWidget = ({
                 cancelLabel="Cancelar"
                 onConfirm={() => { setIsEditing(true); setPendingEdit(false) }}
                 onCancel={() => setPendingEdit(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={pendingDelete}
+                variant="danger"
+                title="¿Eliminar esta firma?"
+                description="Se eliminará la firma guardada. Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { onSave(''); setPendingDelete(false) }}
+                onCancel={() => setPendingDelete(false)}
             />
         </div>
     )
