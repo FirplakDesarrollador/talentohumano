@@ -9,7 +9,8 @@ import {
     Save,
     X,
     Pencil,
-    Check
+    Check,
+    Trash2
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -60,21 +61,28 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
                 console.error('Error fetching employee competencias:', empError)
             }
 
-            // 2. Obtener la plantilla de competencias para el CARGO
-            const { data: cargoData, error: cargoError } = await supabase
+            // 2. Obtener la plantilla de competencias para el CARGO.
+            // Se compara sin distinguir mayusculas/minusculas ni espacios extra,
+            // porque "empleados.cargo" y "cargos_competencias.cargo" a veces
+            // difieren solo en eso (ej. "Pintor" vs "Pintor ") y un .eq() exacto
+            // los deja sin coincidir, mostrando la plantilla vacia.
+            const normalizeCargo = (s: string) => s.trim().toLowerCase()
+            const { data: allCargoData, error: cargoError } = await supabase
                 .from('cargos_competencias' as any)
-                .select('competencias')
-                .eq('cargo', cargo)
-                .limit(1)
+                .select('cargo, competencias')
 
             if (cargoError) {
                 console.error('Error fetching cargo template:', cargoError)
             }
 
+            const cargoData = (allCargoData as any[] | null)?.filter(
+                (row: any) => normalizeCargo(row.cargo || '') === normalizeCargo(cargo || '')
+            ) || []
+
             // 3. Extraer competencias del cargo (lista oficial)
             const cargoCompNames = new Set<string>()
-            if (cargoData && (cargoData as any[]).length > 0) {
-                const row = (cargoData as any[])[0]
+            if (cargoData.length > 0) {
+                const row = cargoData[0]
                 // El formato en BD es: competencias: { competencias: ["Comp1", "Comp2"] }
                 const compsJson = row.competencias
                 if (compsJson && Array.isArray(compsJson.competencias)) {
@@ -116,9 +124,14 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
                 })
             }
 
-            // Competencias del cargo no registradas en el empleado
+            // Competencias del cargo no registradas en el empleado, salvo las que
+            // este empleado en particular haya eliminado (no afecta a otros
+            // empleados con el mismo cargo, que siguen viendo la plantilla completa).
+            const excluidas = new Set<string>(
+                Array.isArray(empRow?.competencias_excluidas) ? empRow.competencias_excluidas : []
+            )
             cargoCompNames.forEach(compName => {
-                if (!registeredNames.has(compName)) {
+                if (!registeredNames.has(compName) && !excluidas.has(compName)) {
                     result.push({
                         nombre: compName,
                         nivel: 0,
@@ -141,6 +154,44 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
     useEffect(() => {
         fetchData()
     }, [fetchData])
+
+    // Agrega la competencia a la plantilla compartida del cargo (cargos_competencias)
+    // si aun no esta, para que otros empleados con el mismo cargo tambien la vean
+    // como "Pendiente". No afecta niveles/comentarios individuales, solo el nombre.
+    const syncCompetenciaToCargoTemplate = async (compName: string) => {
+        try {
+            const normalizeCargo = (s: string) => s.trim().toLowerCase()
+            const { data: rows, error } = await supabase
+                .from('cargos_competencias' as any)
+                .select('id, cargo, competencias')
+
+            if (error) throw error
+
+            const match = (rows as any[] | null)?.find(
+                (row: any) => normalizeCargo(row.cargo || '') === normalizeCargo(cargo || '')
+            )
+
+            if (match) {
+                const existing: string[] = Array.isArray(match.competencias?.competencias)
+                    ? match.competencias.competencias
+                    : Array.isArray(match.competencias) ? match.competencias : []
+
+                const yaExiste = existing.some(n => normalizeCargo(n) === normalizeCargo(compName))
+                if (!yaExiste) {
+                    const { error: updError } = await (supabase.from('cargos_competencias') as any)
+                        .update({ competencias: { competencias: [...existing, compName] } })
+                        .eq('id', match.id)
+                    if (updError) throw updError
+                }
+            } else {
+                const { error: insError } = await (supabase.from('cargos_competencias') as any)
+                    .insert({ cargo: cargo, competencias: { competencias: [compName] } })
+                if (insError) throw insError
+            }
+        } catch (error) {
+            console.error('Error sincronizando competencia con la plantilla del cargo:', error)
+        }
+    }
 
     const handleSave = async (comp: CompetenciaItem, newNivel: number, newEsperado: number, newComentario: string) => {
         setSaving(comp.nombre)
@@ -195,9 +246,11 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
             }
 
             await fetchData()
+            return true
         } catch (error) {
             console.error('Error saving competencia:', error)
             alert('Error al guardar la competencia')
+            return false
         } finally {
             setSaving(null)
         }
@@ -268,17 +321,76 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
         }
     }
 
+    const handleDelete = async (comp: CompetenciaItem) => {
+        setSaving(comp.nombre)
+        try {
+            const currentComps: Record<string, boolean> = { ...(rawRow?.competencias || {}) }
+            const currentNiveles: Record<string, number> = { ...(rawRow?.nivel || {}) }
+            const currentEsperados: Record<string, number> = { ...(rawRow?.nivel_esperado || {}) }
+            const currentComentarios: Record<string, string> = { ...(rawRow?.comentario || {}) }
+            const currentExcluidas: string[] = Array.isArray(rawRow?.competencias_excluidas)
+                ? [...rawRow.competencias_excluidas]
+                : []
+
+            delete currentComps[comp.nombre]
+            delete currentNiveles[comp.nombre]
+            delete currentEsperados[comp.nombre]
+            delete currentComentarios[comp.nombre]
+
+            // Se marca como excluida siempre (no solo si viene de la plantilla del
+            // cargo), asi no reaparece como "Pendiente" en el siguiente refresco.
+            if (!currentExcluidas.includes(comp.nombre)) currentExcluidas.push(comp.nombre)
+
+            const payload = {
+                competencias: currentComps,
+                nivel: currentNiveles,
+                nivel_esperado: currentEsperados,
+                comentario: currentComentarios,
+                competencias_excluidas: currentExcluidas,
+            }
+
+            if (registroId) {
+                const { error } = await (supabase.from('ComptEmpleados') as any)
+                    .update({ ...payload, updated_at: new Date().toISOString() })
+                    .eq('id', registroId)
+
+                if (error) throw error
+            } else {
+                const { error } = await (supabase.from('ComptEmpleados') as any)
+                    .insert({
+                        cedula: String(cedula),
+                        nombre: nombre,
+                        cargo: cargo,
+                        ...payload,
+                    })
+
+                if (error) throw error
+            }
+
+            await fetchData()
+        } catch (error) {
+            console.error('Error eliminando competencia:', error)
+            alert('Error al eliminar la competencia')
+        } finally {
+            setSaving(null)
+        }
+    }
+
     const handleAddNew = async () => {
         if (!newCompName.trim()) return
+        const trimmed = newCompName.trim()
         // Add via the same save mechanism
         const fakeComp: CompetenciaItem = {
-            nombre: newCompName.trim(),
+            nombre: trimmed,
             nivel: 0,
             nivel_esperado: 0,
             comentario: '',
             isPlaceholder: true
         }
-        await handleSave(fakeComp, 0, 0, '')
+        const ok = await handleSave(fakeComp, 0, 0, '')
+        if (ok) {
+            await syncCompetenciaToCargoTemplate(trimmed)
+        }
         setNewCompName('')
         setShowAddForm(false)
     }
@@ -403,11 +515,12 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
             {/* Competency Cards with Sliders */}
             <div className="grid grid-cols-1 gap-4">
                 {competencias.map((comp, idx) => (
-                    <CompetenciaEditCard 
-                        key={comp.nombre + idx} 
-                        comp={comp} 
+                    <CompetenciaEditCard
+                        key={comp.nombre + idx}
+                        comp={comp}
                         saving={saving === comp.nombre}
                         onSave={handleSave}
+                        onDelete={handleDelete}
                     />
                 ))}
             </div>
@@ -456,15 +569,17 @@ function getNivelColor(value: number): string {
 }
 
 // --- Sub-component: Editable Competency Card ---
-function CompetenciaEditCard({ comp, saving, onSave }: {
-    comp: CompetenciaItem; 
+function CompetenciaEditCard({ comp, saving, onSave, onDelete }: {
+    comp: CompetenciaItem;
     saving: boolean;
-    onSave: (comp: CompetenciaItem, nivel: number, esperado: number, comentario: string) => void 
+    onSave: (comp: CompetenciaItem, nivel: number, esperado: number, comentario: string) => void
+    onDelete: (comp: CompetenciaItem) => void
 }) {
     const [nivel, setNivel] = useState(comp.nivel)
     const [esperado, setEsperado] = useState(comp.nivel_esperado)
     const [comentario, setComentario] = useState(comp.comentario)
     const [dirty, setDirty] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState(false)
 
     const handleNivelChange = (v: number) => { setNivel(v); setDirty(true) }
     const handleEsperadoChange = (v: number) => { setEsperado(v); setDirty(true) }
@@ -479,18 +594,45 @@ function CompetenciaEditCard({ comp, saving, onSave }: {
                         {comp.isPlaceholder ? 'Competencia del cargo — Sin calificación' : 'Competencia calificada'}
                     </p>
                 </div>
-                {dirty && (
+                <div className="flex items-center gap-2">
                     <Button
                         size="sm"
-                        onClick={() => onSave(comp, nivel, esperado, comentario)}
+                        variant="outline"
+                        onClick={() => setPendingDelete(true)}
                         disabled={saving}
-                        className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                        className="rounded-xl border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 gap-1"
+                        title="Eliminar competencia"
                     >
-                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                        Guardar
+                        <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                )}
+                    {dirty && (
+                        <Button
+                            size="sm"
+                            onClick={() => onSave(comp, nivel, esperado, comentario)}
+                            disabled={saving}
+                            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                        >
+                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                            Guardar
+                        </Button>
+                    )}
+                </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={pendingDelete}
+                variant="danger"
+                title="¿Eliminar esta competencia?"
+                description={
+                    comp.isPlaceholder
+                        ? `"${comp.nombre}" es parte de la plantilla del cargo. Se eliminará solo para este empleado (los demás con el mismo cargo la seguirán viendo). Esta acción no se puede deshacer.`
+                        : `Se eliminará "${comp.nombre}" de las competencias calificadas de este empleado. Esta acción no se puede deshacer.`
+                }
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { onDelete(comp); setPendingDelete(false) }}
+                onCancel={() => setPendingDelete(false)}
+            />
 
             {/* Slider: Nivel de Competencia */}
             <div className="mb-4">

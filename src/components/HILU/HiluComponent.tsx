@@ -11,8 +11,9 @@ import { ROLES, ADMIN_EMAILS, ADMIN_LEVELS, SUPERVISORES_MARMOL, SUPERVISORES_CA
 import type { Database } from '@/lib/supabase/types'
 import { EvidenciasComponent } from './EvidenciasComponent'
 import { CrearFirma, VerFirma } from './FirmaComponents'
-import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
+import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row'] & {
     fi_promedio?: number | null;
@@ -102,31 +103,81 @@ const SignatureWidget = ({
     value?: string | null,
     onSave: (firma: string) => void,
     date?: string | null
-}) => (
-    <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[220px] transition-all hover:border-blue-200 hover:shadow-md">
-        <div className="bg-gray-50/80 border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${value ? 'bg-green-500' : 'bg-blue-400 animate-pulse'}`}></div>
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
-            </div>
-            {value && (
-                <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
-                    {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+}) => {
+    const [isEditing, setIsEditing] = useState(false)
+    const [pendingEdit, setPendingEdit] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState(false)
+    const showForm = !value || isEditing
+
+    return (
+        <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[220px] transition-all hover:border-blue-200 hover:shadow-md">
+            <div className="bg-gray-50/80 border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${value ? 'bg-green-500' : 'bg-blue-400 animate-pulse'}`}></div>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
                 </div>
-            )}
-        </div>
-        <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
-            <div className="w-full">
-                {value ? (
-                    <VerFirma firmaUrl={value} />
-                ) : (
-                    <CrearFirma onFirmaGuardada={onSave} />
+                {value && !isEditing && (
+                    <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
+                            {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setPendingEdit(true)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Editar firma"
+                        >
+                            <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPendingDelete(true)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Eliminar firma"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
                 )}
             </div>
+            <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
+                <div className="w-full">
+                    {showForm ? (
+                        <CrearFirma
+                            onFirmaGuardada={(firma) => { onSave(firma); setIsEditing(false) }}
+                            onCancel={value ? () => setIsEditing(false) : undefined}
+                        />
+                    ) : (
+                        <VerFirma firmaUrl={value} />
+                    )}
+                </div>
+            </div>
+
+            <ConfirmDialog
+                isOpen={pendingEdit}
+                variant="warning"
+                title="¿Editar esta firma?"
+                description="La firma actual se reemplazará cuando guardes la nueva. Esta acción no se puede deshacer."
+                confirmLabel="Editar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { setIsEditing(true); setPendingEdit(false) }}
+                onCancel={() => setPendingEdit(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={pendingDelete}
+                variant="danger"
+                title="¿Eliminar esta firma?"
+                description="Se eliminará la firma guardada. Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { onSave(''); setPendingDelete(false) }}
+                onCancel={() => setPendingDelete(false)}
+            />
         </div>
-    </div>
-)
+    )
+}
 
 const PhaseHeader = ({ title, progress, isOpen, onClick }: { title: string, progress: number, isOpen: boolean, onClick: () => void }) => (
     <div

@@ -546,6 +546,9 @@ export interface Database {
                     Soporte2: string | null
                     "SOPORTE RETIRO": string | null
                     Correo: string | null
+                    Pagado: boolean
+                    "Fecha Aprobación": string | null
+                    "Recordatorio Soporte Enviado": boolean
                 }
                 Insert: {
                     id?: number
@@ -561,6 +564,9 @@ export interface Database {
                     Soporte2?: string | null
                     "SOPORTE RETIRO"?: string | null
                     Correo?: string | null
+                    Pagado?: boolean
+                    "Fecha Aprobación"?: string | null
+                    "Recordatorio Soporte Enviado"?: boolean
                 }
                 Update: {
                     id?: number
@@ -576,6 +582,9 @@ export interface Database {
                     Soporte2?: string | null
                     "SOPORTE RETIRO"?: string | null
                     Correo?: string | null
+                    Pagado?: boolean
+                    "Fecha Aprobación"?: string | null
+                    "Recordatorio Soporte Enviado"?: boolean
                 }
             }
             Vacaciones: {
@@ -980,37 +989,34 @@ export interface Database {
                     id: number
                     empleado_id: number
                     cargo: string
-                    created_at: string | null
-                    created_by_id: number | null
-                    fecha_auditoria: string | null
-                    evaluador: string | null
-                    calificacion: number | null
-                    cumple: boolean | null
-                    comentarios: string | null
+                    created_at: string
+                    created_by: number
+                    modified_at: string
+                    modified_by: number
+                    cumple: boolean
+                    comentario: string
                 }
                 Insert: {
                     id?: number
                     empleado_id: number
                     cargo: string
-                    created_at?: string | null
-                    created_by_id?: number | null
-                    fecha_auditoria?: string | null
-                    evaluador?: string | null
-                    calificacion?: number | null
-                    cumple?: boolean | null
-                    comentarios?: string | null
+                    created_at?: string
+                    created_by: number
+                    modified_at?: string
+                    modified_by: number
+                    cumple: boolean
+                    comentario: string
                 }
                 Update: {
                     id?: number
                     empleado_id?: number
                     cargo?: string
-                    created_at?: string | null
-                    created_by_id?: number | null
-                    fecha_auditoria?: string | null
-                    evaluador?: string | null
-                    calificacion?: number | null
-                    cumple?: boolean | null
-                    comentarios?: string | null
+                    created_at?: string
+                    created_by?: number
+                    modified_at?: string
+                    modified_by?: number
+                    cumple?: boolean
+                    comentario?: string
                 }
             }
             reentrenamientos: {
@@ -1018,37 +1024,49 @@ export interface Database {
                     id: number
                     empleado_id: number
                     cargo: string
-                    created_at: string | null
-                    created_by_id: number | null
+                    created_at: string
+                    created_by: number
+                    firma_empleado: string | null
+                    firma_supervisor: string | null
+                    comentario: string
+                    reentrenado_por: string
+                    horas: number
                     fecha_inicio: string | null
                     fecha_fin: string | null
                     motivo: string | null
                     completado: boolean | null
-                    comentarios: string | null
                 }
                 Insert: {
                     id?: number
                     empleado_id: number
                     cargo: string
-                    created_at?: string | null
-                    created_by_id?: number | null
+                    created_at?: string
+                    created_by: number
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    comentario: string
+                    reentrenado_por: string
+                    horas: number
                     fecha_inicio?: string | null
                     fecha_fin?: string | null
                     motivo?: string | null
                     completado?: boolean | null
-                    comentarios?: string | null
                 }
                 Update: {
                     id?: number
                     empleado_id?: number
                     cargo?: string
-                    created_at?: string | null
-                    created_by_id?: number | null
+                    created_at?: string
+                    created_by?: number
+                    firma_empleado?: string | null
+                    firma_supervisor?: string | null
+                    comentario?: string
+                    reentrenado_por?: string
+                    horas?: number
                     fecha_inicio?: string | null
                     fecha_fin?: string | null
                     motivo?: string | null
                     completado?: boolean | null
-                    comentarios?: string | null
                 }
             }
         }

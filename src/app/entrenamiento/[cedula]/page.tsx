@@ -153,7 +153,7 @@ export default function EntrenamientoDetailPage() {
     const [polyvalencias, setPolyvalencias] = useState<string[]>([])
     const [loading, setLoading] = useState(true)
     const [generatingPdf, setGeneratingPdf] = useState(false)
-    const [currentUser, setCurrentUser] = useState<{ id?: number; email?: string; nivelCargo?: string } | null>(null)
+    const [currentUser, setCurrentUser] = useState<{ id?: number; usuarioId?: number; email?: string; nivelCargo?: string } | null>(null)
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
     const [auditorias, setAuditorias] = useState<Auditoria[]>([])
     const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
@@ -207,6 +207,11 @@ export default function EntrenamientoDetailPage() {
 
             const currentUserData = {
                 id: userProfile?.id || 1,
+                // Alias explicito para los componentes compartidos con HILU Administrativa
+                // (ReentrenamientoCard, FeedbackAdminCard), que usan "usuarioId" para el
+                // id de "usuarios" (created_by/modified_by) independientemente del "id"
+                // que pueda venir de otras fuentes (ej. UUID de auth en otras paginas).
+                usuarioId: userProfile?.id || 1,
                 email: email,
                 nivelCargo: userRoleName || 'Visitante'
             }

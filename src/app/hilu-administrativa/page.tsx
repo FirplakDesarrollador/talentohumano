@@ -94,31 +94,37 @@ export default function BuscadorHiluAdminPage() {
                 setUserArea((empleado as any)?.area || '')
                 setUserId((empleado as any)?.id ?? null)
 
-                if ((empleado as any)?.nivelCargo) {
-                    setUserLevel((empleado as any).nivelCargo)
-                } else {
-                    const { data: profile } = await supabase
+                // Cuentas sin fila propia en "empleados" (ej. buzones compartidos como
+                // coordinacioncalidad@firplak.com) dependen de "usuarios" tanto para el
+                // nivel de cargo como para el nombre — sin el nombre, el matching por
+                // nombre (isSpecialUser, "jefe" a cargo) mas abajo nunca funciona.
+                let profile: any = null
+                if (!(empleado as any)?.nivelCargo) {
+                    const { data: profileData } = await supabase
                         .from('usuarios')
-                        .select('rol')
+                        .select('rol, nombre')
                         .eq('correo', user.email!)
                         .maybeSingle()
-
-                    if ((profile as any)?.rol) {
-                        const dbRole = (profile as any).rol.toLowerCase()
-                        const roleMap: Record<string, string> = {
-                            'admin': 'Jefe',
-                            'desarrollador': 'Jefe',
-                            'jefe': 'Jefe',
-                            'gerente': 'Gerente',
-                            'director': 'Director',
-                            'coordinador': 'Coordinador',
-                            'analista': 'Analista',
-                            'supervisor': 'Supervisor'
-                        }
-                        setUserLevel(roleMap[dbRole] || (profile as any).rol)
-                    }
+                    profile = profileData
                 }
-                
+
+                if ((empleado as any)?.nivelCargo) {
+                    setUserLevel((empleado as any).nivelCargo)
+                } else if (profile?.rol) {
+                    const dbRole = profile.rol.toLowerCase()
+                    const roleMap: Record<string, string> = {
+                        'admin': 'Jefe',
+                        'desarrollador': 'Jefe',
+                        'jefe': 'Jefe',
+                        'gerente': 'Gerente',
+                        'director': 'Director',
+                        'coordinador': 'Coordinador',
+                        'analista': 'Analista',
+                        'supervisor': 'Supervisor'
+                    }
+                    setUserLevel(roleMap[dbRole] || profile.rol)
+                }
+
                 // Fetch Programaciones
                 const todayStr = new Date().toISOString().split('T')[0];
                 const { data: progData } = await supabase
@@ -127,14 +133,14 @@ export default function BuscadorHiluAdminPage() {
                     .gte('fecha_programada', todayStr)
                     .order('fecha_programada', { ascending: true })
                     .limit(30);
-                    
+
                 // If we want to filter by user's plants or instructor, we can do it here.
                 // For now, let's just get the upcoming ones. If the user is an instructor, we prioritize those.
                 // Let's try to find their name from the profile or employee record
                 let fetchedUserName = '';
                 if ((empleado as any)?.nombreCompleto) fetchedUserName = (empleado as any).nombreCompleto;
-                else if ((empleado as any)?.nombre) fetchedUserName = (empleado as any).nombre;
-                
+                else if (profile?.nombre) fetchedUserName = profile.nombre;
+
                 setUserName(fetchedUserName);
 
                 if (progData) {

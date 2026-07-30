@@ -3,11 +3,10 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
-import { Plus, Calendar, User, CheckCircle2, XCircle, AlertCircle, Trash2, Loader2 } from 'lucide-react'
+import { Plus, CheckCircle2, XCircle, AlertCircle, Trash2, Loader2 } from 'lucide-react'
 import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI } from '@/lib/constants/roles'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -19,7 +18,7 @@ interface FeedbackAdminCardProps {
     cargo: string
     auditorias: Auditoria[]
     onUpdate: () => void
-    currentUser?: { id?: number; email?: string; nivelCargo?: string } | null
+    currentUser?: { id?: number; usuarioId?: number; email?: string; nivelCargo?: string } | null
 }
 
 export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, currentUser }: FeedbackAdminCardProps) {
@@ -27,7 +26,7 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
     const [loading, setLoading] = useState(false)
     const supabase = createClient()
 
-    const filteredAuditorias = useMemo(() => 
+    const filteredAuditorias = useMemo(() =>
         auditorias.filter(a => a.cargo === cargo),
         [auditorias, cargo]
     )
@@ -35,14 +34,14 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
     const canEdit = () => {
         if (!currentUser) return false
         const email = currentUser.email || ''
-        
+
         // Estiven Londono and Coordinacion Calidad have full permissions
         if (email === 'estiven.londono@firplak.com' || email === 'coordinacioncalidad@firplak.com') return true
-        
+
         // Restricted users cannot edit audits
         if (
-            email === 'david.ramirez@firplak.com' || 
-            SUPERVISORES_MARMOL.includes(email) || 
+            email === 'david.ramirez@firplak.com' ||
+            SUPERVISORES_MARMOL.includes(email) ||
             SUPERVISORES_CALIDAD.includes(email) ||
             SUPERVISORES_MUEBLES_CEFI.includes(email) ||
             email === 'jakeline.chaverra@firplak.com' ||
@@ -52,32 +51,34 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
             email === 'analistaabastecimiento@firplak.com' ||
             email === 'hector.chinchilla@firplak.com'
         ) return false
-        
+
         return true
     }
 
     // Form states
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
-    const [evaluador, setEvaluador] = useState('')
-    const [calificacion, setCalificacion] = useState('')
     const [cumple, setCumple] = useState(true)
-    const [comentarios, setComentarios] = useState('')
+    const [comentario, setComentario] = useState('')
 
     const handleAddAuditoria = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
 
+        const usuarioId = currentUser?.usuarioId ?? currentUser?.id
+        if (!usuarioId) {
+            toast.error('No se pudo identificar tu usuario. Recarga la página e intenta de nuevo.')
+            return
+        }
+
+        setLoading(true)
         try {
             const { error } = await (supabase
                 .from('auditorias') as any)
                 .insert({
                     empleado_id: empleadoId,
                     cargo: cargo || 'N/A', // Fallback if cargo is null
-                    fecha_auditoria: new Date(fecha).toISOString(),
-                    evaluador,
-                    calificacion: parseFloat(calificacion),
                     cumple,
-                    comentarios
+                    comentario: comentario.trim(),
+                    created_by: usuarioId,
+                    modified_by: usuarioId
                 })
 
             if (error) throw error
@@ -86,9 +87,9 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
             setIsAdding(false)
             resetForm()
             onUpdate()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding audit:', error)
-            toast.error('Error al registrar')
+            toast.error('Error al registrar: ' + (error?.message || ''))
         } finally {
             setLoading(false)
         }
@@ -125,11 +126,8 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
     }
 
     const resetForm = () => {
-        setFecha(new Date().toISOString().split('T')[0])
-        setEvaluador('')
-        setCalificacion('')
         setCumple(true)
-        setComentarios('')
+        setComentario('')
     }
 
     return (
@@ -143,7 +141,7 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIsAdding(!isAdding)}
+                        onClick={() => { setIsAdding(!isAdding); if (isAdding) resetForm() }}
                         className={`font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all ${
                             isAdding ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-[#1e2f3d] border-gray-200 hover:bg-gray-50'
                         }`}
@@ -160,86 +158,46 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
                             <h4 className="font-black text-[10px] uppercase tracking-widest text-blue-900">Crear Nuevo Registro</h4>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="fecha" className="text-[10px] font-black uppercase text-gray-400">Fecha</Label>
-                                <Input
-                                    id="fecha"
-                                    type="date"
-                                    required
-                                    value={fecha}
-                                    onChange={(e) => setFecha(e.target.value)}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="evaluador" className="text-[10px] font-black uppercase text-gray-400">Evaluador</Label>
-                                <Input
-                                    id="evaluador"
-                                    required
-                                    placeholder="Nombre del evaluador"
-                                    value={evaluador}
-                                    onChange={(e) => setEvaluador(e.target.value)}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="calificacion" className="text-[10px] font-black uppercase text-gray-400">Calificación (0-100)</Label>
-                                <Input
-                                    id="calificacion"
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    required
-                                    placeholder="85"
-                                    value={calificacion}
-                                    onChange={(e) => setCalificacion(e.target.value)}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 block mb-2">Resultado</Label>
-                                <div className="flex gap-4">
-                                    <label className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all cursor-pointer ${cumple ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-100 text-gray-400'}`}>
-                                        <input
-                                            type="radio"
-                                            checked={cumple}
-                                            onChange={() => setCumple(true)}
-                                            className="hidden"
-                                        />
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        <span className="text-xs font-black uppercase">Cumple</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all cursor-pointer ${!cumple ? 'bg-red-50 border-red-500 text-red-700' : 'bg-white border-gray-100 text-gray-400'}`}>
-                                        <input
-                                            type="radio"
-                                            checked={!cumple}
-                                            onChange={() => setCumple(false)}
-                                            className="hidden"
-                                        />
-                                        <XCircle className="h-4 w-4" />
-                                        <span className="text-xs font-black uppercase">No Cumple</span>
-                                    </label>
-                                </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-gray-400 block mb-2">Resultado</Label>
+                            <div className="flex gap-4">
+                                <label className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all cursor-pointer ${cumple ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-100 text-gray-400'}`}>
+                                    <input
+                                        type="radio"
+                                        checked={cumple}
+                                        onChange={() => setCumple(true)}
+                                        className="hidden"
+                                    />
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    <span className="text-xs font-black uppercase">Cumple</span>
+                                </label>
+                                <label className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all cursor-pointer ${!cumple ? 'bg-red-50 border-red-500 text-red-700' : 'bg-white border-gray-100 text-gray-400'}`}>
+                                    <input
+                                        type="radio"
+                                        checked={!cumple}
+                                        onChange={() => setCumple(false)}
+                                        className="hidden"
+                                    />
+                                    <XCircle className="h-4 w-4" />
+                                    <span className="text-xs font-black uppercase">No Cumple</span>
+                                </label>
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="comentarios" className="text-[10px] font-black uppercase text-gray-400">Comentarios</Label>
+                            <Label htmlFor="comentario" className="text-[10px] font-black uppercase text-gray-400">Comentario</Label>
                             <textarea
-                                id="comentarios"
+                                id="comentario"
+                                required
                                 className="flex min-h-[100px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all"
                                 placeholder="Observaciones de la auditoría..."
-                                value={comentarios}
-                                onChange={(e) => setComentarios(e.target.value)}
+                                value={comentario}
+                                onChange={(e) => setComentario(e.target.value)}
                             />
                         </div>
 
                         <div className="flex justify-end pt-2">
-                            <Button type="submit" disabled={loading} className="bg-[#1e2f3d] hover:bg-[#2c4255] text-white font-black uppercase text-[10px] tracking-widest px-8 py-6 rounded-xl shadow-lg transition-all active:scale-95">
+                            <Button type="submit" disabled={loading || !comentario.trim()} className="bg-[#1e2f3d] hover:bg-[#2c4255] text-white font-black uppercase text-[10px] tracking-widest px-8 py-6 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50">
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Registro'}
                             </Button>
                         </div>
@@ -262,7 +220,7 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
                                         </div>
                                         <div>
                                             <h3 className="font-black text-[#1e2f3d] uppercase text-xs tracking-wider">
-                                                {new Date(audit.fecha_auditoria || '').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                                {audit.created_at ? new Date(audit.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <Badge className={`text-[9px] font-black uppercase py-0 px-2 ${audit.cumple ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
@@ -271,26 +229,11 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-4 mb-3">
-                                        <div className="bg-gray-50/50 p-2 rounded-lg">
-                                            <label className="text-[8px] font-black text-gray-400 uppercase block">Evaluador</label>
-                                            <p className="text-[10px] font-bold text-gray-700 truncate flex items-center gap-1 mt-0.5">
-                                                <User className="h-3 w-3 text-blue-500" /> {audit.evaluador || 'N/A'}
-                                            </p>
-                                        </div>
-                                        <div className="bg-gray-50/50 p-2 rounded-lg">
-                                            <label className="text-[8px] font-black text-gray-400 uppercase block">Calificación</label>
-                                            <p className="text-[10px] font-bold text-gray-700 flex items-center gap-1 mt-0.5">
-                                                <CheckCircle2 className="h-3 w-3 text-green-500" /> {audit.calificacion}%
-                                            </p>
-                                        </div>
-                                    </div>
 
-                                    {audit.comentarios && (
+                                    {audit.comentario && (
                                         <div className="bg-blue-50/30 p-3 rounded-xl border border-blue-50">
                                             <p className="text-[11px] text-gray-600 italic leading-relaxed">
-                                                &quot;{audit.comentarios}&quot;
+                                                &quot;{audit.comentario}&quot;
                                             </p>
                                         </div>
                                     )}
@@ -317,4 +260,3 @@ export function FeedbackAdminCard({ empleadoId, cargo, auditorias, onUpdate, cur
         </Card>
     )
 }
-
