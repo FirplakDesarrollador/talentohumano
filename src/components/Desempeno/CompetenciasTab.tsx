@@ -155,6 +155,44 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
         fetchData()
     }, [fetchData])
 
+    // Agrega la competencia a la plantilla compartida del cargo (cargos_competencias)
+    // si aun no esta, para que otros empleados con el mismo cargo tambien la vean
+    // como "Pendiente". No afecta niveles/comentarios individuales, solo el nombre.
+    const syncCompetenciaToCargoTemplate = async (compName: string) => {
+        try {
+            const normalizeCargo = (s: string) => s.trim().toLowerCase()
+            const { data: rows, error } = await supabase
+                .from('cargos_competencias' as any)
+                .select('id, cargo, competencias')
+
+            if (error) throw error
+
+            const match = (rows as any[] | null)?.find(
+                (row: any) => normalizeCargo(row.cargo || '') === normalizeCargo(cargo || '')
+            )
+
+            if (match) {
+                const existing: string[] = Array.isArray(match.competencias?.competencias)
+                    ? match.competencias.competencias
+                    : Array.isArray(match.competencias) ? match.competencias : []
+
+                const yaExiste = existing.some(n => normalizeCargo(n) === normalizeCargo(compName))
+                if (!yaExiste) {
+                    const { error: updError } = await (supabase.from('cargos_competencias') as any)
+                        .update({ competencias: { competencias: [...existing, compName] } })
+                        .eq('id', match.id)
+                    if (updError) throw updError
+                }
+            } else {
+                const { error: insError } = await (supabase.from('cargos_competencias') as any)
+                    .insert({ cargo: cargo, competencias: { competencias: [compName] } })
+                if (insError) throw insError
+            }
+        } catch (error) {
+            console.error('Error sincronizando competencia con la plantilla del cargo:', error)
+        }
+    }
+
     const handleSave = async (comp: CompetenciaItem, newNivel: number, newEsperado: number, newComentario: string) => {
         setSaving(comp.nombre)
         try {
@@ -208,9 +246,11 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
             }
 
             await fetchData()
+            return true
         } catch (error) {
             console.error('Error saving competencia:', error)
             alert('Error al guardar la competencia')
+            return false
         } finally {
             setSaving(null)
         }
@@ -338,15 +378,19 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
 
     const handleAddNew = async () => {
         if (!newCompName.trim()) return
+        const trimmed = newCompName.trim()
         // Add via the same save mechanism
         const fakeComp: CompetenciaItem = {
-            nombre: newCompName.trim(),
+            nombre: trimmed,
             nivel: 0,
             nivel_esperado: 0,
             comentario: '',
             isPlaceholder: true
         }
-        await handleSave(fakeComp, 0, 0, '')
+        const ok = await handleSave(fakeComp, 0, 0, '')
+        if (ok) {
+            await syncCompetenciaToCargoTemplate(trimmed)
+        }
         setNewCompName('')
         setShowAddForm(false)
     }
