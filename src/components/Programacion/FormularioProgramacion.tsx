@@ -371,6 +371,11 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                         const startDateTimeStr = `${formData.fecha_programada}T${formData.hora_inicio}:00`;
                         const endDateTimeStr = `${formData.fecha_programada}T${formData.hora_fin}:00`;
 
+                        const appPath = formData.planta === 'Administrativa'
+                            ? `/hilu-administrativa/${formData.empleado_id}`
+                            : `/entrenamiento/${formData.empleado_id}`;
+                        const appLink = `https://talentohumano.vercel.app${appPath}`;
+
                         const apiResponse = await fetch("/api/teams", {
                             method: "POST",
                             headers: {
@@ -379,7 +384,7 @@ export const FormularioProgramacion: React.FC<FormularioProgramacionProps> = ({ 
                             body: JSON.stringify({
                                 instructor_correo: formData.instructor_correo,
                                 subject: `Entrenamiento: ${formData.tipo} - Fase ${formData.fase_hilu}`,
-                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}${formData.puesto ? `<br><b>Puesto:</b> ${formData.puesto}` : ''}<br><b>Instructor:</b> ${formData.instructor}`,
+                                content: `<b>Detalles del Entrenamiento</b><br><br><b>Colaborador:</b> ${formData.nombreCompleto}<br><b>Planta:</b> ${formData.planta}${formData.puesto ? `<br><b>Puesto:</b> ${formData.puesto}` : ''}<br><b>Instructor:</b> ${formData.instructor}<br><br><a href="${appLink}">Ver seguimiento en Talento Humano</a>`,
                                 startDateTime: startDateTimeStr,
                                 endDateTime: endDateTimeStr
                             })
