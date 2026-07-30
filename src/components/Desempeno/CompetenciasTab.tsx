@@ -9,7 +9,8 @@ import {
     Save,
     X,
     Pencil,
-    Check
+    Check,
+    Trash2
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -268,6 +269,42 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
         }
     }
 
+    const handleDelete = async (comp: CompetenciaItem) => {
+        if (!rawRow || !registroId) return
+
+        setSaving(comp.nombre)
+        try {
+            const currentComps: Record<string, boolean> = { ...(rawRow.competencias || {}) }
+            const currentNiveles: Record<string, number> = { ...(rawRow.nivel || {}) }
+            const currentEsperados: Record<string, number> = { ...(rawRow.nivel_esperado || {}) }
+            const currentComentarios: Record<string, string> = { ...(rawRow.comentario || {}) }
+
+            delete currentComps[comp.nombre]
+            delete currentNiveles[comp.nombre]
+            delete currentEsperados[comp.nombre]
+            delete currentComentarios[comp.nombre]
+
+            const { error } = await (supabase.from('ComptEmpleados') as any)
+                .update({
+                    competencias: currentComps,
+                    nivel: currentNiveles,
+                    nivel_esperado: currentEsperados,
+                    comentario: currentComentarios,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', registroId)
+
+            if (error) throw error
+
+            await fetchData()
+        } catch (error) {
+            console.error('Error eliminando competencia:', error)
+            alert('Error al eliminar la competencia')
+        } finally {
+            setSaving(null)
+        }
+    }
+
     const handleAddNew = async () => {
         if (!newCompName.trim()) return
         // Add via the same save mechanism
@@ -403,11 +440,12 @@ export function CompetenciasTab({ cedula, nombre, cargo }: CompetenciasTabProps)
             {/* Competency Cards with Sliders */}
             <div className="grid grid-cols-1 gap-4">
                 {competencias.map((comp, idx) => (
-                    <CompetenciaEditCard 
-                        key={comp.nombre + idx} 
-                        comp={comp} 
+                    <CompetenciaEditCard
+                        key={comp.nombre + idx}
+                        comp={comp}
                         saving={saving === comp.nombre}
                         onSave={handleSave}
+                        onDelete={handleDelete}
                     />
                 ))}
             </div>
@@ -456,15 +494,17 @@ function getNivelColor(value: number): string {
 }
 
 // --- Sub-component: Editable Competency Card ---
-function CompetenciaEditCard({ comp, saving, onSave }: {
-    comp: CompetenciaItem; 
+function CompetenciaEditCard({ comp, saving, onSave, onDelete }: {
+    comp: CompetenciaItem;
     saving: boolean;
-    onSave: (comp: CompetenciaItem, nivel: number, esperado: number, comentario: string) => void 
+    onSave: (comp: CompetenciaItem, nivel: number, esperado: number, comentario: string) => void
+    onDelete: (comp: CompetenciaItem) => void
 }) {
     const [nivel, setNivel] = useState(comp.nivel)
     const [esperado, setEsperado] = useState(comp.nivel_esperado)
     const [comentario, setComentario] = useState(comp.comentario)
     const [dirty, setDirty] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState(false)
 
     const handleNivelChange = (v: number) => { setNivel(v); setDirty(true) }
     const handleEsperadoChange = (v: number) => { setEsperado(v); setDirty(true) }
@@ -479,18 +519,43 @@ function CompetenciaEditCard({ comp, saving, onSave }: {
                         {comp.isPlaceholder ? 'Competencia del cargo — Sin calificación' : 'Competencia calificada'}
                     </p>
                 </div>
-                {dirty && (
-                    <Button
-                        size="sm"
-                        onClick={() => onSave(comp, nivel, esperado, comentario)}
-                        disabled={saving}
-                        className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1"
-                    >
-                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                        Guardar
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {!comp.isPlaceholder && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPendingDelete(true)}
+                            disabled={saving}
+                            className="rounded-xl border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 gap-1"
+                            title="Eliminar competencia"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    {dirty && (
+                        <Button
+                            size="sm"
+                            onClick={() => onSave(comp, nivel, esperado, comentario)}
+                            disabled={saving}
+                            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                        >
+                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                            Guardar
+                        </Button>
+                    )}
+                </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={pendingDelete}
+                variant="danger"
+                title="¿Eliminar esta competencia?"
+                description={`Se eliminará "${comp.nombre}" de las competencias calificadas de este empleado. Esta acción no se puede deshacer.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { onDelete(comp); setPendingDelete(false) }}
+                onCancel={() => setPendingDelete(false)}
+            />
 
             {/* Slider: Nivel de Competencia */}
             <div className="mb-4">

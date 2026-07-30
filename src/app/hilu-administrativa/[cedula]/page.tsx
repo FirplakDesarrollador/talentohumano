@@ -65,7 +65,6 @@ export default function HiluAdministrativaPage() {
                         .eq('correo_electronico', session.user.email!)
                         .maybeSingle()
                     userLevel = (empData as any)?.nivelCargo || ''
-                    setCurrentUser({ ...session.user, nivelCargo: userLevel, empleadoId: (empData as any)?.id ?? null })
 
                     const { data: usuarioData } = await supabase
                         .from('usuarios')
@@ -73,6 +72,12 @@ export default function HiluAdministrativaPage() {
                         .eq('correo', session.user.email!)
                         .maybeSingle()
                     currentUsuarioId = (usuarioData as any)?.id || 1
+
+                    // "usuarioId" es el id de la tabla "usuarios" (bigint, referenciado por
+                    // las FK created_by/modified_by de auditorias y reentrenamientos). Es
+                    // distinto de "id", que al venir del spread de session.user es el UUID
+                    // de autenticación y NO sirve como esa referencia.
+                    setCurrentUser({ ...session.user, nivelCargo: userLevel, empleadoId: (empData as any)?.id ?? null, usuarioId: currentUsuarioId })
                 }
 
                 // Fetch Employee Info

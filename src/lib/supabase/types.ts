@@ -980,37 +980,34 @@ export interface Database {
                     id: number
                     empleado_id: number
                     cargo: string
-                    created_at: string | null
-                    created_by_id: number | null
-                    fecha_auditoria: string | null
-                    evaluador: string | null
-                    calificacion: number | null
-                    cumple: boolean | null
-                    comentarios: string | null
+                    created_at: string
+                    created_by: number
+                    modified_at: string
+                    modified_by: number
+                    cumple: boolean
+                    comentario: string
                 }
                 Insert: {
                     id?: number
                     empleado_id: number
                     cargo: string
-                    created_at?: string | null
-                    created_by_id?: number | null
-                    fecha_auditoria?: string | null
-                    evaluador?: string | null
-                    calificacion?: number | null
-                    cumple?: boolean | null
-                    comentarios?: string | null
+                    created_at?: string
+                    created_by: number
+                    modified_at?: string
+                    modified_by: number
+                    cumple: boolean
+                    comentario: string
                 }
                 Update: {
                     id?: number
                     empleado_id?: number
                     cargo?: string
-                    created_at?: string | null
-                    created_by_id?: number | null
-                    fecha_auditoria?: string | null
-                    evaluador?: string | null
-                    calificacion?: number | null
-                    cumple?: boolean | null
-                    comentarios?: string | null
+                    created_at?: string
+                    created_by?: number
+                    modified_at?: string
+                    modified_by?: number
+                    cumple?: boolean
+                    comentario?: string
                 }
             }
             reentrenamientos: {
@@ -1018,37 +1015,37 @@ export interface Database {
                     id: number
                     empleado_id: number
                     cargo: string
-                    created_at: string | null
-                    created_by_id: number | null
-                    fecha_inicio: string | null
-                    fecha_fin: string | null
-                    motivo: string | null
-                    completado: boolean | null
-                    comentarios: string | null
+                    created_at: string
+                    created_by: number
+                    firma_empleado: string
+                    firma_supervisor: string
+                    comentario: string
+                    reentrenado_por: string
+                    horas: number
                 }
                 Insert: {
                     id?: number
                     empleado_id: number
                     cargo: string
-                    created_at?: string | null
-                    created_by_id?: number | null
-                    fecha_inicio?: string | null
-                    fecha_fin?: string | null
-                    motivo?: string | null
-                    completado?: boolean | null
-                    comentarios?: string | null
+                    created_at?: string
+                    created_by: number
+                    firma_empleado: string
+                    firma_supervisor: string
+                    comentario: string
+                    reentrenado_por: string
+                    horas: number
                 }
                 Update: {
                     id?: number
                     empleado_id?: number
                     cargo?: string
-                    created_at?: string | null
-                    created_by_id?: number | null
-                    fecha_inicio?: string | null
-                    fecha_fin?: string | null
-                    motivo?: string | null
-                    completado?: boolean | null
-                    comentarios?: string | null
+                    created_at?: string
+                    created_by?: number
+                    firma_empleado?: string
+                    firma_supervisor?: string
+                    comentario?: string
+                    reentrenado_por?: string
+                    horas?: number
                 }
             }
         }

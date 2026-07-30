@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/types'
-import { Plus, RotateCcw, Calendar, CheckCircle, Clock, Trash2, Loader2, AlertCircle } from 'lucide-react'
-import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, SUPERVISORES_MUEBLES_CEFI, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
-import { Badge } from '@/components/ui/badge'
+import { Plus, RotateCcw, Clock, Trash2, Loader2, User } from 'lucide-react'
+import { SUPERVISORES_MARMOL, SUPERVISORES_CALIDAD, HILU_OPERATIVA_RESTRINGIDA_MOLDES } from '@/lib/constants/roles'
 import { toast } from 'sonner'
+import { CrearFirma, VerFirma } from './FirmaComponents'
 
 type Reentrenamiento = Database['public']['Tables']['reentrenamientos']['Row']
 
@@ -19,7 +19,7 @@ interface ReentrenamientoCardProps {
     cargo: string
     reentrenamientos: Reentrenamiento[]
     onUpdate: () => void
-    currentUser?: { id?: number; email?: string; nivelCargo?: string } | null
+    currentUser?: { id?: number; usuarioId?: number; email?: string; nivelCargo?: string } | null
 }
 
 export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpdate, currentUser }: ReentrenamientoCardProps) {
@@ -31,13 +31,6 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
         reentrenamientos.filter(r => r.cargo === cargo),
         [reentrenamientos, cargo]
     )
-
-    // Form states
-    const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0])
-    const [fechaFin, setFechaFin] = useState('')
-    const [motivo, setMotivo] = useState('')
-    const [completado, setCompletado] = useState(false)
-    const [comentarios, setComentarios] = useState('')
 
     const canEdit = () => {
         if (!currentUser) return false
@@ -67,21 +60,41 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
         return true
     }
 
+    // Form states
+    const [reentrenadoPor, setReentrenadoPor] = useState('')
+    const [horas, setHoras] = useState('')
+    const [comentario, setComentario] = useState('')
+    const [firmaEmpleado, setFirmaEmpleado] = useState<string | null>(null)
+    const [firmaSupervisor, setFirmaSupervisor] = useState<string | null>(null)
+
+    const canSubmit = !!(reentrenadoPor.trim() && parseFloat(horas) > 0 && comentario.trim() && firmaEmpleado && firmaSupervisor)
+
     const handleAddReentrenamiento = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
+        if (!canSubmit) {
+            toast.error('Completa todos los campos y ambas firmas antes de guardar')
+            return
+        }
 
+        const usuarioId = currentUser?.usuarioId ?? currentUser?.id
+        if (!usuarioId) {
+            toast.error('No se pudo identificar tu usuario. Recarga la página e intenta de nuevo.')
+            return
+        }
+
+        setLoading(true)
         try {
             const { error } = await (supabase
                 .from('reentrenamientos') as any)
                 .insert({
                     empleado_id: empleadoId,
                     cargo: cargo || 'N/A',
-                    fecha_inicio: new Date(fechaInicio).toISOString(),
-                    fecha_fin: fechaFin ? new Date(fechaFin).toISOString() : null,
-                    motivo,
-                    completado,
-                    comentarios
+                    reentrenado_por: reentrenadoPor.trim(),
+                    horas: parseFloat(horas),
+                    comentario: comentario.trim(),
+                    firma_empleado: firmaEmpleado,
+                    firma_supervisor: firmaSupervisor,
+                    created_by: usuarioId
                 })
 
             if (error) throw error
@@ -90,9 +103,9 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
             setIsAdding(false)
             resetForm()
             onUpdate()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding retraining:', error)
-            toast.error('Error al registrar reentrenamiento')
+            toast.error('Error al registrar reentrenamiento: ' + (error?.message || ''))
         } finally {
             setLoading(false)
         }
@@ -128,11 +141,11 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
     }
 
     const resetForm = () => {
-        setFechaInicio(new Date().toISOString().split('T')[0])
-        setFechaFin('')
-        setMotivo('')
-        setCompletado(false)
-        setComentarios('')
+        setReentrenadoPor('')
+        setHoras('')
+        setComentario('')
+        setFirmaEmpleado(null)
+        setFirmaSupervisor(null)
     }
 
     return (
@@ -146,7 +159,7 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIsAdding(!isAdding)}
+                        onClick={() => { setIsAdding(!isAdding); if (isAdding) resetForm() }}
                         className={`font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all ${isAdding ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-[#1e2f3d] border-gray-200 hover:bg-gray-50'
                             }`}
                     >
@@ -164,69 +177,76 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="fechaInicio" className="text-[10px] font-black uppercase text-gray-400">Fecha Inicio</Label>
+                                <Label htmlFor="reentrenadoPor" className="text-[10px] font-black uppercase text-gray-400">Reentrenado por</Label>
                                 <Input
-                                    id="fechaInicio"
-                                    type="date"
+                                    id="reentrenadoPor"
                                     required
-                                    value={fechaInicio}
-                                    onChange={(e) => setFechaInicio(e.target.value)}
+                                    placeholder="Nombre de quien realizó el reentrenamiento"
+                                    value={reentrenadoPor}
+                                    onChange={(e) => setReentrenadoPor(e.target.value)}
                                     className="rounded-xl border-gray-200"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="fechaFin" className="text-[10px] font-black uppercase text-gray-400">Fecha Fin (Opcional)</Label>
+                                <Label htmlFor="horas" className="text-[10px] font-black uppercase text-gray-400">Horas</Label>
                                 <Input
-                                    id="fechaFin"
-                                    type="date"
-                                    value={fechaFin}
-                                    onChange={(e) => setFechaFin(e.target.value)}
-                                    className="rounded-xl border-gray-200"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2 space-y-2">
-                                <Label htmlFor="motivo" className="text-[10px] font-black uppercase text-gray-400">Motivo</Label>
-                                <Input
-                                    id="motivo"
+                                    id="horas"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
                                     required
-                                    placeholder="Ej: Ajuste en el proceso, nuevo procedimiento..."
-                                    value={motivo}
-                                    onChange={(e) => setMotivo(e.target.value)}
+                                    placeholder="Ej: 1.5"
+                                    value={horas}
+                                    onChange={(e) => setHoras(e.target.value)}
                                     className="rounded-xl border-gray-200"
                                 />
-                            </div>
-
-                            <div className="md:col-span-2 space-y-2">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-10 h-6 rounded-full p-1 transition-colors ${completado ? 'bg-orange-500' : 'bg-gray-200'}`}>
-                                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${completado ? 'translate-x-4' : 'translate-x-0'}`} />
-                                    </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={completado}
-                                        onChange={(e) => setCompletado(e.target.checked)}
-                                        className="hidden"
-                                    />
-                                    <span className="text-xs font-black uppercase tracking-wider text-gray-600 group-hover:text-gray-900 transition-colors">Reentrenamiento Completado</span>
-                                </label>
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="comentarios" className="text-[10px] font-black uppercase text-gray-400">Comentarios</Label>
+                            <Label htmlFor="comentario" className="text-[10px] font-black uppercase text-gray-400">Comentario</Label>
                             <textarea
-                                id="comentarios"
+                                id="comentario"
+                                required
                                 className="flex min-h-[100px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 transition-all"
-                                placeholder="Observaciones adicionales..."
-                                value={comentarios}
-                                onChange={(e) => setComentarios(e.target.value)}
+                                placeholder="Motivo y detalle del reentrenamiento..."
+                                value={comentario}
+                                onChange={(e) => setComentario(e.target.value)}
                             />
                         </div>
 
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-gray-400">Firma Empleado</Label>
+                                {firmaEmpleado ? (
+                                    <div className="space-y-1">
+                                        <VerFirma firmaUrl={firmaEmpleado} />
+                                        <button type="button" onClick={() => setFirmaEmpleado(null)} className="text-[10px] font-bold text-orange-600 hover:underline">
+                                            Volver a firmar
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <CrearFirma onFirmaGuardada={setFirmaEmpleado} />
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-gray-400">Firma Supervisor</Label>
+                                {firmaSupervisor ? (
+                                    <div className="space-y-1">
+                                        <VerFirma firmaUrl={firmaSupervisor} />
+                                        <button type="button" onClick={() => setFirmaSupervisor(null)} className="text-[10px] font-bold text-orange-600 hover:underline">
+                                            Volver a firmar
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <CrearFirma onFirmaGuardada={setFirmaSupervisor} />
+                                )}
+                            </div>
+                        </div>
+
                         <div className="flex justify-end pt-2">
-                            <Button type="submit" disabled={loading} className="bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest px-8 py-6 rounded-xl shadow-lg transition-all active:scale-95">
+                            <Button type="submit" disabled={loading || !canSubmit} className="bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest px-8 py-6 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50">
                                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Registro'}
                             </Button>
                         </div>
@@ -248,36 +268,25 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                 <div className="flex justify-between items-start relative z-10">
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-3">
-                                            <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${item.completado ? 'bg-green-50 text-green-500' : 'bg-orange-50 text-orange-500'}`}>
-                                                {item.completado ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                                            <div className="h-8 w-8 rounded-xl flex items-center justify-center bg-orange-50 text-orange-500">
+                                                <User className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Motivo de Formación</p>
-                                                <h4 className="text-sm font-black text-[#1e2f3d] uppercase tracking-tight">{item.motivo}</h4>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reentrenado por</p>
+                                                <h4 className="text-sm font-black text-[#1e2f3d] uppercase tracking-tight">{item.reentrenado_por}</h4>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-4">
                                             <div className="flex flex-col">
-                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Estado</p>
-                                                <Badge className={`${item.completado ? 'bg-green-500' : 'bg-orange-500'} text-white border-none px-3 py-0.5 rounded-full text-[10px] font-black`}>
-                                                    {item.completado ? 'COMPLETADO' : 'EN CURSO'}
-                                                </Badge>
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Horas</p>
+                                                <p className="text-xs font-black text-gray-600">{item.horas}</p>
                                             </div>
                                             <div className="h-8 w-px bg-gray-100" />
                                             <div className="flex flex-col">
-                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha Inicio</p>
-                                                <p className="text-xs font-black text-gray-600">{item.fecha_inicio ? new Date(item.fecha_inicio).toLocaleDateString() : 'N/A'}</p>
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha</p>
+                                                <p className="text-xs font-black text-gray-600">{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}</p>
                                             </div>
-                                            {item.fecha_fin && (
-                                                <>
-                                                    <div className="h-8 w-px bg-gray-100" />
-                                                    <div className="flex flex-col">
-                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fecha Fin</p>
-                                                        <p className="text-xs font-black text-gray-600">{item.fecha_fin ? new Date(item.fecha_fin).toLocaleDateString() : 'N/A'}</p>
-                                                    </div>
-                                                </>
-                                            )}
                                         </div>
                                     </div>
 
@@ -294,12 +303,23 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
                                     </div>
                                 </div>
 
-                                {item.comentarios && (
+                                {item.comentario && (
                                     <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Comentarios Técnicos</p>
-                                        <p className="text-xs text-gray-600 leading-relaxed italic">&quot;{item.comentarios}&quot;</p>
+                                        <p className="text-xs text-gray-600 leading-relaxed italic">&quot;{item.comentario}&quot;</p>
                                     </div>
                                 )}
+
+                                <div className="grid grid-cols-2 gap-4 mt-4">
+                                    <div>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Firma Empleado</p>
+                                        <VerFirma firmaUrl={item.firma_empleado} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Firma Supervisor</p>
+                                        <VerFirma firmaUrl={item.firma_supervisor} />
+                                    </div>
+                                </div>
 
                                 <div className="absolute -bottom-4 -right-4 text-gray-50 opacity-20 transform -rotate-12">
                                     <RotateCcw className="h-24 w-24" />
@@ -312,4 +332,3 @@ export function ReentrenamientoCard({ empleadoId, cargo, reentrenamientos, onUpd
         </Card>
     )
 }
-

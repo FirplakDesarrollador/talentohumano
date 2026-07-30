@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { ADMIN_EMAILS, ADMIN_LEVELS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, DIRECTORES_CON_ACCESO, JEFES_CON_ACCESO, HILU_ADMIN_EDIT_OVERRIDES } from '@/lib/constants/roles'
-import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star } from 'lucide-react'
+import { ChevronDown, Calendar, CheckCircle2, Circle, Save, Star, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { CrearFirma, VerFirma } from './FirmaComponents'
 import { EvidenciasComponent } from './EvidenciasComponent'
@@ -126,9 +126,13 @@ const SignatureWidget = ({
     onSave: (firma: string) => void,
     date?: string | null
 }) => {
+    const [isEditing, setIsEditing] = useState(false)
+    const [pendingEdit, setPendingEdit] = useState(false)
+
     // Solo un string distinto de "true"/"false" es una firma dibujada real (data URI).
     const isRealSignature = typeof value === 'string' && value !== 'true' && value !== 'false';
     const isSigned = isFirmado(value);
+    const showForm = !isSigned || isEditing;
 
     return (
         <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[220px] transition-all hover:border-blue-200 hover:shadow-md">
@@ -137,24 +141,48 @@ const SignatureWidget = ({
                     <div className={`h-2 w-2 rounded-full ${isSigned ? 'bg-green-500' : 'bg-blue-400 animate-pulse'}`}></div>
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
                 </div>
-                {isSigned && (
-                    <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
-                        {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+                {isSigned && !isEditing && (
+                    <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">√ FIRMADO</span>
+                            {date && <span className="text-[8px] text-gray-400 mt-0.5">{new Date(date).toLocaleDateString()}</span>}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setPendingEdit(true)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Editar firma"
+                        >
+                            <Pencil className="h-3.5 w-3.5" />
+                        </button>
                     </div>
                 )}
             </div>
             <div className="flex-grow p-4 flex flex-col justify-center items-center bg-white relative">
                 <div className="w-full">
-                    {isRealSignature ? (
+                    {showForm ? (
+                        <CrearFirma
+                            onFirmaGuardada={(firma) => { onSave(firma); setIsEditing(false) }}
+                            onCancel={isSigned ? () => setIsEditing(false) : undefined}
+                        />
+                    ) : isRealSignature ? (
                         <VerFirma firmaUrl={value as string} />
-                    ) : isSigned ? (
-                        <div className="text-green-600 font-bold text-center">Firma Electrónica Confirmada</div>
                     ) : (
-                        <CrearFirma onFirmaGuardada={onSave} />
+                        <div className="text-green-600 font-bold text-center">Firma Electrónica Confirmada</div>
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={pendingEdit}
+                variant="warning"
+                title="¿Editar esta firma?"
+                description="La firma actual se reemplazará cuando guardes la nueva. Esta acción no se puede deshacer."
+                confirmLabel="Editar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { setIsEditing(true); setPendingEdit(false) }}
+                onCancel={() => setPendingEdit(false)}
+            />
         </div>
     )
 }
