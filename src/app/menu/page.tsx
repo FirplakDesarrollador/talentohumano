@@ -127,6 +127,12 @@ export default function MenuPage() {
             href: '/desempeno',
             icon: Component,
             visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
+        },
+        {
+            title: 'Contratación',
+            href: '/contratacion',
+            icon: UserPlus,
+            visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
         }
     ]
 

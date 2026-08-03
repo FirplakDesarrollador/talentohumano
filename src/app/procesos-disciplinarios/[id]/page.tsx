@@ -189,6 +189,23 @@ export default function DetalleProcesosDisciplinarioPage() {
         setIsCreateModalOpen(true)
     }
 
+    const handleDelete = async (proceso: any) => {
+        try {
+            const { error } = await supabase
+                .from('procesos_disciplinarios' as any)
+                .delete()
+                .eq('id', proceso.id)
+
+            if (error) throw error
+
+            toast.success('Registro eliminado correctamente')
+            fetchData()
+        } catch (err: any) {
+            console.error('Error deleting proceso:', err)
+            toast.error('No se pudo eliminar el registro')
+        }
+    }
+
     const handleCloseModal = () => {
         setIsCreateModalOpen(false)
         setEditingProceso(null)
@@ -272,13 +289,14 @@ export default function DetalleProcesosDisciplinarioPage() {
                                             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                                             style={{ animationDelay: `${index * 50}ms` }}
                                         >
-                                            <ProcesoCard 
+                                            <ProcesoCard
                                                 proceso={{
                                                     ...proceso,
                                                     created_at: proceso.created_at || proceso.createdAt,
                                                     created_by: proceso.created_by || proceso.createdBy
-                                                }} 
+                                                }}
                                                 onEdit={handleEdit}
+                                                onDelete={handleDelete}
                                             />
                                         </div>
                                     ))}

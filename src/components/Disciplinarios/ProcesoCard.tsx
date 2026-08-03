@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { format, parseISO, isValid, differenceInHours } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil } from 'lucide-react'
+import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 
 interface ProcesoCardProps {
@@ -19,11 +20,13 @@ interface ProcesoCardProps {
         comentario: string
     }
     onEdit?: (proceso: any) => void
+    onDelete?: (proceso: any) => void
 }
 
-export function ProcesoCard({ proceso, onEdit }: ProcesoCardProps) {
+export function ProcesoCard({ proceso, onEdit, onDelete }: ProcesoCardProps) {
     const supabase = createClient()
     const [currentUser, setCurrentUser] = useState<any>(null)
+    const [pendingDelete, setPendingDelete] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
@@ -32,6 +35,12 @@ export function ProcesoCard({ proceso, onEdit }: ProcesoCardProps) {
         }
         getUser()
     }, [supabase])
+
+    const isAdmin = () => {
+        if (!currentUser) return false
+        return ADMIN_EMAILS.includes(currentUser.email || '') ||
+            (ADMIN_LEVELS as any).includes(currentUser.user_metadata?.nivelCargo || '')
+    }
 
     const formatDate = (dateString: string) => {
         try {
@@ -46,10 +55,7 @@ export function ProcesoCard({ proceso, onEdit }: ProcesoCardProps) {
     const canEdit = () => {
         if (!currentUser || !proceso.created_at) return false
 
-        const isAdmin = ADMIN_EMAILS.includes(currentUser.email || '') || 
-                       (ADMIN_LEVELS as any).includes(currentUser.user_metadata?.nivelCargo || '')
-
-        if (isAdmin) return true
+        if (isAdmin()) return true
 
         const createdAt = parseISO(proceso.created_at)
         const hoursSinceCreation = differenceInHours(new Date(), createdAt)
@@ -67,19 +73,43 @@ export function ProcesoCard({ proceso, onEdit }: ProcesoCardProps) {
                     proceso.tipo === 'Llamado de atencion' ? 'bg-orange-500' : 'bg-blue-500'
                 }`} />
             
-            {onEdit && canEdit() && (
-                <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEdit(proceso)}
-                        className="bg-white/90 backdrop-blur-sm border-gray-200 hover:border-[#1D3557] hover:text-[#1D3557] rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm"
-                    >
-                        <Pencil className="h-3 w-3" />
-                        Editar
-                    </Button>
+            {((onEdit && canEdit()) || (onDelete && isAdmin())) && (
+                <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                    {onEdit && canEdit() && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEdit(proceso)}
+                            className="bg-white/90 backdrop-blur-sm border-gray-200 hover:border-[#1D3557] hover:text-[#1D3557] rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm"
+                        >
+                            <Pencil className="h-3 w-3" />
+                            Editar
+                        </Button>
+                    )}
+                    {onDelete && isAdmin() && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPendingDelete(true)}
+                            className="bg-white/90 backdrop-blur-sm border-red-200 text-red-500 hover:border-red-400 hover:bg-red-50 hover:text-red-600 rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm"
+                        >
+                            <Trash2 className="h-3 w-3" />
+                            Eliminar
+                        </Button>
+                    )}
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={pendingDelete}
+                variant="danger"
+                title="¿Eliminar este registro?"
+                description="Se eliminará este proceso disciplinario de forma permanente. Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { onDelete?.(proceso); setPendingDelete(false) }}
+                onCancel={() => setPendingDelete(false)}
+            />
 
             <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
