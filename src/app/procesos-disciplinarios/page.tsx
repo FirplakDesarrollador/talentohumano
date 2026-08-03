@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
 import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS } from '@/lib/constants/roles'
+import { resolveUserProfile } from '@/lib/auth/resolveUserProfile'
 
 export default function BuscadorProcesosDisciplinariosPage() {
     const router = useRouter()
@@ -127,47 +128,18 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 const email = user.email!
                 const systemAdmin = ADMIN_EMAILS.includes(email)
 
-                // 1. Fetch cargo level from empleados
-                const { data: empleado } = await supabase
-                    .from('empleados')
-                    .select('nivelCargo, nombreCompleto')
-                    .eq('correo_electronico', email)
-                    .maybeSingle()
-
-                let currentLevel = ''
-                let userProfile = null
-
-                if ((empleado as any)?.nivelCargo) {
-                    currentLevel = (empleado as any).nivelCargo
-                    userProfile = { ...(empleado as any), correo: email, nivelCargo: currentLevel }
-                } else {
-                    // 2. Fetch role from usuarios if not in empleados
-                    const { data: profile } = await supabase
-                        .from('usuarios')
-                        .select('*')
-                        .eq('correo', email)
-                        .maybeSingle()
-                    
-                    if ((profile as any)?.rol) {
-                        const roleMap: Record<string, string> = {
-                            'admin': 'Administrador',
-                            'desarrollador': 'Administrador',
-                            'jefe': 'Jefe',
-                            'gerente': 'Gerente',
-                            'director': 'Director',
-                            'coordinador': 'Coordinador',
-                            'analista': 'Analista',
-                            'supervisor': 'Supervisor'
-                        }
-                        currentLevel = roleMap[(profile as any).rol] || (profile as any).rol
-                        userProfile = { ...(profile as any), correo: email, nivelCargo: currentLevel }
-                    }
-                }
+                // 1. Fetch cargo level (prioriza empleado activo y sigue el vinculo
+                // usuarios.empleado_id para correos genericos/compartidos)
+                const resolvedProfile = await resolveUserProfile(supabase, email)
+                const currentLevel = resolvedProfile.nivelCargo
+                const userProfile = currentLevel || resolvedProfile.nombreCompleto
+                    ? { correo: email, nivelCargo: currentLevel, nombreCompleto: resolvedProfile.nombreCompleto, nombre: resolvedProfile.nombreCompleto }
+                    : null
 
                 setCurrentUser(userProfile)
 
                 // 3. Authorization Check
-                const authorized = systemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(currentLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(email)
+                const authorized = systemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(currentLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(email) || resolvedProfile.tienePersonalACargo
                 setIsAuthorized(authorized)
 
                 if (!authorized) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, AUSENTISMOS_LEVELS, ANALISTAS_CON_ACCESO, JEFES_MOLDES, AUSENTISMOS_SIN_DETALLE, getPlantasPermitidas } from '@/lib/constants/roles'
+import { resolveUserProfile } from '@/lib/auth/resolveUserProfile'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -37,6 +38,7 @@ export default function AusentismosPage() {
     const [loading, setLoading] = useState(true)
     const [currentUser, setCurrentUser] = useState<{ correo?: string } | null>(null)
     const [userLevel, setUserLevel] = useState<string>('')
+    const [tienePersonalACargo, setTienePersonalACargo] = useState(false)
 
     // UI State
     const [busqueda, setBusqueda] = useState('')
@@ -59,43 +61,13 @@ export default function AusentismosPage() {
 
                 setCurrentUser({ correo: user.email })
 
-                // Fetch cargo level
-                const { data: empleado } = await supabase
-                    .from('empleados')
-                    .select('nivelCargo, nombreCompleto')
-                    .eq('correo_electronico', user.email!)
-                    .maybeSingle()
-
-                let currentLevel = ''
-                let currentName = ''
-
-                if ((empleado as any)?.nivelCargo) {
-                    currentLevel = (empleado as any).nivelCargo
-                    currentName = (empleado as any).nombreCompleto || ''
-                    setUserLevel(currentLevel)
-                } else {
-                    const { data: usuario } = await supabase
-                        .from('usuarios')
-                        .select('rol, nombre')
-                        .eq('correo', user.email!)
-                        .maybeSingle()
-
-                    if ((usuario as any)?.rol) {
-                        const roleMap: Record<string, string> = {
-                            'admin': 'Jefe',
-                            'desarrollador': 'Jefe',
-                            'jefe': 'Jefe',
-                            'gerente': 'Gerente',
-                            'director': 'Director',
-                            'coordinador': 'Coordinador',
-                            'analista': 'Analista',
-                            'supervisor': 'Supervisor'
-                        }
-                        currentLevel = roleMap[(usuario as any).rol] || (usuario as any).rol
-                        currentName = (usuario as any).nombre || ''
-                        setUserLevel(currentLevel)
-                    }
-                }
+                // Fetch cargo level (prioriza empleado activo y sigue el vinculo
+                // usuarios.empleado_id para correos genericos/compartidos)
+                const profile = await resolveUserProfile(supabase, user.email!)
+                const currentLevel = profile.nivelCargo
+                const currentName = profile.nombreCompleto
+                setUserLevel(currentLevel)
+                setTienePersonalACargo(profile.tienePersonalACargo)
 
                 // Restrict scope: supervisors/coordinadores/jefes (and anyone without special
                 // plant-wide access) only see ausentismos of their direct reports or themselves.
@@ -227,7 +199,7 @@ export default function AusentismosPage() {
     }, [busqueda, ausentismos, filtroReciente, fechaDesde, fechaHasta])
 
     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(userLevel as any)
-    const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || (currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo))
+    const hasAccess = isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || (currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo)) || tienePersonalACargo
     const canViewDetalle = !(currentUser?.correo && AUSENTISMOS_SIN_DETALLE.includes(currentUser.correo))
 
     const handleDownloadExcel = async () => {

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { NIVELES_CARGO, ADMIN_LEVELS, APPROVER_LEVELS, ADMIN_EMAILS, GESTOR_LEVELS, GESTOR_EXCLUDED_EMAILS, AUMENTOS_SALARIALES_LEVELS, AUSENTISMOS_LEVELS, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS, JEFES_MOLDES, ANALISTAS_CON_ACCESO } from '@/lib/constants/roles'
+import { resolveUserProfile } from '@/lib/auth/resolveUserProfile'
 import { Button } from '@/components/ui/button'
 import {
     TrendingUp,
@@ -37,6 +38,7 @@ export default function MenuPage() {
     const [userLevel, setUserLevel] = useState<string>('')
     const [userName, setUserName] = useState<string>('')
     const [userArea, setUserArea] = useState<string>('')
+    const [tienePersonalACargo, setTienePersonalACargo] = useState(false)
     const [loading, setLoading] = useState(true)
     const [isMicrosoftConnected, setIsMicrosoftConnected] = useState(false)
     const router = useRouter()
@@ -52,40 +54,11 @@ export default function MenuPage() {
                     setIsMicrosoftConnected(true)
                 }
                 
-                const { data: empleado } = await supabase
-                    .from('empleados')
-                    .select('nivelCargo, nombreCompleto, area')
-                    .eq('correo_electronico', user.email!)
-                    .maybeSingle()
-
-                if ((empleado as any)?.nivelCargo) {
-                    setUserLevel((empleado as any).nivelCargo)
-                    setUserName((empleado as any).nombreCompleto || '')
-                    setUserArea((empleado as any).area || '')
-                } else {
-                    const { data: usuario } = await supabase
-                        .from('usuarios')
-                        .select('rol, nombre')
-                        .eq('correo', user.email!)
-                        .maybeSingle()
-                    
-                    if ((usuario as any)?.rol) {
-                        setUserName((usuario as any).nombre || '')
-                        const dbRole = (usuario as any).rol.toLowerCase()
-                        const roleMap: Record<string, string> = {
-                            'admin': 'Jefe',
-                            'desarrollador': 'Jefe',
-                            'jefe': 'Jefe',
-                            'gerente': 'Gerente',
-                            'director': 'Director',
-                            'coordinador': 'Coordinador',
-                            'analista': 'Analista',
-                            'supervisor': 'Supervisor',
-                            'visitante': 'Operario'
-                        }
-                        setUserLevel(roleMap[dbRole] || (usuario as any).rol)
-                    }
-                }
+                const profile = await resolveUserProfile(supabase, user.email!)
+                setUserLevel(profile.nivelCargo)
+                setUserName(profile.nombreCompleto)
+                setUserArea(profile.area)
+                setTienePersonalACargo(profile.tienePersonalACargo)
             }
             setLoading(false)
         }
@@ -135,13 +108,13 @@ export default function MenuPage() {
             title: 'Ausentismos',
             href: '/ausentismos',
             icon: UserX,
-            visible: isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail)
+            visible: isSystemAdmin || AUSENTISMOS_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail) || tienePersonalACargo
         },
         {
             title: 'Procesos Disciplinarios',
             href: '/procesos-disciplinarios',
             icon: Gavel,
-            visible: isSystemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(userLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(user?.email)
+            visible: isSystemAdmin || PROCESOS_DISCIPLINARIOS_LEVELS.includes(userLevel as any) || PROCESOS_DISCIPLINARIOS_EMAILS.includes(user?.email) || tienePersonalACargo
         },
         {
             title: 'HILU',
