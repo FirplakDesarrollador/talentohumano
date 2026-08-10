@@ -89,7 +89,8 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
                         tipo,
                         comentario,
                         motivo_id: tipo === 'Compromiso' ? 19 : parseInt(motivoId),
-                        updated_at: new Date().toISOString()
+                        modified_by: user?.user_metadata?.nombre || user?.email || 'Sistema',
+                        modified_at: new Date().toISOString()
                     })
                     .eq('id', proceso.id)
 

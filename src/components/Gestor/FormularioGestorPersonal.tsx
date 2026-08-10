@@ -267,6 +267,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         jefe: '',
         empresa: '',
         primer_ingreso: '',
+        tipo_contrato: '',
+        fecha_inicio_contrato_actual: '',
         nivel_cargo: '',
         // Contact
         direccion: '',
@@ -449,6 +451,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         jefe: emp.jefe || '',
                         empresa: emp.empresa || '',
                         primer_ingreso: emp.primer_ingreso || '',
+                        tipo_contrato: emp.tipo_contrato || '',
+                        fecha_inicio_contrato_actual: emp.fecha_inicio_contrato_actual || '',
                         nivel_cargo: emp.nivel_cargo || emp.nivelCargo || '',
                         direccion: emp.direccion || '',
                         ciudad: emp.ciudad || '',
@@ -528,6 +532,8 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 jefe: formData.jefe || null,
                 empresa: formData.empresa || null,
                 primer_ingreso: formData.primer_ingreso || null,
+                tipo_contrato: formData.tipo_contrato || null,
+                fecha_inicio_contrato_actual: formData.fecha_inicio_contrato_actual || null,
                 nivelCargo: formData.nivel_cargo || null,
                 direccion: formData.direccion || null,
                 ciudad: formData.ciudad || null,
@@ -898,6 +904,28 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             type="date"
                             value={formData.primer_ingreso}
                             onChange={(e) => updateField('primer_ingreso', e.target.value)}
+                            className={inputClass}
+                            disabled={!isAdmin}
+                        />
+                    </FormField>
+                    <FormField label="Tipo de Contrato" icon={<Briefcase className="h-3 w-3" />}>
+                        <select
+                            className={selectClass}
+                            value={formData.tipo_contrato}
+                            onChange={(e) => updateField('tipo_contrato', e.target.value)}
+                            disabled={!isAdmin}
+                        >
+                            <option value="">Sin definir</option>
+                            <option value="TEMPORAL">Temporal</option>
+                            <option value="TERMINO_FIJO">Término Fijo</option>
+                            <option value="INDEFINIDO">Indefinido</option>
+                        </select>
+                    </FormField>
+                    <FormField label="Fecha Inicio Contrato Actual" icon={<Calendar className="h-3 w-3" />}>
+                        <Input
+                            type="date"
+                            value={formData.fecha_inicio_contrato_actual}
+                            onChange={(e) => updateField('fecha_inicio_contrato_actual', e.target.value)}
                             className={inputClass}
                             disabled={!isAdmin}
                         />

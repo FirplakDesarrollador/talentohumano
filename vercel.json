@@ -3,6 +3,10 @@
         {
             "path": "/api/cron/cesantias-recordatorio",
             "schedule": "0 13 * * *"
+        },
+        {
+            "path": "/api/cron/alertas-contrato",
+            "schedule": "0 14 * * *"
         }
     ]
 }
