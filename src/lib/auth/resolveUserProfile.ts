@@ -32,16 +32,25 @@ const ROLE_MAP: Record<string, string> = {
  *    coincidia con ningun `empleados.correo_electronico`, se caia
  *    directo al rol generico ("visitante" -> Operario, sin area), aunque
  *    el vinculo con el empleado real ya existiera.
+ * 3. El correo de auth siempre llega en minusculas, pero `empleados.correo_electronico`
+ *    a veces se digito con mayusculas (ej. "Julian.martinez@..."). El .eq() anterior
+ *    es sensible a mayusculas y fallaba en silencio ante esa diferencia, cayendo al
+ *    mismo problema del punto 1 (caso julian.martinez@firplak.com).
  */
 export async function resolveUserProfile(supabase: any, email: string): Promise<ResolvedUserProfile> {
     let nivelCargo = ''
     let nombreCompleto = ''
     let area = ''
 
+    // Escapamos los comodines de ILIKE (% y _) porque aqui email es un valor
+    // exacto, no un patron: solo queremos igualdad insensible a mayusculas.
+    const escapeIlike = (value: string) => value.replace(/[%_]/g, (m) => `\\${m}`)
+    const emailPattern = escapeIlike(email)
+
     const { data: empleadosMatch } = await supabase
         .from('empleados')
         .select('nivelCargo, nombreCompleto, area, activo')
-        .eq('correo_electronico', email)
+        .ilike('correo_electronico', emailPattern)
         .order('activo', { ascending: false })
         .limit(1)
 
@@ -55,7 +64,7 @@ export async function resolveUserProfile(supabase: any, email: string): Promise<
         const { data: usuario } = await supabase
             .from('usuarios')
             .select('rol, nombre, empleado_id')
-            .eq('correo', email)
+            .ilike('correo', emailPattern)
             .maybeSingle()
 
         let empleadoVinculado: any = null
