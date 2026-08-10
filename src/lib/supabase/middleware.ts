@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
     console.log('Middleware - User:', user ? user.email : 'No user')
 
     // Public routes logic
-    const publicRoutes = ['/login', '/auth/callback', '/auth/forgot-password', '/login/newPassword', '/register']
+    const publicRoutes = ['/login', '/auth/callback', '/auth/forgot-password', '/login/newPassword', '/register', '/postulacion', '/solicitar-personal', '/api/solicitudes-personal', '/decision-contrato', '/api/decision-contrato']
     const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
     // Fix for broken reset password links that double the /newPassword path

@@ -531,6 +531,41 @@ export interface Database {
                     estado?: string
                 }
             }
+            archivo_digital_documentos: {
+                Row: {
+                    id: number
+                    categoria: string
+                    carpeta_origen: string | null
+                    empleado_id: number | null
+                    nombre_archivo: string
+                    storage_path: string
+                    tamano_bytes: number | null
+                    onedrive_item_id: string | null
+                    migrado_at: string
+                }
+                Insert: {
+                    id?: number
+                    categoria: string
+                    carpeta_origen?: string | null
+                    empleado_id?: number | null
+                    nombre_archivo: string
+                    storage_path: string
+                    tamano_bytes?: number | null
+                    onedrive_item_id?: string | null
+                    migrado_at?: string
+                }
+                Update: {
+                    id?: number
+                    categoria?: string
+                    carpeta_origen?: string | null
+                    empleado_id?: number | null
+                    nombre_archivo?: string
+                    storage_path?: string
+                    tamano_bytes?: number | null
+                    onedrive_item_id?: string | null
+                    migrado_at?: string
+                }
+            }
             Cesantias: {
                 Row: {
                     id: number
