@@ -49,7 +49,44 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
 
             if (updateError) throw updateError
 
-            setSuccess(`Solicitud ${newStatus.toLowerCase()} correctamente.`)
+            // Al aprobar, registra de una vez el ausentismo correspondiente (motivo
+            // Vacaciones) para que el periodo quede reflejado en el módulo de
+            // Ausentismos sin doble digitación. No bloquea la aprobación si esto falla.
+            let ausentismoWarning = false
+            if (newStatus === 'Aprobado') {
+                try {
+                    const { data: userData } = await supabase.auth.getUser()
+
+                    const { error: ausentismoError } = await (supabase as any)
+                        .from('ausentismos')
+                        .insert({
+                            'Título': solicitud.Cedula,
+                            'Nombre Completo': solicitud.Empleado_Que_Disfruta,
+                            'Motivo Ausentismo': 'Vacaciones',
+                            'FechaInicio': solicitud.FechaInicial,
+                            'FechaFinal': solicitud.FechaFinal,
+                            'Observaciones': 'Generado automáticamente al aprobar una solicitud de vacaciones',
+                            'Planta': solicitud.Departamento || '',
+                            'Jefe': solicitud['Nombre del Jefe'] || '',
+                            'Contrato': solicitud.Empresa || '',
+                            'Cargo': solicitud.Cargo || '',
+                            'Descontar nomina': false,
+                            'Creado por': userData.user?.email || 'Sistema',
+                            'Creado': new Date().toISOString()
+                        })
+
+                    if (ausentismoError) throw ausentismoError
+                } catch (ausentismoErr: any) {
+                    console.error('Error creating linked ausentismo:', ausentismoErr)
+                    ausentismoWarning = true
+                }
+            }
+
+            setSuccess(
+                ausentismoWarning
+                    ? 'Solicitud aprobada, pero no se pudo registrar el ausentismo automáticamente.'
+                    : `Solicitud ${newStatus.toLowerCase()} correctamente.`
+            )
             setTimeout(() => {
                 onUpdate()
                 onClose()
