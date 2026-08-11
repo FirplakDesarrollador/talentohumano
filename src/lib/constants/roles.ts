@@ -326,7 +326,10 @@ export function getPlantasPermitidas(email: string): string[] | null {
     const plantas = new Set<string>();
 
     if (SUPERVISORES_MUEBLES_CEFI.includes(email)) { plantas.add('Muebles'); plantas.add('Cefi'); }
-    if (SUPERVISORES_CALIDAD.includes(email)) plantas.add('Calidad');
+    if (SUPERVISORES_CALIDAD.includes(email)) {
+        plantas.add('Calidad');
+        if (email === 'supervisorcalidad3@firplak.com') plantas.add('RR Moldes');
+    }
     if (SUPERVISORES_MARMOL.includes(email)) plantas.add('Marmol sintetico');
     if (SUPERVISORES_ALMACEN_CEDI.includes(email)) { plantas.add('Almacen'); plantas.add('CEDI'); }
     if (SUPERVISORES_RTM_FIBRA.includes(email)) {
