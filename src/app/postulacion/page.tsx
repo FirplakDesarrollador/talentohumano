@@ -92,9 +92,10 @@ export default function PostulacionPage() {
                 .getPublicUrl(data.path)
 
             setUploadedFiles(prev => ({ ...prev, [activeUploadType]: { url: publicUrl, name: file.name } }))
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload error:', error)
-            alert('Error al subir el archivo. Intenta de nuevo.')
+            const detail = error?.message || error?.error_description || error?.statusCode
+            alert(`Error al subir el archivo${detail ? `: ${detail}` : ''}. Intenta de nuevo.`)
         } finally {
             setUploadingStatus(prev => ({ ...prev, [activeUploadType]: false }))
             setActiveUploadType(null)
