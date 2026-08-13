@@ -7,35 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-
-export const PLANTAS = [
-    'Administrativa',
-    'Talento y Cultura',
-    'TI',
-    'Calidad',
-    'Ingenieria',
-    'Contabilidad',
-    'Mantenimiento',
-    'Financiera',
-    'Comercial',
-    'Negociacion y compras',
-    'Logistica',
-    'Mercadeo',
-    'Servicios',
-    'Manufactura',
-    'Muebles',
-    'Almacen',
-    'CEDI',
-    'Moldes',
-    'I+D+I',
-    'RR Moldes',
-    'Fibra de vidrio',
-    'Legal',
-    'RTM',
-    'Cefi',
-    'Marmol sintetico',
-    'Todos'
-];
+import { usePlantas } from '@/lib/hooks/usePlantas';
 
 interface GestorFiltersProps {
     busqueda: string;
@@ -64,12 +36,14 @@ export const GestorFilters: React.FC<GestorFiltersProps> = ({
     status,
     onStatusChange,
     onClear,
-    availablePlantas = PLANTAS,
+    availablePlantas,
     selectedNiveles,
     onNivelesChange
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const { plantas: fetchedPlantas } = usePlantas();
+    const plantaOptions = availablePlantas ?? fetchedPlantas;
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -146,7 +120,7 @@ export const GestorFilters: React.FC<GestorFiltersProps> = ({
                         onChange={(e) => onPlantaChange(e.target.value)}
                         className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right:10px_center] bg-no-repeat pr-10"
                     >
-                        {availablePlantas.map((planta) => (
+                        {plantaOptions.map((planta) => (
                             <option key={planta} value={planta}>{planta}</option>
                         ))}
                     </select>

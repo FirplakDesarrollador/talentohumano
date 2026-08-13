@@ -138,6 +138,8 @@ export async function POST(request: Request) {
             cantidad_personas,
             fecha_requerida,
             perfil,
+            perfil_archivo_url,
+            perfil_archivo_nombre,
             salario,
             horario,
         } = body;
@@ -168,6 +170,8 @@ export async function POST(request: Request) {
                 cantidad_personas: cantidad_personas || 1,
                 fecha_requerida: fecha_requerida || null,
                 perfil: perfil || null,
+                perfil_archivo_url: perfil_archivo_url || null,
+                perfil_archivo_nombre: perfil_archivo_nombre || null,
                 salario: salario || null,
                 horario: horario || null,
             })
@@ -202,6 +206,7 @@ export async function POST(request: Request) {
                     <p><strong>Motivo:</strong> ${motivo}${reemplazo_de ? ` (de ${reemplazo_de})` : ''}</p>
                     <p><strong>Cantidad:</strong> ${cantidad_personas || 1}</p>
                     <p><strong>Solicitado por:</strong> ${solicitante_nombre}</p>
+                    ${perfil_archivo_url ? `<p><strong>Perfil de cargo:</strong> <a href="${perfil_archivo_url}">${perfil_archivo_nombre || 'Ver archivo'}</a></p>` : ''}
                     <p>Se creó una tarea de seguimiento en Planner:</p>
                     <p><a href="${taskUrl}">Ver tarea en Planner</a></p>
                     <p><a href="${APP_URL}">Ir a la app de Talento Humano</a></p>

@@ -75,7 +75,12 @@ export default function PostulacionPage() {
         setUploadingStatus(prev => ({ ...prev, [activeUploadType]: true }))
 
         try {
-            const fileName = `${Date.now()}_${activeUploadType}_${file.name.replace(/\s/g, '_')}`
+            // Nombres reales de hojas de vida/cédulas suelen traer tildes, paréntesis,
+            // "#", etc. que Supabase Storage rechaza como key. Se genera un nombre
+            // aleatorio + extensión y el nombre original solo se guarda para mostrarlo.
+            const fileExt = file.name.includes('.') ? file.name.split('.').pop() : ''
+            const randomName = Math.random().toString(36).substring(2)
+            const fileName = `${Date.now()}_${activeUploadType}_${randomName}${fileExt ? `.${fileExt}` : ''}`
             const { data, error } = await supabase.storage
                 .from('expedientes-postulacion')
                 .upload(fileName, file)

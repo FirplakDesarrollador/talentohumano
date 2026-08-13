@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Briefcase, Loader2, CheckCircle2, Search, X } from 'lucide-react'
+import { Briefcase, Loader2, CheckCircle2, Search, X, Upload, FileText, Trash2 } from 'lucide-react'
 
 const MOTIVOS = [
     'Reemplazo por renuncia',
@@ -29,6 +29,11 @@ export default function SolicitarPersonalPage() {
         salario: '',
         horario: '',
     })
+
+    // Perfil / Requisitos: texto libre o un archivo adjunto (perfil de cargo), no ambos.
+    const [perfilModo, setPerfilModo] = useState<'texto' | 'archivo'>('texto')
+    const [perfilArchivo, setPerfilArchivo] = useState<{ url: string; nombre: string } | null>(null)
+    const [uploadingPerfil, setUploadingPerfil] = useState(false)
 
     // Persona que solicita: buscador de empleados en vez de texto libre, para
     // poder asignarle la tarea de Planner con su cuenta real de Microsoft 365.
@@ -73,6 +78,38 @@ export default function SolicitarPersonalPage() {
 
     const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
+    const handlePerfilArchivoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setUploadingPerfil(true)
+        try {
+            // Nombre aleatorio + extension: el nombre original del archivo (con
+            // tildes, espacios, parentesis, etc.) puede romper la key de Storage.
+            const fileExt = file.name.includes('.') ? file.name.split('.').pop() : ''
+            const randomName = Math.random().toString(36).substring(2)
+            const fileName = `${Date.now()}_perfil_${randomName}${fileExt ? `.${fileExt}` : ''}`
+
+            const { data, error } = await supabase.storage
+                .from('solicitudes-personal')
+                .upload(fileName, file)
+
+            if (error) throw error
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('solicitudes-personal')
+                .getPublicUrl(data.path)
+
+            setPerfilArchivo({ url: publicUrl, nombre: file.name })
+        } catch (err) {
+            console.error('Error uploading perfil archivo:', err)
+            alert('Error al subir el archivo. Intenta de nuevo.')
+        } finally {
+            setUploadingPerfil(false)
+            e.target.value = ''
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!selectedEmpleado || !form.cargo_solicitado) {
@@ -96,7 +133,9 @@ export default function SolicitarPersonalPage() {
                     reemplazo_de: form.motivo.startsWith('Reemplazo') ? (form.reemplazo_de || null) : null,
                     cantidad_personas: parseInt(form.cantidad_personas) || 1,
                     fecha_requerida: form.fecha_requerida || null,
-                    perfil: form.perfil || null,
+                    perfil: perfilModo === 'texto' ? (form.perfil || null) : null,
+                    perfil_archivo_url: perfilModo === 'archivo' ? (perfilArchivo?.url || null) : null,
+                    perfil_archivo_nombre: perfilModo === 'archivo' ? (perfilArchivo?.nombre || null) : null,
                     salario: form.salario || null,
                     horario: form.horario || null,
                 }),
@@ -266,14 +305,76 @@ export default function SolicitarPersonalPage() {
 
                         <div className="pt-6 border-t border-slate-100 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Perfil / Requisitos</label>
-                                <textarea
-                                    value={form.perfil}
-                                    onChange={(e) => set('perfil', e.target.value)}
-                                    rows={3}
-                                    className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium resize-none"
-                                    placeholder="Experiencia, habilidades, estudios requeridos..."
-                                />
+                                <div className="flex items-center justify-between ml-1">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Perfil / Requisitos</label>
+                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPerfilModo('texto')}
+                                            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${perfilModo === 'texto' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                        >
+                                            Escribir
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPerfilModo('archivo')}
+                                            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${perfilModo === 'archivo' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                        >
+                                            Subir archivo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {perfilModo === 'texto' ? (
+                                    <textarea
+                                        value={form.perfil}
+                                        onChange={(e) => set('perfil', e.target.value)}
+                                        rows={3}
+                                        className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium resize-none"
+                                        placeholder="Experiencia, habilidades, estudios requeridos..."
+                                    />
+                                ) : (
+                                    <div>
+                                        <input
+                                            type="file"
+                                            id="perfilArchivoInput"
+                                            className="hidden"
+                                            onChange={handlePerfilArchivoSelect}
+                                            disabled={uploadingPerfil}
+                                        />
+                                        {!perfilArchivo ? (
+                                            <button
+                                                type="button"
+                                                disabled={uploadingPerfil}
+                                                onClick={() => document.getElementById('perfilArchivoInput')?.click()}
+                                                className="w-full h-24 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-blue-300 transition-all flex flex-col items-center justify-center gap-2 text-slate-400"
+                                            >
+                                                {uploadingPerfil ? (
+                                                    <Loader2 size={20} className="animate-spin text-blue-600" />
+                                                ) : (
+                                                    <>
+                                                        <Upload size={20} />
+                                                        <span className="text-xs font-bold">Subir perfil de cargo (PDF, Word, imagen...)</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <div className="w-full px-5 py-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <FileText size={18} className="text-emerald-600 shrink-0" />
+                                                    <span className="text-sm font-medium text-slate-700 truncate">{perfilArchivo.nombre}</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPerfilArchivo(null)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
