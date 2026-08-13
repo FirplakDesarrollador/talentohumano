@@ -16,7 +16,7 @@ import {
     Type
 } from 'lucide-react'
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
-import { GestorFilters, PLANTAS } from '@/components/Gestor/GestorFilters'
+import { GestorFilters } from '@/components/Gestor/GestorFilters'
 import { CargosModal } from '@/components/Gestor/CargosModal'
 import { NIVELES_CARGO, ADMIN_LEVELS, ADMIN_EMAILS, APPROVER_LEVELS, RESTRICTED_SUPERVISORS, GESTOR_EXCLUDED_EMAILS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, JEFES_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas } from '@/lib/constants/roles'
 import { toast } from 'sonner'

@@ -29,6 +29,8 @@ interface Solicitud {
     cantidad_personas: number
     fecha_requerida: string | null
     perfil: string | null
+    perfil_archivo_url: string | null
+    perfil_archivo_nombre: string | null
     salario: string | null
     horario: string | null
     estado: string
@@ -189,9 +191,22 @@ export function SolicitudesPersonalTab() {
                                             )}
                                         </div>
 
-                                        {(s.perfil || s.salario || s.horario) && (
+                                        {(s.perfil || s.perfil_archivo_url || s.salario || s.horario) && (
                                             <div className="pt-3 border-t border-slate-50 space-y-1.5 text-xs">
                                                 {s.perfil && <p><span className="font-bold text-slate-600">Perfil:</span> <span className="text-slate-500">{s.perfil}</span></p>}
+                                                {s.perfil_archivo_url && (
+                                                    <p>
+                                                        <span className="font-bold text-slate-600">Perfil:</span>{' '}
+                                                        <a
+                                                            href={s.perfil_archivo_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-blue-600 hover:text-blue-800 underline underline-offset-2 inline-flex items-center gap-1"
+                                                        >
+                                                            {s.perfil_archivo_nombre || 'Ver archivo adjunto'} <ExternalLink size={11} />
+                                                        </a>
+                                                    </p>
+                                                )}
                                                 {s.salario && <p><span className="font-bold text-slate-600">Salario:</span> <span className="text-slate-500">{s.salario}</span></p>}
                                                 {s.horario && <p><span className="font-bold text-slate-600">Horario:</span> <span className="text-slate-500">{s.horario}</span></p>}
                                             </div>

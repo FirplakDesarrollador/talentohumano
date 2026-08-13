@@ -39,7 +39,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PLANTAS } from './GestorFilters';
+import { usePlantas } from '@/lib/hooks/usePlantas';
 import { ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, JEFES_MOLDES, DIRECTORES_CON_ACCESO } from '@/lib/constants/roles';
 import Image from 'next/image';
 import type { Database } from '@/lib/supabase/types';
@@ -227,6 +227,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [isRestrictedJefe, setIsRestrictedJefe] = useState(false);
     const [isRestrictedDirector, setIsRestrictedDirector] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const { plantas: PLANTAS } = usePlantas();
 
     useEffect(() => {
         const fetchUser = async () => {
