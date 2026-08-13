@@ -101,9 +101,10 @@ export default function SolicitarPersonalPage() {
                 .getPublicUrl(data.path)
 
             setPerfilArchivo({ url: publicUrl, nombre: file.name })
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error uploading perfil archivo:', err)
-            alert('Error al subir el archivo. Intenta de nuevo.')
+            const detail = err?.message || err?.error_description || err?.statusCode
+            alert(`Error al subir el archivo${detail ? `: ${detail}` : ''}. Intenta de nuevo.`)
         } finally {
             setUploadingPerfil(false)
             e.target.value = ''
