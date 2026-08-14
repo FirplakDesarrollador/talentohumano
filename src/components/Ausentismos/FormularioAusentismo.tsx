@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 
 const MOTIVOS = [
     'Ausencia Injustificada',
+    'Banco de horas',
     'Calamidad Domestica',
     'Cumpleaños',
     'Incapacidad Accidente de Tránsito',
