@@ -150,7 +150,7 @@ export default function GestorPersonalPage() {
         const isRestrictedJefe = user?.email && (JEFES_CON_ACCESO.includes(user.email) || JEFES_MUEBLES_CEFI.includes(user.email) || JEFES_ALMACEN_CEDI.includes(user.email) || JEFES_INGENIERIA_MOLDES.includes(user.email))
         const isRestrictedDirector = user?.email && DIRECTORES_CON_ACCESO.includes(user.email)
         if (['Jefe', 'Analista'].includes(userLevel) && !isRestrictedJefe) {
-            const productionAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Mercadeo', 'Muebles', 'Produccion', 'RR Moldes', 'Moldes', 'RTM']
+            const productionAreas = ['Calidad', 'Fibra (Calidad)', 'Marmol (Calidad)', 'Muebles (Calidad)', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Mercadeo', 'Muebles', 'Produccion', 'RR Moldes', 'Moldes', 'RTM']
             if (productionAreas.includes(area)) return true
         }
 
@@ -160,7 +160,7 @@ export default function GestorPersonalPage() {
         // Special Teams (limited access by plant list)
         const teamA = ['hector.chinchilla@firplak.com']
         if (teamA.includes(user.email)) {
-            const teamAAreas = ['Calidad', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Moldes', 'Muebles', 'Produccion', 'RR Moldes', 'RTM']
+            const teamAAreas = ['Calidad', 'Fibra (Calidad)', 'Marmol (Calidad)', 'Muebles (Calidad)', 'Cefi', 'Fibra de vidrio', 'Mantenimiento', 'Manufactura', 'Marmol sintetico', 'Moldes', 'Muebles', 'Produccion', 'RR Moldes', 'RTM']
             return teamAAreas.includes(area)
         }
 
