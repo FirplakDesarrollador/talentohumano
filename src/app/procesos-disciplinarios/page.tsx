@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
-import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS, SUPERVISORES_MULTI_PLANTA } from '@/lib/constants/roles'
 import { resolveUserProfile } from '@/lib/auth/resolveUserProfile'
 
 export default function BuscadorProcesosDisciplinariosPage() {
@@ -71,8 +71,11 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         const nombreABuscar = userProfile.nombre || userProfile.nombreCompleto || '';
                         // Supervisors are restricted to only their own direct reports and themselves,
                         // regardless of any plant-wide access list — they should not see other
-                        // supervisors' teams within the same plant.
-                        const isSupervisor = (userProfile.nivelCargo || '').toLowerCase() === 'supervisor';
+                        // supervisors' teams within the same plant. Shared/generic multi-plant
+                        // supervisor accounts (SUPERVISORES_MULTI_PLANTA) are exempt from this,
+                        // since their whole reason to exist is covering more than one plant.
+                        const isSupervisor = (userProfile.nivelCargo || '').toLowerCase() === 'supervisor'
+                            && !SUPERVISORES_MULTI_PLANTA.includes(userProfile.correo);
 
                         const normalize = (s: string) => (s || '').trim().toLowerCase();
 

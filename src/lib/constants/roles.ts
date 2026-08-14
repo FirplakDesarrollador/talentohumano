@@ -346,9 +346,30 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (JEFES_MANTENIMIENTO.includes(email)) plantas.add('Mantenimiento');
     if (DIRECTORES_CON_ACCESO.includes(email)) PLANTAS_DIRECTORES_PERMITIDAS.forEach(p => plantas.add(p));
 
+    // Calidad se dividio en sub-areas por planta (Fibra/Marmol/Muebles (Calidad)),
+    // ademas de la generica "Calidad" que sigue existiendo. Quien tenia acceso a
+    // "Calidad" debe seguir viendo a esos mismos empleados aunque su area haya
+    // cambiado de nombre.
+    if (plantas.has('Calidad')) {
+        plantas.add('Fibra (Calidad)');
+        plantas.add('Marmol (Calidad)');
+        plantas.add('Muebles (Calidad)');
+    }
+
     if (plantas.size === 0) return null;
     return Array.from(plantas);
 }
+
+/**
+ * Cuentas de supervisor compartidas/genericas que cubren mas de una planta
+ * (ej. supervisorcalidad@ atiende Marmol, Muebles y Cefi ademas de Calidad).
+ * A diferencia de un supervisor individual (restringido a su propio equipo en
+ * Procesos Disciplinarios para no ver el equipo de otro supervisor de la misma
+ * planta), estas cuentas si deben poder usar su lista de plantas completa.
+ */
+export const SUPERVISORES_MULTI_PLANTA = [
+    'supervisorcalidad@firplak.com',
+];
 
 /**
  * Scoped overrides that grant a specific user edit access to a specific
