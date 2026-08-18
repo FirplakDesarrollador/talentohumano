@@ -369,6 +369,7 @@ export function getPlantasPermitidas(email: string): string[] | null {
  */
 export const SUPERVISORES_MULTI_PLANTA = [
     'supervisorcalidad@firplak.com',
+    'supervisorproduccion@firplak.com',
 ];
 
 /**
