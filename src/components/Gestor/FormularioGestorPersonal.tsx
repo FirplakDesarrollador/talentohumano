@@ -36,7 +36,8 @@ import {
     Maximize2,
     Check,
     ArrowRightLeft,
-    ChevronDown
+    ChevronDown,
+    DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlantas } from '@/lib/hooks/usePlantas';
@@ -260,6 +261,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         activo: true,
         // Personal
         fecha_nacimiento: '',
+        lugar_nacimiento: '',
         fecha_expedicion_cedula: '',
         tipo_sangre: '',
         // Work
@@ -270,6 +272,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         primer_ingreso: '',
         tipo_contrato: '',
         fecha_inicio_contrato_actual: '',
+        salario: '',
         nivel_cargo: '',
         // Contact
         direccion: '',
@@ -445,6 +448,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         foto: emp.foto || '',
                         activo: emp.activo ?? true,
                         fecha_nacimiento: emp.fecha_nacimiento || '',
+                        lugar_nacimiento: emp.lugar_nacimiento || '',
                         fecha_expedicion_cedula: emp.fecha_expedicion_cedula || '',
                         tipo_sangre: emp.tipo_sangre || '',
                         cargo: emp.cargo || '',
@@ -454,6 +458,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         primer_ingreso: emp.primer_ingreso || '',
                         tipo_contrato: emp.tipo_contrato || '',
                         fecha_inicio_contrato_actual: emp.fecha_inicio_contrato_actual || '',
+                        salario: emp.salario != null ? String(emp.salario) : '',
                         nivel_cargo: emp.nivel_cargo || emp.nivelCargo || '',
                         direccion: emp.direccion || '',
                         ciudad: emp.ciudad || '',
@@ -525,6 +530,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 foto: formData.foto || null,
                 activo: formData.activo,
                 fecha_nacimiento: formData.fecha_nacimiento || null,
+                lugar_nacimiento: formData.lugar_nacimiento || null,
                 fecha_expedicion_cedula: formData.fecha_expedicion_cedula || null,
                 tipo_sangre: formData.tipo_sangre || null,
                 cargo: formData.cargo || null,
@@ -535,6 +541,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 primer_ingreso: formData.primer_ingreso || null,
                 tipo_contrato: formData.tipo_contrato || null,
                 fecha_inicio_contrato_actual: formData.fecha_inicio_contrato_actual || null,
+                salario: formData.salario ? parseFloat(formData.salario) : null,
                 nivelCargo: formData.nivel_cargo || null,
                 direccion: formData.direccion || null,
                 ciudad: formData.ciudad || null,
@@ -793,6 +800,9 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                     <FormField label="Fecha de Nacimiento" icon={<Baby className="h-3 w-3" />}>
                         <Input type="date" value={formData.fecha_nacimiento} onChange={(e) => updateField('fecha_nacimiento', e.target.value)} className={inputClass} disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector} />
                     </FormField>
+                    <FormField label="Lugar de Nacimiento" icon={<Baby className="h-3 w-3" />}>
+                        <Input type="text" value={formData.lugar_nacimiento} onChange={(e) => updateField('lugar_nacimiento', e.target.value)} placeholder="Ej: Yarumal, Antioquia" className={inputClass} disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector} />
+                    </FormField>
                     <FormField label="Tipo de Sangre" icon={<Heart className="h-3 w-3" />}>
                         <select value={formData.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={selectClass} disabled={isRestrictedSupervisor || isRestrictedCoordinator || isRestrictedJefe || isRestrictedDirector}>
                             <option value="">Seleccione tipo de sangre</option>
@@ -909,28 +919,41 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             disabled={!isAdmin}
                         />
                     </FormField>
-                    <FormField label="Tipo de Contrato" icon={<Briefcase className="h-3 w-3" />}>
-                        <select
-                            className={selectClass}
-                            value={formData.tipo_contrato}
-                            onChange={(e) => updateField('tipo_contrato', e.target.value)}
-                            disabled={!isAdmin}
-                        >
-                            <option value="">Sin definir</option>
-                            <option value="TEMPORAL">Temporal</option>
-                            <option value="TERMINO_FIJO">Término Fijo</option>
-                            <option value="INDEFINIDO">Indefinido</option>
-                        </select>
-                    </FormField>
-                    <FormField label="Fecha Inicio Contrato Actual" icon={<Calendar className="h-3 w-3" />}>
-                        <Input
-                            type="date"
-                            value={formData.fecha_inicio_contrato_actual}
-                            onChange={(e) => updateField('fecha_inicio_contrato_actual', e.target.value)}
-                            className={inputClass}
-                            disabled={!isAdmin}
-                        />
-                    </FormField>
+                    {isAdmin && (
+                        <FormField label="Tipo de Contrato" icon={<Briefcase className="h-3 w-3" />}>
+                            <select
+                                className={selectClass}
+                                value={formData.tipo_contrato}
+                                onChange={(e) => updateField('tipo_contrato', e.target.value)}
+                            >
+                                <option value="">Sin definir</option>
+                                <option value="TEMPORAL">Temporal</option>
+                                <option value="TERMINO_FIJO">Término Fijo</option>
+                                <option value="INDEFINIDO">Indefinido</option>
+                            </select>
+                        </FormField>
+                    )}
+                    {isAdmin && (
+                        <FormField label="Fecha Inicio Contrato Actual" icon={<Calendar className="h-3 w-3" />}>
+                            <Input
+                                type="date"
+                                value={formData.fecha_inicio_contrato_actual}
+                                onChange={(e) => updateField('fecha_inicio_contrato_actual', e.target.value)}
+                                className={inputClass}
+                            />
+                        </FormField>
+                    )}
+                    {isAdmin && (
+                        <FormField label="Salario" icon={<DollarSign className="h-3 w-3" />}>
+                            <Input
+                                type="number"
+                                value={formData.salario}
+                                onChange={(e) => updateField('salario', e.target.value)}
+                                placeholder="Ej: 1821000"
+                                className={inputClass}
+                            />
+                        </FormField>
+                    )}
                     <FormField label="Nivel del Cargo" icon={<Users className="h-3 w-3" />}>
                         <select
                             className={selectClass}

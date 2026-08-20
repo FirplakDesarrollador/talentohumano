@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    outputFileTracingIncludes: {
+        '/api/decision-contrato': ['./templates/contratos/**'],
+    },
     images: {
         remotePatterns: [
             {
