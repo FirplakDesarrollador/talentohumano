@@ -23,8 +23,7 @@ import {
     ANALISTAS_CON_ACCESO,
     getPlantasPermitidas,
     PROCESOS_DISCIPLINARIOS_LEVELS,
-    PROCESOS_DISCIPLINARIOS_EMAILS,
-    SUPERVISORES_MULTI_PLANTA
+    PROCESOS_DISCIPLINARIOS_EMAILS
 } from '@/lib/constants/roles'
 
 export default function DetalleProcesosDisciplinarioPage() {
@@ -167,13 +166,10 @@ export default function DetalleProcesosDisciplinarioPage() {
                     return
                 }
 
-                // Plant-wide access — never applies to Supervisors, who are restricted to
-                // their own direct reports so they can't see other supervisors' teams.
-                // Shared/generic multi-plant supervisor accounts (SUPERVISORES_MULTI_PLANTA)
-                // are exempt, since their whole reason to exist is covering more than one plant.
-                const isSupervisor = currentLevel.toLowerCase() === 'supervisor' && !SUPERVISORES_MULTI_PLANTA.includes(email)
+                // Plant-wide access — a supervisor with access to a plant sees every
+                // employee in it, not just their own direct reports.
                 const plantas = getPlantasPermitidas(email)
-                if (!isSupervisor && plantas && plantas.includes(empleado.planta)) {
+                if (plantas && plantas.includes(empleado.planta)) {
                     setIsAuthorized(true)
                     return
                 }
