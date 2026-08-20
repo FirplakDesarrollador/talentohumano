@@ -361,18 +361,6 @@ export function getPlantasPermitidas(email: string): string[] | null {
 }
 
 /**
- * Cuentas de supervisor compartidas/genericas que cubren mas de una planta
- * (ej. supervisorcalidad@ atiende Marmol, Muebles y Cefi ademas de Calidad).
- * A diferencia de un supervisor individual (restringido a su propio equipo en
- * Procesos Disciplinarios para no ver el equipo de otro supervisor de la misma
- * planta), estas cuentas si deben poder usar su lista de plantas completa.
- */
-export const SUPERVISORES_MULTI_PLANTA = [
-    'supervisorcalidad@firplak.com',
-    'supervisorproduccion@firplak.com',
-];
-
-/**
  * Scoped overrides that grant a specific user edit access to a specific
  * employee's HILU Administrativa record, without affecting any other
  * permission the user has (or doesn't have).

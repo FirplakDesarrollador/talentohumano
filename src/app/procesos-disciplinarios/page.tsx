@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
-import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS, SUPERVISORES_MULTI_PLANTA } from '@/lib/constants/roles'
+import { ADMIN_LEVELS, ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, DIRECTORES_CON_ACCESO, ANALISTAS_CON_ACCESO, getPlantasPermitidas, PROCESOS_DISCIPLINARIOS_LEVELS, PROCESOS_DISCIPLINARIOS_EMAILS } from '@/lib/constants/roles'
 import { resolveUserProfile } from '@/lib/auth/resolveUserProfile'
 
 export default function BuscadorProcesosDisciplinariosPage() {
@@ -69,14 +69,6 @@ export default function BuscadorProcesosDisciplinariosPage() {
 
                     if (!fullAccessEmails.includes(userProfile.correo)) {
                         const nombreABuscar = userProfile.nombre || userProfile.nombreCompleto || '';
-                        // Supervisors are restricted to only their own direct reports and themselves,
-                        // regardless of any plant-wide access list — they should not see other
-                        // supervisors' teams within the same plant. Shared/generic multi-plant
-                        // supervisor accounts (SUPERVISORES_MULTI_PLANTA) are exempt from this,
-                        // since their whole reason to exist is covering more than one plant.
-                        const isSupervisor = (userProfile.nivelCargo || '').toLowerCase() === 'supervisor'
-                            && !SUPERVISORES_MULTI_PLANTA.includes(userProfile.correo);
-
                         const normalize = (s: string) => (s || '').trim().toLowerCase();
 
                         // Walk the full chain of command downward: start with the current user
@@ -100,7 +92,7 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         result = result.filter(emp => {
                             if (emp.correo_electronico === userProfile.correo) return true;
                             if (chainNames.has(normalize(emp.nombreCompleto))) return true;
-                            if (plantas && plantas.length > 0 && !isSupervisor && plantas.includes(emp.planta)) return true;
+                            if (plantas && plantas.length > 0 && plantas.includes(emp.planta)) return true;
                             return false;
                         });
                     }
