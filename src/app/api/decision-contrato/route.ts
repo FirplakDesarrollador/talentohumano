@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generarContratoTerminoFijoDocx, convertirDocxAPdf, sumarMeses, formatearFechaLarga } from '@/lib/contratos/generarContratoTerminoFijo';
+import { generarContratoIndefinidoDocx } from '@/lib/contratos/generarContratoIndefinido';
 
 const SENDER_EMAIL = 'talentos@firplak.com';
 const RENATA_EMAIL = 'renata.lainez@firplak.com';
@@ -138,16 +139,20 @@ export async function POST(request: Request) {
                 let contratoNota = '';
                 let attachments: CorreoAttachment[] | undefined;
 
-                if (decision === 'CONTRATAR_TERMINO_FIJO') {
+                if (decision === 'CONTRATAR_TERMINO_FIJO' || decision === 'CONTRATAR_INDEFINIDO') {
+                    const esIndefinido = decision === 'CONTRATAR_INDEFINIDO';
+                    const nombreContrato = esIndefinido ? 'a término indefinido' : 'a término fijo';
                     try {
                         const fechaInicio = new Date();
-                        const fechaFin = sumarMeses(fechaInicio, 3);
-                        const docxBuffer = await generarContratoTerminoFijoDocx(empleado as any, fechaInicio);
+                        const fechaFin = esIndefinido ? null : sumarMeses(fechaInicio, 3);
+                        const docxBuffer = esIndefinido
+                            ? await generarContratoIndefinidoDocx(empleado as any, fechaInicio)
+                            : await generarContratoTerminoFijoDocx(empleado as any, fechaInicio);
 
                         await supabase
                             .from('empleados')
                             .update({
-                                tipo_contrato: 'TERMINO_FIJO',
+                                tipo_contrato: esIndefinido ? 'INDEFINIDO' : 'TERMINO_FIJO',
                                 fecha_inicio_contrato_actual: fechaInicio.toISOString().slice(0, 10),
                             })
                             .eq('id', (empleado as any).id);
@@ -163,7 +168,7 @@ export async function POST(request: Request) {
                         const extension = pdfBuffer ? 'pdf' : 'docx';
                         const contentType = pdfBuffer ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
                         const nombreCarpeta = empleadoNombre.toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÑ]+/g, '_');
-                        const nombreArchivo = `Contrato a Termino Fijo - ${formatearFechaLarga(fechaInicio)}.${extension}`;
+                        const nombreArchivo = `Contrato ${nombreContrato} - ${formatearFechaLarga(fechaInicio)}.${extension}`;
                         const storagePath = `activos/${nombreCarpeta}/Documentos/Contrato/${Date.now()}_${nombreArchivo.replace(/\s+/g, '_')}`;
 
                         const { error: uploadError } = await supabase.storage
@@ -188,12 +193,15 @@ export async function POST(request: Request) {
                             contentType,
                             contentBytes: archivoBuffer.toString('base64'),
                         }];
+                        const rangoFechas = fechaFin
+                            ? `${formatearFechaLarga(fechaInicio)} — ${formatearFechaLarga(fechaFin)}`
+                            : `desde ${formatearFechaLarga(fechaInicio)}`;
                         contratoNota = pdfBuffer
-                            ? `<p>Se generó el contrato a término fijo (${formatearFechaLarga(fechaInicio)} — ${formatearFechaLarga(fechaFin)}), adjunto en este correo y guardado en el Archivo Digital del empleado.</p>`
+                            ? `<p>Se generó el contrato ${nombreContrato} (${rangoFechas}), adjunto en este correo y guardado en el Archivo Digital del empleado.</p>`
                             : `<p style="color:#b91c1c;">Se generó el contrato en Word (adjunto), pero falló la conversión automática a PDF — revisa el permiso <strong>Files.ReadWrite.All</strong> en Azure. Por ahora queda en formato .docx.</p>`;
                     } catch (contratoError) {
-                        console.error('Error generando el contrato a término fijo:', contratoError);
-                        contratoNota = `<p style="color:#b91c1c;">No se pudo generar automáticamente el contrato a término fijo — genéralo manualmente.</p>`;
+                        console.error(`Error generando el contrato ${nombreContrato}:`, contratoError);
+                        contratoNota = `<p style="color:#b91c1c;">No se pudo generar automáticamente el contrato ${nombreContrato} — genéralo manualmente.</p>`;
                     }
                 }
 
