@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generarContratoTerminoFijoDocx, convertirDocxAPdf, sumarMeses, formatearFechaLarga } from '@/lib/contratos/generarContratoTerminoFijo';
+import { generarContratoIndefinidoDocx } from '@/lib/contratos/generarContratoIndefinido';
 
 const SENDER_EMAIL = 'talentos@firplak.com';
 const RENATA_EMAIL = 'renata.lainez@firplak.com';
@@ -33,12 +35,24 @@ async function getMsToken(): Promise<string> {
     return data.access_token;
 }
 
-async function enviarCorreo(token: string, toEmail: string, subject: string, content: string) {
+interface CorreoAttachment {
+    name: string;
+    contentType: string;
+    contentBytes: string; // base64
+}
+
+async function enviarCorreo(token: string, toEmail: string, subject: string, content: string, attachments?: CorreoAttachment[]) {
     const emailData = {
         message: {
             subject,
             body: { contentType: 'HTML', content },
             toRecipients: [{ emailAddress: { address: toEmail } }],
+            attachments: attachments?.map(a => ({
+                '@odata.type': '#microsoft.graph.fileAttachment',
+                name: a.name,
+                contentType: a.contentType,
+                contentBytes: a.contentBytes,
+            })),
         },
         saveToSentItems: 'true',
     };
@@ -53,22 +67,20 @@ async function enviarCorreo(token: string, toEmail: string, subject: string, con
     }
 }
 
-function buildWhatsappLink(telefono: string | null, nombre: string, decision: string): string | null {
-    if (!telefono) return null;
-    let digits = telefono.replace(/[^0-9]/g, '');
-    if (digits.length === 10) digits = `57${digits}`; // numero colombiano sin indicativo
-    if (!digits) return null;
-
-    const mensajes: Record<string, string> = {
-        PROLONGAR_TEMPORAL: `Hola ${nombre}, te confirmamos que tu contrato con la temporal se prolonga. ¡Gracias por tu compromiso!`,
-        CONTRATAR_TERMINO_FIJO: `Hola ${nombre}, te confirmamos que pasas a contrato directo a término fijo con Firplak. ¡Felicitaciones!`,
-        CONTRATAR_INDEFINIDO: `Hola ${nombre}, te confirmamos que pasas a contrato a término indefinido con Firplak. ¡Felicitaciones!`,
-    };
-    const texto = mensajes[decision];
-    if (!texto) return null;
-
-    return `https://wa.me/${digits}?text=${encodeURIComponent(texto)}`;
-}
+const MENSAJES_EMPLEADO: Record<string, { subject: string; texto: string }> = {
+    PROLONGAR_TEMPORAL: {
+        subject: 'Tu contrato se prolonga',
+        texto: 'te confirmamos que tu contrato con la temporal se prolonga. ¡Gracias por tu compromiso!',
+    },
+    CONTRATAR_TERMINO_FIJO: {
+        subject: 'Novedad sobre tu contrato',
+        texto: 'te confirmamos que pasas a contrato directo a término fijo con Firplak. ¡Felicitaciones!',
+    },
+    CONTRATAR_INDEFINIDO: {
+        subject: 'Novedad sobre tu contrato',
+        texto: 'te confirmamos que pasas a contrato a término indefinido con Firplak. ¡Felicitaciones!',
+    },
+};
 
 export async function POST(request: Request) {
     try {
@@ -100,7 +112,7 @@ export async function POST(request: Request) {
 
         const { data: empleado, error: empError } = await supabase
             .from('empleados')
-            .select('nombreCompleto, cargo, planta, celular, telefono')
+            .select('id, nombreCompleto, cargo, planta, correo_electronico, direccion, fecha_nacimiento, lugar_nacimiento, salario')
             .eq('id', alerta.empleado_id)
             .single();
         if (empError || !empleado) throw empError || new Error('Empleado no encontrado');
@@ -120,18 +132,101 @@ export async function POST(request: Request) {
                 `;
                 await enviarCorreo(msToken, RENATA_EMAIL, `No continuidad: ${(empleado as any).nombreCompleto}`, contenido);
             } else {
-                const waLink = buildWhatsappLink((empleado as any).celular || (empleado as any).telefono, (empleado as any).nombreCompleto, decision);
-                const contenido = `
+                const empleadoCorreo = ((empleado as any).correo_electronico || '').trim();
+                const empleadoNombre = (empleado as any).nombreCompleto;
+                const mensaje = MENSAJES_EMPLEADO[decision];
+
+                let contratoNota = '';
+                let attachments: CorreoAttachment[] | undefined;
+
+                if (decision === 'CONTRATAR_TERMINO_FIJO' || decision === 'CONTRATAR_INDEFINIDO') {
+                    const esIndefinido = decision === 'CONTRATAR_INDEFINIDO';
+                    const nombreContrato = esIndefinido ? 'a término indefinido' : 'a término fijo';
+                    try {
+                        const fechaInicio = new Date();
+                        const fechaFin = esIndefinido ? null : sumarMeses(fechaInicio, 3);
+                        const docxBuffer = esIndefinido
+                            ? await generarContratoIndefinidoDocx(empleado as any, fechaInicio)
+                            : await generarContratoTerminoFijoDocx(empleado as any, fechaInicio);
+
+                        await supabase
+                            .from('empleados')
+                            .update({
+                                tipo_contrato: esIndefinido ? 'INDEFINIDO' : 'TERMINO_FIJO',
+                                fecha_inicio_contrato_actual: fechaInicio.toISOString().slice(0, 10),
+                            })
+                            .eq('id', (empleado as any).id);
+
+                        let pdfBuffer: Buffer | null = null;
+                        try {
+                            pdfBuffer = await convertirDocxAPdf(docxBuffer, `contrato_${(empleado as any).id}_${Date.now()}`);
+                        } catch (pdfError) {
+                            console.error('Error convirtiendo contrato a PDF (revisar permiso Files.ReadWrite.All en Azure):', pdfError);
+                        }
+
+                        const archivoBuffer = pdfBuffer || docxBuffer;
+                        const extension = pdfBuffer ? 'pdf' : 'docx';
+                        const contentType = pdfBuffer ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                        const nombreCarpeta = empleadoNombre.toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÑ]+/g, '_');
+                        const nombreArchivo = `Contrato ${nombreContrato} - ${formatearFechaLarga(fechaInicio)}.${extension}`;
+                        const storagePath = `activos/${nombreCarpeta}/Documentos/Contrato/${Date.now()}_${nombreArchivo.replace(/\s+/g, '_')}`;
+
+                        const { error: uploadError } = await supabase.storage
+                            .from('archivo-digital')
+                            .upload(storagePath, archivoBuffer, { contentType, upsert: false });
+
+                        if (!uploadError) {
+                            await supabase.from('archivo_digital_documentos').insert({
+                                categoria: 'ACTIVOS',
+                                carpeta_origen: empleadoNombre.toUpperCase(),
+                                empleado_id: (empleado as any).id,
+                                nombre_archivo: nombreArchivo,
+                                storage_path: storagePath,
+                                tamano_bytes: archivoBuffer.length,
+                            } as any);
+                        } else {
+                            console.error('Error guardando el contrato generado en Archivo Digital:', uploadError);
+                        }
+
+                        attachments = [{
+                            name: nombreArchivo,
+                            contentType,
+                            contentBytes: archivoBuffer.toString('base64'),
+                        }];
+                        const rangoFechas = fechaFin
+                            ? `${formatearFechaLarga(fechaInicio)} — ${formatearFechaLarga(fechaFin)}`
+                            : `desde ${formatearFechaLarga(fechaInicio)}`;
+                        contratoNota = pdfBuffer
+                            ? `<p>Se generó el contrato ${nombreContrato} (${rangoFechas}), adjunto en este correo y guardado en el Archivo Digital del empleado.</p>`
+                            : `<p style="color:#b91c1c;">Se generó el contrato en Word (adjunto), pero falló la conversión automática a PDF — revisa el permiso <strong>Files.ReadWrite.All</strong> en Azure. Por ahora queda en formato .docx.</p>`;
+                    } catch (contratoError) {
+                        console.error(`Error generando el contrato ${nombreContrato}:`, contratoError);
+                        contratoNota = `<p style="color:#b91c1c;">No se pudo generar automáticamente el contrato ${nombreContrato} — genéralo manualmente.</p>`;
+                    }
+                }
+
+                const contenidoRenata = `
                     <div style="font-family: Arial, sans-serif; color: #333;">
                         <h2>Decisión de Contrato</h2>
-                        <p><strong>${alerta.jefe_nombre || 'El jefe directo'}</strong> decidió: <strong>${decisionLabel}</strong> para <strong>${(empleado as any).nombreCompleto}</strong> (${(empleado as any).cargo || 'sin cargo'}, ${(empleado as any).planta || 'sin planta'}).</p>
-                        ${waLink
-                        ? `<p>Envíale la noticia por WhatsApp (mensaje ya redactado, solo confirma el envío):</p><p><a href="${waLink}" style="display:inline-block;background:#25D366;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Enviar WhatsApp</a></p>`
-                        : `<p style="color:#b91c1c;">No se encontró un número de celular registrado para notificar por WhatsApp — contáctalo por otro medio.</p>`
+                        <p><strong>${alerta.jefe_nombre || 'El jefe directo'}</strong> decidió: <strong>${decisionLabel}</strong> para <strong>${empleadoNombre}</strong> (${(empleado as any).cargo || 'sin cargo'}, ${(empleado as any).planta || 'sin planta'}).</p>
+                        ${empleadoCorreo
+                        ? `<p>Se le notificó la novedad por correo a <strong>${empleadoCorreo}</strong>.</p>`
+                        : `<p style="color:#b91c1c;">No se encontró un correo registrado para el empleado — notifícalo por otro medio.</p>`
                     }
+                        ${contratoNota}
                     </div>
                 `;
-                await enviarCorreo(msToken, RENATA_EMAIL, `Decisión de contrato: ${(empleado as any).nombreCompleto}`, contenido);
+                await enviarCorreo(msToken, RENATA_EMAIL, `Decisión de contrato: ${empleadoNombre}`, contenidoRenata, attachments);
+
+                if (empleadoCorreo && mensaje) {
+                    const contenidoEmpleado = `
+                        <div style="font-family: Arial, sans-serif; color: #333;">
+                            <p>Hola ${empleadoNombre},</p>
+                            <p>${mensaje.texto}</p>
+                        </div>
+                    `;
+                    await enviarCorreo(msToken, empleadoCorreo, mensaje.subject, contenidoEmpleado);
+                }
             }
 
             await supabase

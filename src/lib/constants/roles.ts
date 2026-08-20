@@ -261,6 +261,7 @@ export const PLANTAS_DIRECTORES_PERMITIDAS = [
 export const ANALISTAS_CON_ACCESO = [
     'diana.morales@firplak.com',
     'marcela.gomez@firplak.com',
+    'analista.sst@firplak.com',
 ];
 
 /**
@@ -271,6 +272,7 @@ export const AUSENTISMOS_SIN_DETALLE = [
     'diana.morales@firplak.com',
     'marcela.gomez@firplak.com',
     'juan.marin@firplak.com',
+    'analista.sst@firplak.com',
 ];
 
 /**
