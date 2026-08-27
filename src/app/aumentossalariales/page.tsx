@@ -7,6 +7,7 @@ import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
     Search,
     Eraser,
@@ -35,6 +36,8 @@ export default function AumentosSalarialesPage() {
     const [history, setHistory] = useState<any[]>([])
     const [historyLoading, setHistoryLoading] = useState(false)
     const [currentUser, setCurrentUser] = useState<any>(null)
+    const [approvingId, setApprovingId] = useState<number | null>(null)
+    const [pendingApprove, setPendingApprove] = useState<any>(null)
 
     // Form state
     const [formData, setFormData] = useState({
@@ -52,6 +55,8 @@ export default function AumentosSalarialesPage() {
 
     const supabase = createClient()
     const router = useRouter()
+
+    const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(currentUser?.nivelCargo as any)
 
     useEffect(() => {
         const fetchContext = async () => {
@@ -107,7 +112,7 @@ export default function AumentosSalarialesPage() {
                 // the person has since been promoted/moved, so it's only a fallback.
                 const { data: empleadoActual } = await supabase
                     .from('empleados')
-                    .select('nivelCargo, nombreCompleto')
+                    .select('id, nivelCargo, nombreCompleto')
                     .eq('correo_electronico', user.email!)
                     .maybeSingle()
 
@@ -137,7 +142,8 @@ export default function AumentosSalarialesPage() {
                         ...(profile as any),
                         correo: user.email,
                         nombre: (empleadoActual as any)?.nombreCompleto || (profile as any)?.nombre,
-                        nivelCargo: mappedLevel
+                        nivelCargo: mappedLevel,
+                        empleadoId: (empleadoActual as any)?.id ?? null
                     })
 
                     // Check for access permission
@@ -181,6 +187,27 @@ export default function AumentosSalarialesPage() {
             fetchHistory(empleado.id)
         }
     }, [activeTab, empleado, fetchHistory])
+
+    const handleApprove = async (item: any) => {
+        setApprovingId(item.id)
+        try {
+            const { error } = await (supabase
+                .from('aumentosSalariales') as any)
+                .update({ estado: 'Aprobado', fechaRespuesta: new Date().toISOString() })
+                .eq('id', item.id)
+
+            if (error) throw error
+
+            setHistory(prev => prev.map(h => h.id === item.id ? { ...h, estado: 'Aprobado' } : h))
+            toast.success('Solicitud aprobada correctamente')
+        } catch (err: any) {
+            console.error('Error approving request:', err)
+            toast.error('No se pudo aprobar la solicitud')
+        } finally {
+            setApprovingId(null)
+            setPendingApprove(null)
+        }
+    }
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault()
@@ -744,9 +771,22 @@ export default function AumentosSalarialesPage() {
                                                                     }`} />
                                                                 <span className="font-bold text-sm text-[#45433F]">{item.estado.toUpperCase()}</span>
                                                             </div>
-                                                            <span className="text-xs text-gray-500 font-medium">
-                                                                {new Date(item.created_at).toLocaleDateString()}
-                                                            </span>
+                                                            <div className="flex items-center gap-3">
+                                                                {item.estado === 'Pendiente' && (isSystemAdmin || (currentUser?.empleadoId && currentUser.empleadoId === item.aprobador)) && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        disabled={approvingId === item.id}
+                                                                        onClick={() => setPendingApprove(item)}
+                                                                        className="h-8 px-4 bg-[#2a7b37] hover:bg-[#1e5c29] text-white text-xs font-bold rounded-lg"
+                                                                    >
+                                                                        {approvingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aprobar'}
+                                                                    </Button>
+                                                                )}
+                                                                <span className="text-xs text-gray-500 font-medium">
+                                                                    {new Date(item.created_at).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                                                             <div className="space-y-1">
@@ -790,6 +830,17 @@ export default function AumentosSalarialesPage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={!!pendingApprove}
+                variant="info"
+                title="¿Aprobar esta solicitud?"
+                description={`Se aprobará el aumento salarial propuesto de ${pendingApprove ? formatCurrency(pendingApprove.salarioPropuesto) : ''} para este empleado.`}
+                confirmLabel="Aprobar"
+                cancelLabel="Cancelar"
+                onConfirm={() => pendingApprove && handleApprove(pendingApprove)}
+                onCancel={() => setPendingApprove(null)}
+            />
         </div>
     )
 }
