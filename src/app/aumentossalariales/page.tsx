@@ -37,7 +37,7 @@ export default function AumentosSalarialesPage() {
     const [historyLoading, setHistoryLoading] = useState(false)
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [approvingId, setApprovingId] = useState<number | null>(null)
-    const [pendingApprove, setPendingApprove] = useState<any>(null)
+    const [pendingDecision, setPendingDecision] = useState<{ item: any; decision: 'Aprobada' | 'Rechazada' } | null>(null)
 
     // Form state
     const [formData, setFormData] = useState({
@@ -188,24 +188,24 @@ export default function AumentosSalarialesPage() {
         }
     }, [activeTab, empleado, fetchHistory])
 
-    const handleApprove = async (item: any) => {
+    const handleDecidir = async (item: any, decision: 'Aprobada' | 'Rechazada') => {
         setApprovingId(item.id)
         try {
             const { error } = await (supabase
                 .from('aumentosSalariales') as any)
-                .update({ estado: 'Aprobado', fechaRespuesta: new Date().toISOString() })
+                .update({ estado: decision, fechaRespuesta: new Date().toISOString() })
                 .eq('id', item.id)
 
             if (error) throw error
 
-            setHistory(prev => prev.map(h => h.id === item.id ? { ...h, estado: 'Aprobado' } : h))
-            toast.success('Solicitud aprobada correctamente')
+            setHistory(prev => prev.map(h => h.id === item.id ? { ...h, estado: decision } : h))
+            toast.success(decision === 'Aprobada' ? 'Solicitud aprobada correctamente' : 'Solicitud rechazada correctamente')
         } catch (err: any) {
-            console.error('Error approving request:', err)
-            toast.error('No se pudo aprobar la solicitud')
+            console.error('Error updating request:', err)
+            toast.error('No se pudo actualizar la solicitud')
         } finally {
             setApprovingId(null)
-            setPendingApprove(null)
+            setPendingDecision(null)
         }
     }
 
@@ -400,7 +400,7 @@ export default function AumentosSalarialesPage() {
                 return;
             }
 
-            const { error: insertError } = await (supabase
+            const { data: inserted, error: insertError } = await (supabase
                 .from('aumentosSalariales') as any)
                 .insert([{
                     empleado_id: empleado.id,
@@ -417,8 +417,17 @@ export default function AumentosSalarialesPage() {
                     requiereAscenso: formData.requiereAscenso === 'SI',
                     estado: 'Pendiente',
                 }] as any)
+                .select('id')
+                .single()
 
             if (insertError) throw insertError
+
+            // Notificar al aprobador por Teams (no bloquea la creación de la solicitud si falla)
+            fetch('/api/aumentos-salariales/notificar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ aumentoId: (inserted as any).id }),
+            }).catch(err => console.error('Error notificando por Teams:', err))
 
             setSuccess('Su solicitud fue enviada correctamente!')
             // Reset form
@@ -767,21 +776,32 @@ export default function AumentosSalarialesPage() {
                                                         <div className="flex items-center justify-between p-4 bg-gray-50/80 border-b border-gray-100">
                                                             <div className="flex items-center gap-3">
                                                                 <div className={`w-3 h-3 rounded-full ${item.estado === 'Pendiente' ? 'bg-yellow-500 animate-pulse' :
-                                                                    item.estado === 'Aprobado' ? 'bg-green-500' : 'bg-red-500'
+                                                                    item.estado === 'Aprobada' ? 'bg-green-500' : 'bg-red-500'
                                                                     }`} />
                                                                 <span className="font-bold text-sm text-[#45433F]">{item.estado.toUpperCase()}</span>
                                                             </div>
                                                             <div className="flex items-center gap-3">
                                                                 {item.estado === 'Pendiente' && (isSystemAdmin || (currentUser?.empleadoId && currentUser.empleadoId === item.aprobador)) && (
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="sm"
-                                                                        disabled={approvingId === item.id}
-                                                                        onClick={() => setPendingApprove(item)}
-                                                                        className="h-8 px-4 bg-[#2a7b37] hover:bg-[#1e5c29] text-white text-xs font-bold rounded-lg"
-                                                                    >
-                                                                        {approvingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aprobar'}
-                                                                    </Button>
+                                                                    <>
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            disabled={approvingId === item.id}
+                                                                            onClick={() => setPendingDecision({ item, decision: 'Rechazada' })}
+                                                                            className="h-8 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg"
+                                                                        >
+                                                                            Rechazar
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            disabled={approvingId === item.id}
+                                                                            onClick={() => setPendingDecision({ item, decision: 'Aprobada' })}
+                                                                            className="h-8 px-4 bg-[#2a7b37] hover:bg-[#1e5c29] text-white text-xs font-bold rounded-lg"
+                                                                        >
+                                                                            {approvingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aprobar'}
+                                                                        </Button>
+                                                                    </>
                                                                 )}
                                                                 <span className="text-xs text-gray-500 font-medium">
                                                                     {new Date(item.created_at).toLocaleDateString()}
@@ -832,14 +852,18 @@ export default function AumentosSalarialesPage() {
             </div>
 
             <ConfirmDialog
-                isOpen={!!pendingApprove}
-                variant="info"
-                title="¿Aprobar esta solicitud?"
-                description={`Se aprobará el aumento salarial propuesto de ${pendingApprove ? formatCurrency(pendingApprove.salarioPropuesto) : ''} para este empleado.`}
-                confirmLabel="Aprobar"
+                isOpen={!!pendingDecision}
+                variant={pendingDecision?.decision === 'Rechazada' ? 'danger' : 'info'}
+                title={pendingDecision?.decision === 'Rechazada' ? '¿Rechazar esta solicitud?' : '¿Aprobar esta solicitud?'}
+                description={
+                    pendingDecision?.decision === 'Rechazada'
+                        ? 'Se marcará esta solicitud de aumento salarial como rechazada.'
+                        : `Se aprobará el aumento salarial propuesto de ${pendingDecision ? formatCurrency(pendingDecision.item.salarioPropuesto) : ''} para este empleado.`
+                }
+                confirmLabel={pendingDecision?.decision === 'Rechazada' ? 'Rechazar' : 'Aprobar'}
                 cancelLabel="Cancelar"
-                onConfirm={() => pendingApprove && handleApprove(pendingApprove)}
-                onCancel={() => setPendingApprove(null)}
+                onConfirm={() => pendingDecision && handleDecidir(pendingDecision.item, pendingDecision.decision)}
+                onCancel={() => setPendingDecision(null)}
             />
         </div>
     )
