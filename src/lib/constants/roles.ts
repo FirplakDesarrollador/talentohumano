@@ -232,6 +232,20 @@ export const HILU_OPERATIVA_RESTRINGIDA_MOLDES = [
 ];
 
 /**
+ * Correos con acceso especial en HILU Operativa: pueden VER el registro
+ * completo de CUALQUIER empleado sin importar la planta, pero cuando el
+ * empleado esta fuera de su alcance normal por planta solo pueden EDITAR
+ * el punto "Entrenamiento en mantenimiento autonomo del puesto" (fase I,
+ * campo fi_mantenimiento_autonomo) — el resto del registro queda en solo
+ * lectura. Dentro de su alcance normal por planta conservan los permisos
+ * que ya tuvieran, sin cambios.
+ */
+export const HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO = [
+    'roberto.aguilar@firplak.com',
+    'maria.perez@firplak.com',
+];
+
+/**
  * Non-supervisor employees granted the same Jefe-tier module access as
  * JEFES_INGENIERIA_MOLDES (Gestor de Personal, Ausentismos, Procesos
  * Disciplinarios, Aumentos Salariales), but restricted to the Moldes plant only.

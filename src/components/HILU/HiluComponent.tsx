@@ -23,6 +23,10 @@ interface HiluComponentProps {
     empleado: QueryHiluRow
     onUpdate: () => void
     currentUser?: any
+    // Cuando es true: el usuario esta viendo este empleado fuera de su alcance normal por
+    // planta (via HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO). Puede ver todo el registro
+    // pero solo puede editar "fi_mantenimiento_autonomo" — el resto queda en solo lectura.
+    restrictToMantenimientoAutonomo?: boolean
 }
 
 const TOOLS_LIST = ['GI', 'TE-EE', 'A/F', "5'S", 'LIDERAZGO', 'BITACORA', 'OPT', 'OPT SIS', 'RRC', 'QRQC'] as const
@@ -205,7 +209,7 @@ const PhaseHeader = ({ title, progress, isOpen, onClick }: { title: string, prog
     </div>
 )
 
-export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponentProps) {
+export function HiluComponent({ empleado, onUpdate, currentUser, restrictToMantenimientoAutonomo }: HiluComponentProps) {
     const supabase = createClient()
     const [openPhase, setOpenPhase] = useState<'H' | 'I' | 'L' | 'U' | null>('H')
 
@@ -221,6 +225,9 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
     const [localEmpleado, setLocalEmpleado] = useState<QueryHiluRow>(processEmpleado(empleado))
 
     const canEditPhase = (phase: 'H' | 'I' | 'L' | 'U') => {
+        // Acceso restringido a un solo campo (fi_mantenimiento_autonomo): el resto del
+        // registro queda en solo lectura, sin importar el resto de las reglas de abajo.
+        if (restrictToMantenimientoAutonomo) return false
         if (!currentUser) return false
         const email = currentUser.email || ''
 
@@ -400,6 +407,23 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
         await updatePhase(tableMap[phase], id, dataToSave)
         await checkPhaseCompletion(phase, stateToUse)
+    }
+
+    // Guardado independiente de "Entrenamiento en mantenimiento autonomo del puesto",
+    // usado por el acceso restringido (HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO) para
+    // no depender del boton "Guardar Fase I" (que exige el 100% de la fase completo).
+    const handleSaveMantenimientoAutonomoOnly = async () => {
+        const id = localEmpleado.fi_id
+        if (!id) {
+            toast.error('No se encontró el ID de la fase')
+            return
+        }
+        const detalles = {
+            ...(localEmpleado.fi_detalles as object || {}),
+            mantenimiento_autonomo: localEmpleado.fi_mantenimiento_autonomo,
+        }
+        await updatePhase('fase_I', id, { detalles })
+        await checkPhaseCompletion('I', localEmpleado)
     }
 
     // Tool Logic Helpers
@@ -831,9 +855,21 @@ export function HiluComponent({ empleado, onUpdate, currentUser }: HiluComponent
 
                                     {/* Row 2: Performance Checks */}
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                        <PillCheckbox id="fi_mantenimiento_autonomo" label="Entrenamiento en mantenimiento autónomo del puesto" checked={localEmpleado.fi_mantenimiento_autonomo || false} onChange={(c) => {
-                                            setLocalEmpleado(prev => ({ ...prev, fi_mantenimiento_autonomo: c }))
-                                        }} />
+                                        <div className={restrictToMantenimientoAutonomo ? 'pointer-events-auto opacity-100 space-y-2' : ''}>
+                                            <PillCheckbox id="fi_mantenimiento_autonomo" label="Entrenamiento en mantenimiento autónomo del puesto" checked={localEmpleado.fi_mantenimiento_autonomo || false} onChange={(c) => {
+                                                setLocalEmpleado(prev => ({ ...prev, fi_mantenimiento_autonomo: c }))
+                                            }} />
+                                            {restrictToMantenimientoAutonomo && (
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={handleSaveMantenimientoAutonomoOnly}
+                                                    className="w-full h-9 bg-[#1e2f3d] hover:bg-[#2c4255] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2"
+                                                >
+                                                    <Save className="h-3.5 w-3.5" /> Guardar este punto
+                                                </Button>
+                                            )}
+                                        </div>
                                         <PillCheckbox id="fi_hace_acompanado" label="Hace acompañado" checked={localEmpleado.fi_hace_acompanado || false} onChange={(c) => {
                                             setLocalEmpleado(prev => ({ ...prev, fi_hace_acompanado: c }))
                                         }} />
