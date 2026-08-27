@@ -6,6 +6,12 @@ import { generarContratoIndefinidoDocx } from '@/lib/contratos/generarContratoIn
 const SENDER_EMAIL = 'talentos@firplak.com';
 const RENATA_EMAIL = 'renata.lainez@firplak.com';
 
+function sanitizeStorageKey(text: string): string {
+    return text
+        .normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '') // quitar tildes/diacriticos
+        .replace(/[^A-Za-z0-9._-]+/g, '_');
+}
+
 const DECISION_LABELS: Record<string, string> = {
     PROLONGAR_TEMPORAL: 'Prolongar contrato con la temporal',
     CONTRATAR_TERMINO_FIJO: 'Contratar directo a término fijo',
@@ -167,9 +173,9 @@ export async function POST(request: Request) {
                         const archivoBuffer = pdfBuffer || docxBuffer;
                         const extension = pdfBuffer ? 'pdf' : 'docx';
                         const contentType = pdfBuffer ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                        const nombreCarpeta = empleadoNombre.toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÑ]+/g, '_');
+                        const nombreCarpeta = sanitizeStorageKey(empleadoNombre.toUpperCase());
                         const nombreArchivo = `Contrato ${nombreContrato} - ${formatearFechaLarga(fechaInicio)}.${extension}`;
-                        const storagePath = `activos/${nombreCarpeta}/Documentos/Contrato/${Date.now()}_${nombreArchivo.replace(/\s+/g, '_')}`;
+                        const storagePath = `activos/${nombreCarpeta}/Documentos/Contrato/${Date.now()}_${sanitizeStorageKey(nombreArchivo)}`;
 
                         const { error: uploadError } = await supabase.storage
                             .from('archivo-digital')
