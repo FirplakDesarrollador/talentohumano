@@ -43,7 +43,8 @@ import {
     JEFES_MOLDES,
     JEFES_MANTENIMIENTO,
     DIRECTORES_CON_ACCESO,
-    HILU_OPERATIVA_RESTRINGIDA_MOLDES
+    HILU_OPERATIVA_RESTRINGIDA_MOLDES,
+    HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO
 } from '@/lib/constants/roles'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
@@ -155,6 +156,7 @@ export default function EntrenamientoDetailPage() {
     const [generatingPdf, setGeneratingPdf] = useState(false)
     const [currentUser, setCurrentUser] = useState<{ id?: number; usuarioId?: number; email?: string; nivelCargo?: string } | null>(null)
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
+    const [restrictToMantenimientoAutonomo, setRestrictToMantenimientoAutonomo] = useState(false)
     const [auditorias, setAuditorias] = useState<Auditoria[]>([])
     const [reentrenamientos, setReentrenamientos] = useState<Reentrenamiento[]>([])
     const [activeTab, setActiveTab] = useState<'actual' | 'otros'>('actual')
@@ -367,11 +369,19 @@ export default function EntrenamientoDetailPage() {
                 || (HILU_OPERATIVA_RESTRINGIDA_MOLDES.includes(email) ? ['Moldes'] : getPlantasPermitidas(email))
             const empPlanta = (emp.planta || '').trim()
             const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
+            const hasMantenimientoAutonomoOverride = HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO.includes(email)
 
             if (!isAdmin && userPlantas && !hasPlantAccess) {
-                setIsAuthorized(false)
-                setLoading(false)
-                return
+                if (!hasMantenimientoAutonomoOverride) {
+                    setIsAuthorized(false)
+                    setLoading(false)
+                    return
+                }
+                // Fuera de su alcance normal por planta, pero tiene el permiso especial:
+                // puede ver el registro completo, edicion queda restringida a un solo campo.
+                setRestrictToMantenimientoAutonomo(true)
+            } else {
+                setRestrictToMantenimientoAutonomo(false)
             }
 
             setIsAuthorized(true)
@@ -768,6 +778,7 @@ export default function EntrenamientoDetailPage() {
                             empleado={currentRecord}
                             onUpdate={fetchEmpleadoData}
                             currentUser={currentUser}
+                            restrictToMantenimientoAutonomo={restrictToMantenimientoAutonomo}
                         />
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-16 pb-20">
