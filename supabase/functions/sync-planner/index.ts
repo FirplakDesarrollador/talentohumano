@@ -43,6 +43,16 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+// One group's worth of plans can include an outlier with thousands of tasks
+// (seen in prod: FPK MANTENIMIENTO, 4354 tasks) that alone exhausts a single
+// invocation's compute budget (WORKER_RESOURCE_LIMIT), even when tasks are
+// streamed page-by-page instead of loaded all at once. So work is bounded two
+// ways: BATCH=1 (one group per invocation, instead of 5) and a hard cap on
+// how many task pages get processed before returning early with a resume
+// cursor (planIndex + the Graph @odata.nextLink for that plan's tasks).
+const BATCH = 1;
+const MAX_TASK_PAGES_PER_INVOCATION = 15;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -51,13 +61,20 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   let skip = 0;
-  try { const b = await req.json(); if (typeof b.skip === 'number') skip = b.skip; } catch (_) {}
+  let planIndex = 0;
+  let resumeTasksUrl: string | null = null;
+  try {
+    const b = await req.json();
+    if (typeof b.skip === "number") skip = b.skip;
+    if (typeof b.planIndex === "number") planIndex = b.planIndex;
+    if (typeof b.resumeTasksUrl === "string") resumeTasksUrl = b.resumeTasksUrl;
+  } catch (_) {}
 
   const logIdStr = req.headers.get("x-log-id");
   let logId = logIdStr ? parseInt(logIdStr) : null;
   const isCron = req.headers.get("x-trigger") === "cron";
 
-  if (skip === 0 && !logId) {
+  if (skip === 0 && planIndex === 0 && !resumeTasksUrl && !logId) {
     const { data: logRow } = await supabase.from("planner_sync_log")
       .insert({ status: "running", triggered_by: isCron ? "cron" : "manual" })
       .select("id").single();
@@ -67,6 +84,65 @@ Deno.serve(async (req: Request) => {
   const counts = { planes: 0, tasks: 0 };
   const processedUsers = new Set<string>();
 
+  // Reply helper that also fires/awaits the continuation (cron self-trigger,
+  // or just tells the caller how to resume) before returning.
+  async function respond(
+    req: Request, opts: {
+      isFinished: boolean; nextSkip: number; nextPlanIndex: number; nextResumeTasksUrl: string | null;
+      totalGroups: number;
+    }
+  ): Promise<Response> {
+    const { isFinished, nextSkip, nextPlanIndex, nextResumeTasksUrl, totalGroups } = opts;
+
+    if (isFinished && logId) {
+      await supabase.from("planner_sync_log").update({
+        status: "success", finished_at: new Date().toISOString(),
+      }).eq("id", logId);
+    }
+
+    if (!isFinished && isCron) {
+      console.log(`[sync-planner] Triggering next step for cron job... skip=${nextSkip} planIndex=${nextPlanIndex}`);
+      const authHeader = req.headers.get("Authorization") || `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`;
+      const triggerNext = fetch(`${supabaseUrl}/functions/v1/sync-planner`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+          "x-trigger": "cron",
+          "x-log-id": logId ? logId.toString() : "",
+        },
+        body: JSON.stringify({ skip: nextSkip, planIndex: nextPlanIndex, resumeTasksUrl: nextResumeTasksUrl }),
+      }).catch(async (err) => {
+        console.error("Auto-trigger failed", err);
+        // Without this, a failed self-trigger left the chain dead in silence:
+        // the log row stayed "running" forever with no error ever recorded.
+        if (logId) {
+          await supabase.from("planner_sync_log").update({
+            status: "error", finished_at: new Date().toISOString(),
+            error_message: `Auto-trigger del siguiente paso (skip=${nextSkip}, planIndex=${nextPlanIndex}) falló: ${err?.message || err}`,
+          }).eq("id", logId);
+        }
+      });
+
+      // Returning a Response ends this invocation's lifecycle; without waitUntil,
+      // the runtime can tear down the isolate before the un-awaited fetch above
+      // actually goes out, silently breaking the cron self-chain mid-run.
+      // @ts-ignore EdgeRuntime is a Supabase/Deno Deploy-provided global, not in std lib types
+      if (typeof EdgeRuntime !== "undefined") {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(triggerNext);
+      } else {
+        await triggerNext;
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true, counts, isFinished,
+      nextSkip, planIndex: nextPlanIndex, resumeTasksUrl: nextResumeTasksUrl,
+      totalGroups, logId,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   try {
     const token = await getMsToken();
 
@@ -75,45 +151,62 @@ Deno.serve(async (req: Request) => {
       "https://graph.microsoft.com/v1.0/groups?$select=id,displayName,groupTypes&$top=100"
     );
 
-    const BATCH = 5;
-    const targetGroups = allGroups.slice(skip, skip + BATCH);
-    console.log(`[sync-planner] Batch ${skip}-${skip+BATCH} of ${allGroups.length} total groups`);
+    const group = allGroups[skip];
+    console.log(`[sync-planner] Group ${skip} of ${allGroups.length}, planIndex=${planIndex}, resuming=${!!resumeTasksUrl}`);
 
-    if (targetGroups.length > 0) {
-      const { data: eu } = await supabase.from('planner_users').select('id');
-      eu?.forEach(u => processedUsers.add(u.id));
+    if (group) {
+      const { data: eu } = await supabase.from("planner_users").select("id");
+      eu?.forEach((u) => processedUsers.add(u.id));
 
-      for (const grpChunk of chunk(targetGroups, 5)) {
-        const results = await Promise.all(grpChunk.map(async (group) => {
-          try {
-            const plans = await graphGetAll(token, `https://graph.microsoft.com/v1.0/groups/${group.id}/planner/plans`);
-            return { group, plans };
-          } catch (_) { return { group, plans: [] }; }
-        }));
+      let plans: any[] = [];
+      try {
+        plans = await graphGetAll(token, `https://graph.microsoft.com/v1.0/groups/${group.id}/planner/plans`);
+      } catch (_) { /* group without Planner access/plans — skip it */ }
 
-        for (const { group, plans } of results) {
-          for (const plan of plans) {
-            await supabase.from("planner_planes").upsert({
-              id: plan.id, title: plan.title,
-              owner_group_id: group.id, owner_group_name: group.displayName,
-              created_date_time: plan.createdDateTime || null,
-              raw_data: plan, synced_at: new Date().toISOString(),
+      for (let i = planIndex; i < plans.length; i++) {
+        const plan = plans[i];
+        const isResumedPlan = resumeTasksUrl && i === planIndex;
+
+        if (!isResumedPlan) {
+          await supabase.from("planner_planes").upsert({
+            id: plan.id, title: plan.title,
+            owner_group_id: group.id, owner_group_name: group.displayName,
+            created_date_time: plan.createdDateTime || null,
+            raw_data: plan, synced_at: new Date().toISOString(),
+          }, { onConflict: "id" });
+          counts.planes++;
+
+          let buckets: any[] = [];
+          try { buckets = await graphGetAll(token, `https://graph.microsoft.com/v1.0/planner/plans/${plan.id}/buckets`); } catch (_) {}
+          for (const b of buckets) {
+            await supabase.from("planner_buckets").upsert({
+              id: b.id, name: b.name, plan_id: plan.id,
+              order_hint: b.orderHint || null, raw_data: b, synced_at: new Date().toISOString(),
             }, { onConflict: "id" });
-            counts.planes++;
+          }
+        }
 
-            let buckets: any[] = [];
-            try { buckets = await graphGetAll(token, `https://graph.microsoft.com/v1.0/planner/plans/${plan.id}/buckets`); } catch (_) {}
-            for (const b of buckets) {
-              await supabase.from("planner_buckets").upsert({
-                id: b.id, name: b.name, plan_id: plan.id,
-                order_hint: b.orderHint || null, raw_data: b, synced_at: new Date().toISOString(),
-              }, { onConflict: "id" });
+        let nextTasksUrl: string | null =
+          isResumedPlan ? resumeTasksUrl : `https://graph.microsoft.com/v1.0/planner/plans/${plan.id}/tasks`;
+        let pagesProcessed = 0;
+
+        try {
+          while (nextTasksUrl) {
+            if (pagesProcessed >= MAX_TASK_PAGES_PER_INVOCATION) {
+              // This plan has more tasks than fit in one invocation's compute budget.
+              // Stop here and resume this exact plan (same planIndex) next call.
+              return await respond(req, {
+                isFinished: false, nextSkip: skip, nextPlanIndex: i, nextResumeTasksUrl: nextTasksUrl,
+                totalGroups: allGroups.length,
+              });
             }
 
-            let tasks: any[] = [];
-            try { tasks = await graphGetAll(token, `https://graph.microsoft.com/v1.0/planner/plans/${plan.id}/tasks`); } catch (_) {}
+            const page = await graphGet(token, nextTasksUrl);
+            const tasksPage: any[] = page.value || [];
+            nextTasksUrl = page["@odata.nextLink"] || null;
+            pagesProcessed++;
 
-            for (const tChunk of chunk(tasks, 8)) {
+            for (const tChunk of chunk(tasksPage, 8)) {
               await Promise.all(tChunk.map(async (task) => {
                 let checklistTotal = task.checklistItemCount || 0;
                 let checklistDone = checklistTotal - (task.activeChecklistItemCount || 0);
@@ -156,38 +249,21 @@ Deno.serve(async (req: Request) => {
               }));
             }
           }
-        }
+        } catch (_) { /* Graph error mid-plan — move on to the next plan rather than failing the whole group */ }
+
+        // Done with this plan (fully, or gave up after a Graph error) — clear any resume state
+        // so the next plan in this group starts fresh instead of inheriting this plan's cursor.
+        resumeTasksUrl = null;
       }
     }
 
     const nextSkip = skip + BATCH;
     const isFinished = nextSkip >= allGroups.length;
 
-    if (isFinished && logId) {
-      await supabase.from("planner_sync_log").update({
-        status: "success", finished_at: new Date().toISOString(),
-      }).eq("id", logId);
-    }
-
-    // Auto-trigger the next batch if this was a cron job
-    if (!isFinished && isCron) {
-      console.log(`[sync-planner] Triggering next batch for cron job...`);
-      // Use edge function self invocation pattern
-      const authHeader = req.headers.get('Authorization') || `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`;
-      fetch(`${supabaseUrl}/functions/v1/sync-planner`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader,
-          "x-trigger": "cron",
-          "x-log-id": logId ? logId.toString() : ""
-        },
-        body: JSON.stringify({ skip: nextSkip })
-      }).catch(err => console.error("Auto-trigger failed", err));
-    }
-
-    return new Response(JSON.stringify({ success: true, counts, isFinished, nextSkip, totalGroups: allGroups.length, logId }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return await respond(req, {
+      isFinished, nextSkip, nextPlanIndex: 0, nextResumeTasksUrl: null,
+      totalGroups: allGroups.length,
+    });
 
   } catch (error: any) {
     if (logId) await supabase.from("planner_sync_log").update({
