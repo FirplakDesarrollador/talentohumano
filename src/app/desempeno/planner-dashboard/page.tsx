@@ -116,21 +116,38 @@ export default function PlannerDashboardPage() {
         setSyncing(true)
         try {
             let skip = 0;
+            let planIndex = 0;
+            let resumeTasksUrl: string | null = null;
             let isFinished = false;
             let currentLogId = null;
 
-            // Iteramos hasta que la Edge Function termine de revisar todos los grupos
+            // Iteramos hasta que la Edge Function termine de revisar todos los grupos.
+            // Un plan con muchas tareas puede necesitar varias vueltas para sí mismo
+            // (planIndex/resumeTasksUrl), antes de avanzar al siguiente grupo (skip).
             while (!isFinished) {
                 const headers: any = { 'x-trigger': 'manual-dashboard' };
                 if (currentLogId) headers['x-log-id'] = currentLogId.toString();
 
-                const { data, error } = await supabase.functions.invoke('sync-planner', {
+                const invokeBody: { skip: number; planIndex: number; resumeTasksUrl: string | null } = { skip, planIndex, resumeTasksUrl };
+                const { data, error }: { data: any; error: any } = await supabase.functions.invoke('sync-planner', {
                     headers,
-                    body: { skip }
+                    body: invokeBody
                 });
                 
                 if (error) {
-                    throw new Error(`Error en la petición: ${error.message}`)
+                    // supabase-js's generic error.message ("non-2xx status code") hides the
+                    // real reason; error.context is the raw Response, read its body instead.
+                    let detail = error.message
+                    try {
+                        const body = await error.context?.clone().json()
+                        detail = body?.error || detail
+                    } catch {
+                        try {
+                            const text = await error.context?.clone().text()
+                            if (text) detail = text
+                        } catch { /* keep generic message */ }
+                    }
+                    throw new Error(`Error en la petición: ${detail}`)
                 }
                 if (!data.success) {
                     throw new Error(data.error || 'Fallo interno')
@@ -138,6 +155,8 @@ export default function PlannerDashboardPage() {
 
                 isFinished = data.isFinished;
                 skip = data.nextSkip;
+                planIndex = data.planIndex || 0;
+                resumeTasksUrl = data.resumeTasksUrl || null;
                 if (data.logId) currentLogId = data.logId;
             }
 
