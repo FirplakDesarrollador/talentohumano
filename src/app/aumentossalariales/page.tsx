@@ -200,6 +200,13 @@ export default function AumentosSalarialesPage() {
 
             setHistory(prev => prev.map(h => h.id === item.id ? { ...h, estado: decision } : h))
             toast.success(decision === 'Aprobada' ? 'Solicitud aprobada correctamente' : 'Solicitud rechazada correctamente')
+
+            // No bloquea la aprobación/rechazo si el aviso por Teams falla.
+            fetch('/api/aumentos-salariales/notificar-decision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ aumentoId: item.id, decision }),
+            }).catch(err => console.error('Error notificando la decisión a Renata:', err))
         } catch (err: any) {
             console.error('Error updating request:', err)
             toast.error('No se pudo actualizar la solicitud')
