@@ -139,7 +139,7 @@ export default function MenuPage() {
             title: 'Academia',
             href: 'https://academia-fpk.vercel.app/login',
             icon: GraduationCap,
-            visible: true,
+            visible: isSystemAdmin,
             external: true
         }
     ]
