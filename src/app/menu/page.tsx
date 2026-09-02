@@ -25,7 +25,8 @@ import {
     ExternalLink,
     Wallet,
     Stethoscope,
-    UserCircle
+    UserCircle,
+    GraduationCap
 } from 'lucide-react'
 
 const AREAS_ADMINISTRATIVAS = [
@@ -133,6 +134,13 @@ export default function MenuPage() {
             href: '/contratacion',
             icon: UserPlus,
             visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
+        },
+        {
+            title: 'Academia',
+            href: 'https://academia-fpk.vercel.app/login',
+            icon: GraduationCap,
+            visible: true,
+            external: true
         }
     ]
 
@@ -207,14 +215,21 @@ export default function MenuPage() {
                 <div className="flex flex-wrap justify-center gap-6">
                     {menuItems.filter(item => item.visible).map((item) => {
                         const Icon = item.icon
-                        return (
+                        const tile = (
+                            <div className="w-[150px] h-[100px] bg-white rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-center justify-center gap-3 group border border-transparent hover:border-gray-200">
+                                <Icon className="h-10 w-10 text-[#1D3557] group-hover:scale-110 transition-transform duration-300" />
+                                <span className="text-[11px] font-bold text-[#457B9D] uppercase text-center px-2">
+                                    {item.title}
+                                </span>
+                            </div>
+                        )
+                        return item.external ? (
+                            <a key={item.title} href={item.href} target="_blank" rel="noopener noreferrer">
+                                {tile}
+                            </a>
+                        ) : (
                             <Link key={item.title} href={item.href}>
-                                <div className="w-[150px] h-[100px] bg-white rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-center justify-center gap-3 group border border-transparent hover:border-gray-200">
-                                    <Icon className="h-10 w-10 text-[#1D3557] group-hover:scale-110 transition-transform duration-300" />
-                                    <span className="text-[11px] font-bold text-[#457B9D] uppercase text-center px-2">
-                                        {item.title}
-                                    </span>
-                                </div>
+                                {tile}
                             </Link>
                         )
                     })}
