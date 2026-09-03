@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Briefcase, Loader2, CheckCircle2, Search, X, Upload, FileText, Trash2 } from 'lucide-react'
+import { Briefcase, Loader2, CheckCircle2, Search, X, Upload, FileText, Trash2, ChevronDown } from 'lucide-react'
+import { usePlantas } from '@/lib/hooks/usePlantas'
 
 const MOTIVOS = [
     'Reemplazo por renuncia',
@@ -21,7 +22,7 @@ export default function SolicitarPersonalPage() {
     const [form, setForm] = useState({
         cargo_solicitado: '',
         area_planta: '',
-        motivo: MOTIVOS[0],
+        motivo: 'Incremento de la productividad',
         reemplazo_de: '',
         cantidad_personas: '1',
         fecha_requerida: '',
@@ -41,6 +42,7 @@ export default function SolicitarPersonalPage() {
     const [empleadoResults, setEmpleadoResults] = useState<any[]>([])
     const [showEmpleadoResults, setShowEmpleadoResults] = useState(false)
     const [selectedEmpleado, setSelectedEmpleado] = useState<{ id: number; nombreCompleto: string; correo_electronico: string } | null>(null)
+    const empleadoBoxRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const handler = setTimeout(async () => {
@@ -54,7 +56,7 @@ export default function SolicitarPersonalPage() {
                 .eq('activo', true)
                 .not('correo_electronico', 'is', null)
                 .order('nombreCompleto')
-                .limit(8)
+                .limit(50)
             if (empleadoSearch.length > 0) {
                 query = query.ilike('nombreCompleto', `%${empleadoSearch}%`)
             }
@@ -64,6 +66,130 @@ export default function SolicitarPersonalPage() {
         }, 300)
         return () => clearTimeout(handler)
     }, [empleadoSearch, selectedEmpleado])
+
+    // Cargo Solicitado: desplegable con busqueda sobre el directorio maestro de
+    // cargos, con opcion de crear uno nuevo (se guarda directo en la tabla `cargos`)
+    // si no existe todavia.
+    const [cargoResults, setCargoResults] = useState<{ id: number; cargo: string }[]>([])
+    const [showCargoResults, setShowCargoResults] = useState(false)
+    const [addingCargo, setAddingCargo] = useState(false)
+    const cargoBoxRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handler = setTimeout(async () => {
+            let query = supabase
+                .from('cargos' as any)
+                .select('id, cargo')
+                .not('cargo', 'is', null)
+                .order('cargo')
+                .limit(50)
+            if (form.cargo_solicitado.length > 0) {
+                query = query.ilike('cargo', `%${form.cargo_solicitado}%`)
+            }
+            const { data } = await query
+            setCargoResults((data as any) || [])
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, 300)
+        return () => clearTimeout(handler)
+    }, [form.cargo_solicitado])
+
+    // Cierra los desplegables al hacer clic fuera, como cualquier combobox.
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (empleadoBoxRef.current && !empleadoBoxRef.current.contains(event.target as Node)) {
+                setShowEmpleadoResults(false)
+            }
+            if (cargoBoxRef.current && !cargoBoxRef.current.contains(event.target as Node)) {
+                setShowCargoResults(false)
+            }
+            if (plantaBoxRef.current && !plantaBoxRef.current.contains(event.target as Node)) {
+                setShowPlantaResults(false)
+            }
+            if (reemplazoBoxRef.current && !reemplazoBoxRef.current.contains(event.target as Node)) {
+                setShowReemplazoResults(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const selectCargo = (cargo: string) => {
+        set('cargo_solicitado', cargo)
+        setShowCargoResults(false)
+    }
+
+    // Área / Planta: desplegable con busqueda sobre la misma tabla `plantas`
+    // que usa el resto de la app (Gestor de Personal, filtros, etc.).
+    const { plantas } = usePlantas()
+    const [showPlantaResults, setShowPlantaResults] = useState(false)
+    const plantaBoxRef = useRef<HTMLDivElement>(null)
+    const plantaResults = plantas.filter(p => p.toLowerCase().includes(form.area_planta.toLowerCase()))
+
+    const selectPlanta = (planta: string) => {
+        set('area_planta', planta)
+        setShowPlantaResults(false)
+    }
+
+    // ¿Es Reemplazo?: oculta Motivo y "A quién reemplaza" hasta que se marque.
+    // Al desmarcar, el motivo vuelve a "Incremento de la productividad" (el
+    // unico motivo que no es un reemplazo).
+    const [esReemplazo, setEsReemplazo] = useState(false)
+    const toggleEsReemplazo = (checked: boolean) => {
+        setEsReemplazo(checked)
+        if (checked) {
+            set('motivo', MOTIVOS.find(m => m.startsWith('Reemplazo')) || MOTIVOS[0])
+        } else {
+            set('motivo', 'Incremento de la productividad')
+            set('reemplazo_de', '')
+        }
+    }
+
+    // A quién reemplaza: desplegable con busqueda sobre TODOS los empleados,
+    // activos e inactivos (a diferencia del buscador de "Persona que Solicita",
+    // que solo busca entre los activos).
+    const [reemplazoResults, setReemplazoResults] = useState<any[]>([])
+    const [showReemplazoResults, setShowReemplazoResults] = useState(false)
+    const reemplazoBoxRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!esReemplazo) return
+        const handler = setTimeout(async () => {
+            let query = supabase
+                .from('empleados')
+                .select('id, nombreCompleto, activo')
+                .order('nombreCompleto')
+                .limit(50)
+            if (form.reemplazo_de.length > 0) {
+                query = query.ilike('nombreCompleto', `%${form.reemplazo_de}%`)
+            }
+            const { data } = await query
+            setReemplazoResults(data || [])
+        }, 300)
+        return () => clearTimeout(handler)
+    }, [form.reemplazo_de, esReemplazo, supabase])
+
+    const selectReemplazo = (nombre: string) => {
+        set('reemplazo_de', nombre)
+        setShowReemplazoResults(false)
+    }
+
+    const handleAddCargo = async () => {
+        const nombre = form.cargo_solicitado.trim()
+        if (!nombre) return
+
+        setAddingCargo(true)
+        try {
+            const { error } = await (supabase.from('cargos' as any) as any).insert({ cargo: nombre })
+            if (error) throw error
+            set('cargo_solicitado', nombre)
+            setShowCargoResults(false)
+        } catch (err: any) {
+            console.error('Error creando cargo:', err)
+            alert('No se pudo agregar el cargo nuevo. Intenta de nuevo.')
+        } finally {
+            setAddingCargo(false)
+        }
+    }
 
     const selectEmpleado = (emp: any) => {
         setSelectedEmpleado(emp)
@@ -131,7 +257,7 @@ export default function SolicitarPersonalPage() {
                     cargo_solicitado: form.cargo_solicitado,
                     area_planta: form.area_planta || null,
                     motivo: form.motivo,
-                    reemplazo_de: form.motivo.startsWith('Reemplazo') ? (form.reemplazo_de || null) : null,
+                    reemplazo_de: esReemplazo ? (form.reemplazo_de || null) : null,
                     cantidad_personas: parseInt(form.cantidad_personas) || 1,
                     fecha_requerida: form.fecha_requerida || null,
                     perfil: perfilModo === 'texto' ? (form.perfil || null) : null,
@@ -188,7 +314,7 @@ export default function SolicitarPersonalPage() {
             <form onSubmit={handleSubmit} className="max-w-xl mx-auto pb-12">
                 <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
                     <div className="p-8 space-y-6">
-                        <div className="space-y-2 relative">
+                        <div className="space-y-2 relative" ref={empleadoBoxRef}>
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Persona que Solicita</label>
                             <div className="relative">
                                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -202,10 +328,11 @@ export default function SolicitarPersonalPage() {
                                     }}
                                     onFocus={() => setShowEmpleadoResults(true)}
                                     className="w-full h-14 pl-12 pr-12 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
-                                    placeholder="Escribe tu nombre..."
+                                    placeholder="Escribe o selecciona tu nombre..."
+                                    autoComplete="off"
                                     required
                                 />
-                                {selectedEmpleado && (
+                                {selectedEmpleado ? (
                                     <button
                                         type="button"
                                         onClick={clearEmpleado}
@@ -213,22 +340,34 @@ export default function SolicitarPersonalPage() {
                                     >
                                         <X className="h-4 w-4" />
                                     </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowEmpleadoResults(prev => !prev)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <ChevronDown className={`h-4 w-4 transition-transform ${showEmpleadoResults ? 'rotate-180' : ''}`} />
+                                    </button>
                                 )}
                             </div>
 
-                            {showEmpleadoResults && empleadoResults.length > 0 && (
-                                <div className="absolute z-50 w-full mt-1 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-2">
-                                    {empleadoResults.map((emp) => (
-                                        <button
-                                            key={emp.id}
-                                            type="button"
-                                            onClick={() => selectEmpleado(emp)}
-                                            className="w-full px-5 py-3 text-left hover:bg-blue-50 transition-colors"
-                                        >
-                                            <p className="text-sm font-bold text-slate-800">{emp.nombreCompleto}</p>
-                                            <p className="text-xs text-slate-400">{emp.correo_electronico}</p>
-                                        </button>
-                                    ))}
+                            {showEmpleadoResults && (
+                                <div className="absolute z-50 w-full mt-1 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-2 max-h-64 overflow-y-auto">
+                                    {empleadoResults.length > 0 ? (
+                                        empleadoResults.map((emp) => (
+                                            <button
+                                                key={emp.id}
+                                                type="button"
+                                                onClick={() => selectEmpleado(emp)}
+                                                className="w-full px-5 py-3 text-left hover:bg-blue-50 transition-colors"
+                                            >
+                                                <p className="text-sm font-bold text-slate-800">{emp.nombreCompleto}</p>
+                                                <p className="text-xs text-slate-400">{emp.correo_electronico}</p>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <p className="px-5 py-3 text-sm text-slate-400">Sin resultados</p>
+                                    )}
                                 </div>
                             )}
 
@@ -238,50 +377,181 @@ export default function SolicitarPersonalPage() {
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
+                            <div className="space-y-2 relative" ref={cargoBoxRef}>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Cargo Solicitado</label>
-                                <input
-                                    type="text"
-                                    value={form.cargo_solicitado}
-                                    onChange={(e) => set('cargo_solicitado', e.target.value)}
-                                    className="w-full h-14 px-5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
-                                    placeholder="Ej: Operario de producción"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Área / Planta</label>
-                                <input
-                                    type="text"
-                                    value={form.area_planta}
-                                    onChange={(e) => set('area_planta', e.target.value)}
-                                    className="w-full h-14 px-5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
-                                    placeholder="Ej: Marmol Sintético"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Motivo</label>
-                                <select
-                                    value={form.motivo}
-                                    onChange={(e) => set('motivo', e.target.value)}
-                                    className="w-full h-14 px-5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
-                                >
-                                    {MOTIVOS.map(m => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            {form.motivo.startsWith('Reemplazo') && (
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">¿A quién reemplaza?</label>
+                                <div className="relative">
                                     <input
                                         type="text"
-                                        value={form.reemplazo_de}
-                                        onChange={(e) => set('reemplazo_de', e.target.value)}
-                                        className="w-full h-14 px-5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
-                                        placeholder="Nombre de la persona que salió"
+                                        value={form.cargo_solicitado}
+                                        onChange={(e) => {
+                                            set('cargo_solicitado', e.target.value)
+                                            setShowCargoResults(true)
+                                        }}
+                                        onFocus={() => setShowCargoResults(true)}
+                                        className="w-full h-14 pl-5 pr-12 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
+                                        placeholder="Ej: Operario de producción"
+                                        autoComplete="off"
+                                        required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCargoResults(prev => !prev)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <ChevronDown className={`h-4 w-4 transition-transform ${showCargoResults ? 'rotate-180' : ''}`} />
+                                    </button>
                                 </div>
+
+                                {showCargoResults && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-2 max-h-64 overflow-y-auto">
+                                        {cargoResults.map((c) => (
+                                            <button
+                                                key={c.id}
+                                                type="button"
+                                                onClick={() => selectCargo(c.cargo)}
+                                                className="w-full px-5 py-3 text-left hover:bg-blue-50 transition-colors text-sm font-bold text-slate-800"
+                                            >
+                                                {c.cargo}
+                                            </button>
+                                        ))}
+                                        {form.cargo_solicitado.trim() && !cargoResults.some(c => c.cargo?.toLowerCase() === form.cargo_solicitado.trim().toLowerCase()) && (
+                                            <button
+                                                type="button"
+                                                onClick={handleAddCargo}
+                                                disabled={addingCargo}
+                                                className="w-full px-5 py-3 text-left hover:bg-emerald-50 transition-colors flex items-center gap-2 border-t border-slate-100 mt-1"
+                                            >
+                                                {addingCargo ? (
+                                                    <Loader2 size={14} className="animate-spin text-emerald-600" />
+                                                ) : (
+                                                    <span className="text-emerald-600 font-black text-base leading-none">+</span>
+                                                )}
+                                                <span className="text-sm font-bold text-emerald-600">
+                                                    Agregar &quot;{form.cargo_solicitado.trim()}&quot; como nuevo cargo
+                                                </span>
+                                            </button>
+                                        )}
+                                        {cargoResults.length === 0 && !form.cargo_solicitado.trim() && (
+                                            <p className="px-5 py-3 text-sm text-slate-400">Escribe para buscar un cargo...</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-2 relative" ref={plantaBoxRef}>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Área / Planta</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={form.area_planta}
+                                        onChange={(e) => {
+                                            set('area_planta', e.target.value)
+                                            setShowPlantaResults(true)
+                                        }}
+                                        onFocus={() => setShowPlantaResults(true)}
+                                        className="w-full h-14 pl-5 pr-12 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
+                                        placeholder="Ej: Marmol Sintético"
+                                        autoComplete="off"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPlantaResults(prev => !prev)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <ChevronDown className={`h-4 w-4 transition-transform ${showPlantaResults ? 'rotate-180' : ''}`} />
+                                    </button>
+                                </div>
+
+                                {showPlantaResults && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-2 max-h-64 overflow-y-auto">
+                                        {plantaResults.length > 0 ? (
+                                            plantaResults.map((p) => (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    onClick={() => selectPlanta(p)}
+                                                    className="w-full px-5 py-3 text-left hover:bg-blue-50 transition-colors text-sm font-bold text-slate-800"
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <p className="px-5 py-3 text-sm text-slate-400">Sin resultados</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="flex items-center gap-3 cursor-pointer select-none w-fit">
+                                    <input
+                                        type="checkbox"
+                                        checked={esReemplazo}
+                                        onChange={(e) => toggleEsReemplazo(e.target.checked)}
+                                        className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-4 focus:ring-blue-100 cursor-pointer"
+                                    />
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">¿Es Reemplazo?</span>
+                                </label>
+                            </div>
+                            {esReemplazo && (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Motivo</label>
+                                        <select
+                                            value={form.motivo}
+                                            onChange={(e) => set('motivo', e.target.value)}
+                                            className="w-full h-14 px-5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
+                                        >
+                                            {MOTIVOS.map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2 relative" ref={reemplazoBoxRef}>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">¿A quién reemplaza?</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={form.reemplazo_de}
+                                                onChange={(e) => {
+                                                    set('reemplazo_de', e.target.value)
+                                                    setShowReemplazoResults(true)
+                                                }}
+                                                onFocus={() => setShowReemplazoResults(true)}
+                                                className="w-full h-14 pl-5 pr-12 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
+                                                placeholder="Nombre de la persona que salió"
+                                                autoComplete="off"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowReemplazoResults(prev => !prev)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                            >
+                                                <ChevronDown className={`h-4 w-4 transition-transform ${showReemplazoResults ? 'rotate-180' : ''}`} />
+                                            </button>
+                                        </div>
+
+                                        {showReemplazoResults && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden py-2 max-h-64 overflow-y-auto">
+                                                {reemplazoResults.length > 0 ? (
+                                                    reemplazoResults.map((emp) => (
+                                                        <button
+                                                            key={emp.id}
+                                                            type="button"
+                                                            onClick={() => selectReemplazo(emp.nombreCompleto)}
+                                                            className="w-full px-5 py-3 text-left hover:bg-blue-50 transition-colors flex items-center justify-between gap-2"
+                                                        >
+                                                            <span className="text-sm font-bold text-slate-800">{emp.nombreCompleto}</span>
+                                                            {!emp.activo && (
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">Retirado</span>
+                                                            )}
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <p className="px-5 py-3 text-sm text-slate-400">Sin resultados</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             )}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Cantidad de Personas</label>
