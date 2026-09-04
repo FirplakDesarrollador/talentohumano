@@ -26,7 +26,8 @@ import {
     Wallet,
     Stethoscope,
     UserCircle,
-    GraduationCap
+    GraduationCap,
+    Network
 } from 'lucide-react'
 
 const AREAS_ADMINISTRATIVAS = [
@@ -104,6 +105,12 @@ export default function MenuPage() {
             href: '/gestor-de-personal',
             icon: Users,
             visible: isSystemAdmin || (!GESTOR_EXCLUDED_EMAILS.includes(user?.email) && !isUnlistedAdminAreaAnalyst && (GESTOR_LEVELS.includes(userLevel as any) || JEFES_MOLDES.includes(normalizedUserEmail)))
+        },
+        {
+            title: 'Organigrama',
+            href: '/organigrama',
+            icon: Network,
+            visible: true
         },
         {
             title: 'Ausentismos',
