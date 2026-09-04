@@ -13,7 +13,8 @@ import {
     ExternalLink,
     Download,
     Calendar,
-    Type
+    Type,
+    Network
 } from 'lucide-react'
 import { EmpleadoCardGestor } from '@/components/Gestor/EmpleadoCardGestor'
 import { GestorFilters } from '@/components/Gestor/GestorFilters'
@@ -343,6 +344,15 @@ export default function GestorPersonalPage() {
                                 Agregar Empleado
                             </Button>
                         )}
+
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push('/gestor-de-personal/organigrama')}
+                            className="border-gray-200 text-gray-700 hover:bg-white flex items-center gap-2 px-6 rounded-xl h-11"
+                        >
+                            <Network className="h-5 w-5 text-blue-500" />
+                            Organigrama
+                        </Button>
 
                         {((user?.email && ADMIN_EMAILS.includes(user.email)) || ADMIN_LEVELS.includes(userLevel as any)) && (
                             <>
