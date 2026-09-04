@@ -112,57 +112,58 @@ export default function PlannerDashboardPage() {
         checkAuth()
     }, [fetchDashboardData, supabase.auth])
 
+    // La sincronización completa (~460 grupos) tarda demasiado como para que el
+    // navegador sostenga el ciclo él mismo (una pestaña que se cierra o se
+    // duerme corta la cadena a mitad de camino). El botón solo dispara UN
+    // arranque/reanudación en el servidor (que se autoencadena solo con
+    // EdgeRuntime.waitUntil, y se autorepara vía un watchdog de pg_cron cada
+    // 10 minutos si algún paso falla), y aquí solo consultamos el progreso.
     const handleSync = async () => {
         setSyncing(true)
         try {
-            let skip = 0;
-            let planIndex = 0;
-            let resumeTasksUrl: string | null = null;
-            let isFinished = false;
-            let currentLogId = null;
+            const { data, error }: { data: any; error: any } = await supabase.functions.invoke('sync-planner', {
+                headers: { 'x-trigger': 'manual' },
+                body: { entry: 'manual' }
+            })
 
-            // Iteramos hasta que la Edge Function termine de revisar todos los grupos.
-            // Un plan con muchas tareas puede necesitar varias vueltas para sí mismo
-            // (planIndex/resumeTasksUrl), antes de avanzar al siguiente grupo (skip).
-            while (!isFinished) {
-                const headers: any = { 'x-trigger': 'manual-dashboard' };
-                if (currentLogId) headers['x-log-id'] = currentLogId.toString();
-
-                const invokeBody: { skip: number; planIndex: number; resumeTasksUrl: string | null } = { skip, planIndex, resumeTasksUrl };
-                const { data, error }: { data: any; error: any } = await supabase.functions.invoke('sync-planner', {
-                    headers,
-                    body: invokeBody
-                });
-                
-                if (error) {
-                    // supabase-js's generic error.message ("non-2xx status code") hides the
-                    // real reason; error.context is the raw Response, read its body instead.
-                    let detail = error.message
+            if (error) {
+                // supabase-js's generic error.message ("non-2xx status code") hides the
+                // real reason; error.context is the raw Response, read its body instead.
+                let detail = error.message
+                try {
+                    const body = await error.context?.clone().json()
+                    detail = body?.error || detail
+                } catch {
                     try {
-                        const body = await error.context?.clone().json()
-                        detail = body?.error || detail
-                    } catch {
-                        try {
-                            const text = await error.context?.clone().text()
-                            if (text) detail = text
-                        } catch { /* keep generic message */ }
-                    }
-                    throw new Error(`Error en la petición: ${detail}`)
+                        const text = await error.context?.clone().text()
+                        if (text) detail = text
+                    } catch { /* keep generic message */ }
                 }
-                if (!data.success) {
-                    throw new Error(data.error || 'Fallo interno')
-                }
-
-                isFinished = data.isFinished;
-                skip = data.nextSkip;
-                planIndex = data.planIndex || 0;
-                resumeTasksUrl = data.resumeTasksUrl || null;
-                if (data.logId) currentLogId = data.logId;
+                throw new Error(`Error en la petición: ${detail}`)
+            }
+            if (!data.success) {
+                throw new Error(data.error || 'Fallo interno')
             }
 
-            // Reload data after full sync completes
-            await fetchDashboardData()
+            // Consulta el estado cada 8s hasta que la cadena termine (success/error)
+            // o se resuelva sola en un rato mas si esta cadena estaba "already_running".
+            await new Promise<void>((resolve) => {
+                const poll = setInterval(async () => {
+                    const { data: log } = await (supabase
+                        .from('planner_sync_log') as any)
+                        .select('status')
+                        .order('id', { ascending: false })
+                        .limit(1)
+                        .maybeSingle()
 
+                    if (!log || (log as any).status !== 'running') {
+                        clearInterval(poll)
+                        resolve()
+                    }
+                }, 8000)
+            })
+
+            await fetchDashboardData()
         } catch (error: any) {
             console.error('Sync failed:', error)
             alert(error.message || 'Error al ejecutar la sincronización')
@@ -194,10 +195,18 @@ export default function PlannerDashboardPage() {
         )
     }
 
-    const filteredUsers = usersKPIs.filter(u => 
+    const filteredUsers = usersKPIs.filter(u =>
         (u.display_name?.toLowerCase() || '').includes(searchUser.toLowerCase()) ||
         (u.mail?.toLowerCase() || '').includes(searchUser.toLowerCase())
     )
+
+    // Una sincronización puede tardar bastante mas de 5 minutos ahora (se
+    // autorepara sola vía el watchdog en vez de terminar en ese lapso), asi
+    // que "en curso" se mide por la ultima señal real de progreso, no por
+    // cuando arrancó — con un margen un poco mayor a los 8 min que usa el
+    // watchdog en el backend para considerarla atascada.
+    const isSyncActive = !!lastSync && lastSync.status === 'running' &&
+        new Date(lastSync.last_progress_at || lastSync.started_at).getTime() > Date.now() - 10 * 60 * 1000
 
     return (
         <div className="min-h-screen bg-[#F1F4F8] flex flex-col pb-12">
@@ -226,7 +235,7 @@ export default function PlannerDashboardPage() {
                         <div>
                             <h2 className="text-2xl font-bold text-[#2d4356]">Estado de Sincronización</h2>
                             <p className="text-sm text-gray-500">
-                                {(lastSync?.status === 'running' && new Date(lastSync.started_at).getTime() > Date.now() - 5 * 60 * 1000) && <span className="text-blue-500 font-medium flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Sincronizando ahora...</span>}
+                                {isSyncActive && <span className="text-blue-500 font-medium flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Sincronizando ahora...</span>}
                                 {lastSync?.status === 'success' && <span className="text-green-600 font-medium">Última exitosa: {new Date(lastSync.finished_at).toLocaleString('es-CO')}</span>}
                                 {lastSync?.status === 'error' && <span className="text-red-500 font-medium">Fallida: {new Date(lastSync.finished_at).toLocaleString('es-CO')}</span>}
                                 {!lastSync && 'Nunca sincronizado'}
@@ -237,12 +246,12 @@ export default function PlannerDashboardPage() {
                         </div>
                     </div>
                     
-                    <Button 
-                        onClick={handleSync} 
-                        disabled={syncing || (lastSync?.status === 'running' && new Date(lastSync.started_at).getTime() > Date.now() - 5 * 60 * 1000)}
+                    <Button
+                        onClick={handleSync}
+                        disabled={syncing || isSyncActive}
                         className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12 px-6 shadow-md"
                     >
-                        {syncing || (lastSync?.status === 'running' && new Date(lastSync.started_at).getTime() > Date.now() - 5 * 60 * 1000) ? (
+                        {syncing || isSyncActive ? (
                             <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sincronizando</>
                         ) : (
                             <><RefreshCw className="mr-2 h-5 w-5" /> Forzar Sincronización</>

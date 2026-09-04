@@ -45,13 +45,22 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 // One group's worth of plans can include an outlier with thousands of tasks
 // (seen in prod: FPK MANTENIMIENTO, 4354 tasks) that alone exhausts a single
-// invocation's compute budget (WORKER_RESOURCE_LIMIT), even when tasks are
-// streamed page-by-page instead of loaded all at once. So work is bounded two
-// ways: BATCH=1 (one group per invocation, instead of 5) and a hard cap on
-// how many task pages get processed before returning early with a resume
-// cursor (planIndex + the Graph @odata.nextLink for that plan's tasks).
+// invocation's compute budget (WORKER_RESOURCE_LIMIT). So work is bounded two
+// ways: BATCH=1 (one group per invocation) and a hard cap on how many task
+// pages get processed before returning early with a resume cursor.
 const BATCH = 1;
 const MAX_TASK_PAGES_PER_INVOCATION = 15;
+
+// A chain of ~460 self-invoking hops (one per group) will occasionally break
+// somewhere no matter how reliable each individual hop is — a cold start, a
+// transient Graph 503, a platform resource limit on one unlucky batch. There
+// is no way to make every one of ~460 sequential serverless calls succeed, so
+// instead every step persists its resume cursor (skip/planIndex/resumeTasksUrl)
+// to planner_sync_log, and a pg_cron "watchdog" tap every 10 minutes checks
+// for a chain that has gone quiet and resumes it from that exact cursor —
+// self-healing instead of requiring someone to notice and manually re-run it.
+const STALE_MINUTES = 8;
+const MIN_HOURS_BETWEEN_FULL_SYNCS = 20;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -63,29 +72,109 @@ Deno.serve(async (req: Request) => {
   let skip = 0;
   let planIndex = 0;
   let resumeTasksUrl: string | null = null;
+  let entry: string | null = null; // "watchdog" | "manual" | null (self-chain continuation / ad-hoc call)
+
   try {
     const b = await req.json();
     if (typeof b.skip === "number") skip = b.skip;
     if (typeof b.planIndex === "number") planIndex = b.planIndex;
     if (typeof b.resumeTasksUrl === "string") resumeTasksUrl = b.resumeTasksUrl;
+    if (typeof b.entry === "string") entry = b.entry;
   } catch (_) {}
 
-  const logIdStr = req.headers.get("x-log-id");
-  let logId = logIdStr ? parseInt(logIdStr) : null;
-  const isCron = req.headers.get("x-trigger") === "cron";
+  const logIdHeader = req.headers.get("x-log-id");
+  let logId: number | null = logIdHeader ? parseInt(logIdHeader) : null;
 
-  if (skip === 0 && planIndex === 0 && !resumeTasksUrl && !logId) {
-    const { data: logRow } = await supabase.from("planner_sync_log")
-      .insert({ status: "running", triggered_by: isCron ? "cron" : "manual" })
+  // Entry point (pg_cron watchdog tap, or the "Forzar Sincronización" button):
+  // figure out whether to resume a stalled chain, skip because one is already
+  // progressing, start a fresh sync, or (watchdog only) do nothing because a
+  // full sync already completed recently.
+  if (entry === "watchdog" || entry === "manual") {
+    const { data: latest } = await supabase
+      .from("planner_sync_log")
+      .select("id, status, last_progress_at, resume_skip, resume_plan_index, resume_tasks_url")
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latest && latest.status === "running") {
+      const lastProgressMs = latest.last_progress_at ? new Date(latest.last_progress_at).getTime() : 0;
+      const isStale = Date.now() - lastProgressMs > STALE_MINUTES * 60 * 1000;
+
+      if (!isStale) {
+        // A chain is already actively progressing — don't start a parallel one.
+        return new Response(JSON.stringify({ success: true, skipped: "already_running" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (latest.resume_skip != null) {
+        logId = latest.id;
+        skip = latest.resume_skip;
+        planIndex = latest.resume_plan_index || 0;
+        resumeTasksUrl = latest.resume_tasks_url;
+      } else {
+        // Row from before this resume cursor existed — can't be resumed precisely.
+        await supabase.from("planner_sync_log").update({
+          status: "error", finished_at: new Date().toISOString(),
+          error_message: "Cadena atascada sin cursor de reanudación (versión anterior del sync); se reinicia desde cero.",
+        }).eq("id", latest.id);
+      }
+    }
+
+    if (!logId) {
+      if (entry === "watchdog") {
+        const { data: lastSuccess } = await supabase
+          .from("planner_sync_log")
+          .select("finished_at")
+          .eq("status", "success")
+          .order("finished_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const hoursSinceSuccess = lastSuccess?.finished_at
+          ? (Date.now() - new Date(lastSuccess.finished_at).getTime()) / 3_600_000
+          : Infinity;
+        if (hoursSinceSuccess < MIN_HOURS_BETWEEN_FULL_SYNCS) {
+          return new Response(JSON.stringify({ success: true, skipped: "synced_recently" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      // planner_sync_log_one_running (a partial unique index on status='running')
+      // guards against two near-simultaneous triggers (e.g. the watchdog tap and
+      // a manual click) both seeing "nothing running" and starting parallel
+      // chains. If we lose that race, just back off — the other one is handling it.
+      const { data: logRow, error: insertError } = await supabase.from("planner_sync_log")
+        .insert({
+          status: "running",
+          triggered_by: entry === "manual" ? "manual" : "cron",
+          last_progress_at: new Date().toISOString(),
+        })
+        .select("id").single();
+      if (insertError) {
+        return new Response(JSON.stringify({ success: true, skipped: "race_lost_to_concurrent_start" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      logId = logRow?.id ?? null;
+      skip = 0; planIndex = 0; resumeTasksUrl = null;
+    }
+  } else if (skip === 0 && planIndex === 0 && !resumeTasksUrl && !logId) {
+    // Ad-hoc/direct call (e.g. manual testing via curl) with no entry marker
+    // and no log to continue — start a fresh one, same as before.
+    const { data: logRow, error: insertError } = await supabase.from("planner_sync_log")
+      .insert({ status: "running", triggered_by: "manual", last_progress_at: new Date().toISOString() })
       .select("id").single();
-    logId = logRow?.id;
+    if (insertError) {
+      return new Response(JSON.stringify({ success: true, skipped: "race_lost_to_concurrent_start" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    logId = logRow?.id ?? null;
   }
 
   const counts = { planes: 0, tasks: 0 };
   const processedUsers = new Set<string>();
 
-  // Reply helper that also fires/awaits the continuation (cron self-trigger,
-  // or just tells the caller how to resume) before returning.
+  // Reply helper: persists the resume cursor (or marks success), then
+  // fires/awaits the continuation before returning.
   async function respond(
     req: Request, opts: {
       isFinished: boolean; nextSkip: number; nextPlanIndex: number; nextResumeTasksUrl: string | null;
@@ -94,14 +183,21 @@ Deno.serve(async (req: Request) => {
   ): Promise<Response> {
     const { isFinished, nextSkip, nextPlanIndex, nextResumeTasksUrl, totalGroups } = opts;
 
-    if (isFinished && logId) {
-      await supabase.from("planner_sync_log").update({
-        status: "success", finished_at: new Date().toISOString(),
-      }).eq("id", logId);
+    if (logId) {
+      if (isFinished) {
+        await supabase.from("planner_sync_log").update({
+          status: "success", finished_at: new Date().toISOString(), last_progress_at: new Date().toISOString(),
+        }).eq("id", logId);
+      } else {
+        await supabase.from("planner_sync_log").update({
+          resume_skip: nextSkip, resume_plan_index: nextPlanIndex, resume_tasks_url: nextResumeTasksUrl,
+          last_progress_at: new Date().toISOString(),
+        }).eq("id", logId);
+      }
     }
 
-    if (!isFinished && isCron) {
-      console.log(`[sync-planner] Triggering next step for cron job... skip=${nextSkip} planIndex=${nextPlanIndex}`);
+    if (!isFinished) {
+      console.log(`[sync-planner] Triggering next step... skip=${nextSkip} planIndex=${nextPlanIndex}`);
       const authHeader = req.headers.get("Authorization") || `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`;
       const triggerNext = fetch(`${supabaseUrl}/functions/v1/sync-planner`, {
         method: "POST",
@@ -112,21 +208,17 @@ Deno.serve(async (req: Request) => {
           "x-log-id": logId ? logId.toString() : "",
         },
         body: JSON.stringify({ skip: nextSkip, planIndex: nextPlanIndex, resumeTasksUrl: nextResumeTasksUrl }),
-      }).catch(async (err) => {
-        console.error("Auto-trigger failed", err);
-        // Without this, a failed self-trigger left the chain dead in silence:
-        // the log row stayed "running" forever with no error ever recorded.
-        if (logId) {
-          await supabase.from("planner_sync_log").update({
-            status: "error", finished_at: new Date().toISOString(),
-            error_message: `Auto-trigger del siguiente paso (skip=${nextSkip}, planIndex=${nextPlanIndex}) falló: ${err?.message || err}`,
-          }).eq("id", logId);
-        }
+      }).catch((err) => {
+        // Deliberately NOT marking the row as "error" here: if this self-trigger
+        // genuinely fails to go out, the row simply goes stale and the watchdog
+        // resumes it from the persisted cursor within STALE_MINUTES. Marking it
+        // "error" would stop that self-healing from ever kicking in.
+        console.error("Auto-trigger failed (will be resumed by the watchdog):", err);
       });
 
       // Returning a Response ends this invocation's lifecycle; without waitUntil,
       // the runtime can tear down the isolate before the un-awaited fetch above
-      // actually goes out, silently breaking the cron self-chain mid-run.
+      // actually goes out.
       // @ts-ignore EdgeRuntime is a Supabase/Deno Deploy-provided global, not in std lib types
       if (typeof EdgeRuntime !== "undefined") {
         // @ts-ignore
