@@ -18,7 +18,6 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import dagre from 'dagre'
-import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronRight, Search, Maximize2, X } from 'lucide-react'
 
 export interface OrgEmpleado {
@@ -43,19 +42,17 @@ type OrgNodeData = {
     isCollapsed: boolean
     isMatch: boolean
     onToggle: (id: number) => void
-    onOpen: (id: number) => void
 }
 
 function OrgNode({ data }: NodeProps & { data: OrgNodeData }) {
-    const { empleado, childCount, isCollapsed, isMatch, onToggle, onOpen } = data
+    const { empleado, childCount, isCollapsed, isMatch, onToggle } = data
     const foto = empleado.foto && (empleado.foto.startsWith('http') || empleado.foto.startsWith('/'))
         ? empleado.foto
         : DEFAULT_PHOTO
 
     return (
         <div
-            onClick={() => onOpen(empleado.id)}
-            className={`relative bg-white rounded-2xl shadow-md border-2 px-4 py-3 cursor-pointer hover:shadow-lg transition-all ${isMatch ? 'border-blue-500 ring-4 ring-blue-100' : 'border-gray-100'
+            className={`relative bg-white rounded-2xl shadow-md border-2 px-4 py-3 transition-all ${isMatch ? 'border-blue-500 ring-4 ring-blue-100' : 'border-gray-100'
                 }`}
             style={{ width: NODE_WIDTH, height: NODE_HEIGHT }}
         >
@@ -127,8 +124,6 @@ function FitToMatches({ matchIds }: { matchIds: number[] }) {
 }
 
 function OrganigramaInner({ empleados }: { empleados: OrgEmpleado[] }) {
-    const router = useRouter()
-
     const { byId, childrenOf, roots } = useMemo(() => {
         const byId = new Map<number, OrgEmpleado>()
         const byNameNorm = new Map<string, OrgEmpleado>()
@@ -212,10 +207,6 @@ function OrganigramaInner({ empleados }: { empleados: OrgEmpleado[] }) {
         })
     }, [])
 
-    const openEmpleado = useCallback((id: number) => {
-        router.push(`/gestor-de-personal/editar/${id}`)
-    }, [router])
-
     // Ancestros de cada nodo (para expandir la ruta hacia un resultado de busqueda).
     const parentOf = useMemo(() => {
         const parentOf = new Map<number, number>()
@@ -279,7 +270,6 @@ function OrganigramaInner({ empleados }: { empleados: OrgEmpleado[] }) {
                     isCollapsed: collapsed.has(id),
                     isMatch: matchIds.includes(id),
                     onToggle: toggle,
-                    onOpen: openEmpleado,
                 } satisfies OrgNodeData,
             })
             const parent = parentOf.get(id)
@@ -294,7 +284,7 @@ function OrganigramaInner({ empleados }: { empleados: OrgEmpleado[] }) {
             }
         })
         return { nodes: layoutWithDagre(rawNodes, rawEdges), edges: rawEdges }
-    }, [visibleIds, byId, childrenOf, collapsed, matchIds, parentOf, toggle, openEmpleado])
+    }, [visibleIds, byId, childrenOf, collapsed, matchIds, parentOf, toggle])
 
     const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(nodes)
     const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState(edges)
