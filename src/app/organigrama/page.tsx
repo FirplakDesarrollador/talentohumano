@@ -24,6 +24,7 @@ export default function OrganigramaPage() {
                     .from('empleados')
                     .select('id, nombreCompleto, cargo, planta, foto, jefe')
                     .eq('activo', true)
+                    .neq('id', 8317439) // Luis Carlos Isaza Restrepo (Presidente de la Junta): a pedido, no se muestra en el organigrama
 
                 if (error) throw error
                 setEmpleados(((data as any[]) || []).map((e) => ({
