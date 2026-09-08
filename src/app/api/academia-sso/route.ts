@@ -1,0 +1,34 @@
+import { NextResponse } from 'next/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+
+// Academia y Talento Humano comparten el mismo proyecto de Supabase (mismo
+// auth.users), asi que en vez de mandar al usuario al login de Academia se
+// genera un magic link para su sesion ya autenticada aqui y se le redirige
+// con eso, evitando que tenga que volver a loguearse.
+const ACADEMIA_REDIRECT_URL = 'https://academia-fpk.vercel.app/auth/callback'
+
+export async function POST() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user?.email) {
+        return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const admin = createAdminClient(supabaseUrl, serviceRoleKey)
+
+    const { data, error } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: user.email,
+        options: { redirectTo: ACADEMIA_REDIRECT_URL },
+    })
+
+    if (error || !data?.properties?.action_link) {
+        return NextResponse.json({ error: error?.message || 'No se pudo generar el enlace' }, { status: 500 })
+    }
+
+    return NextResponse.json({ url: data.properties.action_link })
+}

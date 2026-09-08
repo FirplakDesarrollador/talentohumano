@@ -73,6 +73,23 @@ export default function MenuPage() {
         router.refresh()
     }
 
+    // Evita que tenga que loguearse de nuevo en Academia: pide un magic link
+    // para su propia sesion (mismo proyecto de Supabase) y abre eso en vez
+    // del login. Si algo falla, cae de vuelta al login normal.
+    const handleAcademiaClick = async () => {
+        try {
+            const res = await fetch('/api/academia-sso', { method: 'POST' })
+            const json = await res.json()
+            if (res.ok && json.url) {
+                window.open(json.url, '_blank', 'noopener,noreferrer')
+                return
+            }
+        } catch {
+            // sigue al fallback de abajo
+        }
+        window.open('https://academia-fpk.vercel.app/login', '_blank', 'noopener,noreferrer')
+    }
+
     const normalizedUserEmail = (user?.email || '').toLowerCase().trim()
     const isSystemAdmin = (normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)) || ADMIN_LEVELS.includes(userLevel as any)
     // An Analista from an administrative area only gets Gestor de Personal if explicitly
@@ -147,7 +164,8 @@ export default function MenuPage() {
             href: 'https://academia-fpk.vercel.app/login',
             icon: GraduationCap,
             visible: isSystemAdmin,
-            external: true
+            external: true,
+            sso: true
         }
     ]
 
@@ -230,7 +248,11 @@ export default function MenuPage() {
                                 </span>
                             </div>
                         )
-                        return item.external ? (
+                        return item.sso ? (
+                            <button key={item.title} type="button" onClick={handleAcademiaClick}>
+                                {tile}
+                            </button>
+                        ) : item.external ? (
                             <a key={item.title} href={item.href} target="_blank" rel="noopener noreferrer">
                                 {tile}
                             </a>
