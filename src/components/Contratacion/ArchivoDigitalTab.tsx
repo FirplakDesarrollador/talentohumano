@@ -53,6 +53,22 @@ function normalize(s: string) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
+const SUBCARPETAS_ORDEN = ['Contrato', 'Correspondencia', 'Procesos disciplinarios', 'Documentos'] as const
+
+// El storage_path conserva la ruta original de OneDrive al migrar (ej.
+// "activos/NOMBRE/Documentos/Contrato/archivo.pdf"), asi que la subcarpeta
+// se puede derivar sin tocar la base de datos. Los nombres de carpeta se
+// digitaron a mano en el origen (con variaciones/typos), por eso se busca
+// por palabra clave en vez de exigir un segmento exacto; lo que no calza
+// en ninguna palabra clave cae en "Documentos".
+function classifySubcarpeta(storagePath: string): (typeof SUBCARPETAS_ORDEN)[number] {
+    const path = normalize(storagePath)
+    if (path.includes('disciplin')) return 'Procesos disciplinarios'
+    if (path.includes('correspond')) return 'Correspondencia'
+    if (path.includes('contrato')) return 'Contrato'
+    return 'Documentos'
+}
+
 interface ArchivoDigitalTabProps {
     initialBusqueda?: string
     initialCategoria?: string | null
@@ -254,29 +270,46 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                 <Loader2 className="h-4 w-4 animate-spin" /> Cargando archivos...
                                             </div>
                                         ) : (
-                                            <div className="divide-y divide-slate-50">
-                                                {docs.map(doc => (
-                                                    <button
-                                                        key={doc.id}
-                                                        onClick={() => handleOpen(doc)}
-                                                        disabled={openingId === doc.id}
-                                                        className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-blue-50/30 transition-colors text-left group"
-                                                    >
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                                                            <span className="text-sm font-medium text-slate-700 truncate">{doc.nombre_archivo}</span>
+                                            (() => {
+                                                const grouped = new Map<string, Documento[]>()
+                                                docs.forEach(doc => {
+                                                    const key = classifySubcarpeta(doc.storage_path)
+                                                    if (!grouped.has(key)) grouped.set(key, [])
+                                                    grouped.get(key)!.push(doc)
+                                                })
+                                                return SUBCARPETAS_ORDEN.filter(sub => grouped.has(sub)).map(sub => (
+                                                    <div key={sub}>
+                                                        <div className="px-6 py-2 bg-slate-50/70 border-b border-t border-slate-50 flex items-center gap-2">
+                                                            <Folder className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{sub}</span>
+                                                            <span className="text-[10px] text-slate-400 ml-auto">{grouped.get(sub)!.length}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-3 shrink-0 pl-4">
-                                                            <span className="text-[10px] font-bold text-slate-400">{formatSize(doc.tamano_bytes)}</span>
-                                                            {openingId === doc.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                                                            ) : (
-                                                                <ExternalLink className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
-                                                            )}
+                                                        <div className="divide-y divide-slate-50">
+                                                            {grouped.get(sub)!.map(doc => (
+                                                                <button
+                                                                    key={doc.id}
+                                                                    onClick={() => handleOpen(doc)}
+                                                                    disabled={openingId === doc.id}
+                                                                    className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-blue-50/30 transition-colors text-left group"
+                                                                >
+                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                        <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+                                                                        <span className="text-sm font-medium text-slate-700 truncate">{doc.nombre_archivo}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3 shrink-0 pl-4">
+                                                                        <span className="text-[10px] font-bold text-slate-400">{formatSize(doc.tamano_bytes)}</span>
+                                                                        {openingId === doc.id ? (
+                                                                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                                                                        ) : (
+                                                                            <ExternalLink className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                                                        )}
+                                                                    </div>
+                                                                </button>
+                                                            ))}
                                                         </div>
-                                                    </button>
-                                                ))}
-                                            </div>
+                                                    </div>
+                                                ))
+                                            })()
                                         )}
                                     </div>
                                 )}
