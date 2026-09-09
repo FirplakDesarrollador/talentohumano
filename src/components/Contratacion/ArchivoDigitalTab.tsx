@@ -87,6 +87,9 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
     const [filesByFolder, setFilesByFolder] = useState<Record<string, Documento[]>>({})
     const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set())
+    // Clave "carpeta::subcarpeta" — cada subcarpeta (Contrato, Correspondencia, etc.)
+    // se despliega por separado, con clic, igual que la carpeta del empleado.
+    const [expandedSubcarpetas, setExpandedSubcarpetas] = useState<Set<string>>(new Set())
 
     // Si el padre cambia el filtro (ej. "Ver en Archivo Digital" desde un
     // empleado especifico), sincroniza categoria/busqueda con lo nuevo.
@@ -150,6 +153,16 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
         if (!filesByFolder[carpeta]) {
             fetchFolderFiles(carpeta)
         }
+    }
+
+    const toggleSubcarpeta = (carpeta: string, sub: string) => {
+        const key = `${carpeta}::${sub}`
+        setExpandedSubcarpetas(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key)
+            else next.add(key)
+            return next
+        })
     }
 
     const filteredFolders = useMemo(() => {
@@ -277,14 +290,27 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                     if (!grouped.has(key)) grouped.set(key, [])
                                                     grouped.get(key)!.push(doc)
                                                 })
-                                                return SUBCARPETAS_ORDEN.filter(sub => grouped.has(sub)).map(sub => (
+                                                return SUBCARPETAS_ORDEN.filter(sub => grouped.has(sub)).map(sub => {
+                                                    const subKey = `${carpeta}::${sub}`
+                                                    const isSubOpen = expandedSubcarpetas.has(subKey)
+                                                    return (
                                                     <div key={sub}>
-                                                        <div className="px-6 py-2 bg-slate-50/70 border-b border-t border-slate-50 flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleSubcarpeta(carpeta, sub)}
+                                                            className="w-full px-6 py-2 bg-slate-50/70 border-b border-t border-slate-50 flex items-center gap-2 hover:bg-slate-100/70 transition-colors text-left"
+                                                        >
                                                             <Folder className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{sub}</span>
                                                             <span className="text-[10px] text-slate-400 ml-auto">{grouped.get(sub)!.length}</span>
-                                                        </div>
-                                                        <div className="divide-y divide-slate-50">
+                                                            {isSubOpen ? (
+                                                                <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                                            ) : (
+                                                                <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                                            )}
+                                                        </button>
+                                                        {isSubOpen && (
+                                                        <div className="divide-y divide-slate-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                                             {grouped.get(sub)!.map(doc => (
                                                                 <button
                                                                     key={doc.id}
@@ -307,8 +333,10 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                                 </button>
                                                             ))}
                                                         </div>
+                                                        )}
                                                     </div>
-                                                ))
+                                                    )
+                                                })
                                             })()
                                         )}
                                     </div>
