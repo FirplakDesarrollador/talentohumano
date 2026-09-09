@@ -116,7 +116,8 @@ export const SUPERVISORES_MUEBLES_CEFI = [
     'supervisorproduccion@firplak.com',
     'alejandro.gonzalez@firplak.com',
     'juan.montoya@firplak.com',
-    'supervisorcalidad@firplak.com'
+    'supervisorcalidad@firplak.com',
+    'jair.alvarez@firplak.com',
 ];
 
 /**
