@@ -12,7 +12,9 @@ import {
     HardDrive,
     ChevronDown,
     ChevronRight,
+    UploadCloud,
 } from 'lucide-react'
+import { SubirArchivoModal } from './SubirArchivoModal'
 
 interface Documento {
     id: number
@@ -90,6 +92,7 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
     // Clave "carpeta::subcarpeta" — cada subcarpeta (Contrato, Correspondencia, etc.)
     // se despliega por separado, con clic, igual que la carpeta del empleado.
     const [expandedSubcarpetas, setExpandedSubcarpetas] = useState<Set<string>>(new Set())
+    const [uploadCarpeta, setUploadCarpeta] = useState<string | null>(null)
 
     // Si el padre cambia el filtro (ej. "Ver en Archivo Digital" desde un
     // empleado especifico), sincroniza categoria/busqueda con lo nuevo.
@@ -163,6 +166,13 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
             else next.add(key)
             return next
         })
+    }
+
+    // Tras subir un archivo: refresca esa carpeta (y su contador) sin colapsar
+    // ni recargar todo lo demas que el usuario ya tenia abierto.
+    const handleFileUploaded = (carpeta: string) => {
+        fetchFolderFiles(carpeta)
+        setFolders(prev => prev.map(f => f.carpeta === carpeta ? { ...f, cantidad: f.cantidad + 1 } : f))
     }
 
     const filteredFolders = useMemo(() => {
@@ -278,6 +288,16 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                 </button>
                                 {isOpen && (
                                     <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-6 py-3 border-b border-slate-50 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => setUploadCarpeta(carpeta)}
+                                                className="flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors"
+                                            >
+                                                <UploadCloud className="h-4 w-4" />
+                                                Subir archivo
+                                            </button>
+                                        </div>
                                         {isLoadingFiles || !docs ? (
                                             <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-sm">
                                                 <Loader2 className="h-4 w-4 animate-spin" /> Cargando archivos...
@@ -346,6 +366,14 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                     })}
                 </div>
             )}
+
+            <SubirArchivoModal
+                isOpen={uploadCarpeta !== null}
+                onClose={() => setUploadCarpeta(null)}
+                categoria={categoria}
+                carpetaOrigen={uploadCarpeta || ''}
+                onUploaded={() => uploadCarpeta && handleFileUploaded(uploadCarpeta)}
+            />
         </div>
     )
 }
