@@ -84,6 +84,33 @@ export function CandidatosKanban() {
         toast.success('Empleado creado en el maestro de Empleados (completa cargo/planta en Gestor de Personal)')
     }
 
+    // Copia los documentos que el candidato subio en la postulacion (cedula,
+    // hoja de vida, EPS, etc.) hacia su carpeta de Archivo Digital, en
+    // ACTIVOS/<nombre>/Documentos/Documentos. Es aditivo/idempotente: si se
+    // llama dos veces no duplica lo que ya haya copiado.
+    const crearArchivoDigital = async (candidate: Candidato) => {
+        try {
+            const res = await fetch('/api/contratacion/crear-archivo-digital', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    candidatoId: candidate.id,
+                    cedula: candidate.cedula,
+                    nombreCompleto: candidate.nombre_completo,
+                }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'No se pudo crear el archivo digital')
+
+            if (json.archivosCopiados > 0) {
+                toast.success(`Archivo Digital creado: ${json.archivosCopiados} documento${json.archivosCopiados === 1 ? '' : 's'} copiado${json.archivosCopiados === 1 ? '' : 's'}`)
+            }
+        } catch (err: any) {
+            console.error('Error creando archivo digital:', err)
+            toast.warning('No se pudo crear el Archivo Digital automáticamente: ' + (err.message || ''))
+        }
+    }
+
     const handleUpdateEstado = async (candidate: Candidato, nuevoEstado: string) => {
         setUpdatingId(candidate.id)
         try {
@@ -96,6 +123,7 @@ export function CandidatosKanban() {
 
             if (nuevoEstado === 'APROBADO') {
                 await ensureEmpleadoExiste(candidate)
+                await crearArchivoDigital(candidate)
             }
 
             await fetchCandidates()
