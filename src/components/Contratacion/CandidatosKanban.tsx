@@ -24,6 +24,8 @@ interface Candidato {
     cesantias: string
     banco: string
     cuenta_bancaria: string
+    cargo?: string | null
+    area?: string | null
     documentos: Documento[] | null
 }
 
@@ -35,6 +37,24 @@ export function CandidatosKanban() {
     const [selectedCandidate, setSelectedCandidate] = useState<Candidato | null>(null)
     const [updatingId, setUpdatingId] = useState<string | null>(null)
     const [pendingCancel, setPendingCancel] = useState<Candidato | null>(null)
+    const [pendingVerificacion, setPendingVerificacion] = useState<Candidato | null>(null)
+    const [existingCargos, setExistingCargos] = useState<string[]>([])
+    const [existingAreas, setExistingAreas] = useState<string[]>([])
+
+    useEffect(() => {
+        const fetchHelpers = async () => {
+            try {
+                const { data: jobs } = await (supabase as any).from('cargos').select('cargo').order('cargo', { ascending: true })
+                if (jobs) setExistingCargos(Array.from(new Set((jobs as any[]).map(j => j.cargo).filter(Boolean))).sort() as string[])
+
+                const { data: plantas } = await (supabase as any).from('plantas').select('planta').order('id', { ascending: true })
+                if (plantas) setExistingAreas(Array.from(new Set((plantas as any[]).map(p => p.planta).filter(Boolean))) as string[])
+            } catch (err) {
+                console.error('Error fetching cargos/areas:', err)
+            }
+        }
+        fetchHelpers()
+    }, [supabase])
 
     // Al pasar a "Listos para Contratar", verifica si ya existe un registro
     // en empleados para esa cedula (empleados.id ES la cedula en esta app) y,
@@ -84,18 +104,48 @@ export function CandidatosKanban() {
         toast.success('Empleado creado en el maestro de Empleados (completa cargo/planta en Gestor de Personal)')
     }
 
-    const handleUpdateEstado = async (candidate: Candidato, nuevoEstado: string) => {
+    // Copia los documentos que el candidato subio en la postulacion (cedula,
+    // hoja de vida, EPS, etc.) hacia su carpeta de Archivo Digital, en
+    // ACTIVOS/<nombre>/Documentos/Documentos. Es aditivo/idempotente: si se
+    // llama dos veces no duplica lo que ya haya copiado.
+    const crearArchivoDigital = async (candidate: Candidato) => {
+        try {
+            const res = await fetch('/api/contratacion/crear-archivo-digital', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    candidatoId: candidate.id,
+                    cedula: candidate.cedula,
+                    nombreCompleto: candidate.nombre_completo,
+                }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'No se pudo crear el archivo digital')
+
+            if (json.archivosCopiados > 0) {
+                toast.success(`Archivo Digital creado: ${json.archivosCopiados} documento${json.archivosCopiados === 1 ? '' : 's'} copiado${json.archivosCopiados === 1 ? '' : 's'}`)
+            }
+        } catch (err: any) {
+            console.error('Error creando archivo digital:', err)
+            toast.warning('No se pudo crear el Archivo Digital automáticamente: ' + (err.message || ''))
+        }
+    }
+
+    const handleUpdateEstado = async (candidate: Candidato, nuevoEstado: string, opts?: { cargo?: string; area?: string }) => {
         setUpdatingId(candidate.id)
         try {
             const { data, error } = await (supabase.rpc as any)('update_candidate_status', {
                 p_candidato_id: candidate.id,
                 p_nuevo_estado: nuevoEstado,
+                p_cargo: opts?.cargo || null,
+                p_area: opts?.area || null,
             })
             if (error) throw error
             if (data && !data.success) throw new Error(data.error)
 
             if (nuevoEstado === 'APROBADO') {
                 await ensureEmpleadoExiste(candidate)
+                await crearArchivoDigital(candidate)
             }
 
             await fetchCandidates()
@@ -193,7 +243,7 @@ export function CandidatosKanban() {
                                         candidate={candidate}
                                         onClick={() => setSelectedCandidate(candidate)}
                                         updating={updatingId === candidate.id}
-                                        onAvanzar={col.estado === 'NUEVO' ? () => handleUpdateEstado(candidate, 'REVISION') : undefined}
+                                        onAvanzar={col.estado === 'NUEVO' ? () => setPendingVerificacion(candidate) : undefined}
                                         onAprobar={col.estado === 'REVISION' ? () => handleUpdateEstado(candidate, 'APROBADO') : undefined}
                                         onCancelar={col.estado === 'REVISION' ? () => setPendingCancel(candidate) : undefined}
                                     />
@@ -207,6 +257,20 @@ export function CandidatosKanban() {
 
             {selectedCandidate && (
                 <CandidateDetailModal candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />
+            )}
+
+            {pendingVerificacion && (
+                <VerificacionModal
+                    candidate={pendingVerificacion}
+                    existingCargos={existingCargos}
+                    existingAreas={existingAreas}
+                    saving={updatingId === pendingVerificacion.id}
+                    onClose={() => setPendingVerificacion(null)}
+                    onConfirm={async (cargo, area) => {
+                        await handleUpdateEstado(pendingVerificacion, 'REVISION', { cargo, area })
+                        setPendingVerificacion(null)
+                    }}
+                />
             )}
 
             <ConfirmDialog
@@ -289,6 +353,75 @@ function CandidateCard({ candidate, onClick, updating, onAvanzar, onAprobar, onC
                     )}
                 </div>
             )}
+        </div>
+    )
+}
+
+function VerificacionModal({ candidate, existingCargos, existingAreas, saving, onClose, onConfirm }: {
+    candidate: Candidato
+    existingCargos: string[]
+    existingAreas: string[]
+    saving: boolean
+    onClose: () => void
+    onConfirm: (cargo: string, area: string) => void
+}) {
+    const [cargo, setCargo] = useState(candidate.cargo || '')
+    const [area, setArea] = useState(candidate.area || '')
+    const canConfirm = cargo.trim() !== '' && area.trim() !== '' && !saving
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-300 border border-white">
+                <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-black text-xl text-slate-800 tracking-tight">Pasar a En Verificación</h3>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-50 rounded-full transition-all">
+                        <X size={20} />
+                    </button>
+                </div>
+                <p className="text-sm text-slate-500 font-medium mb-6">{candidate.nombre_completo}</p>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Cargo <span className="text-rose-500">*</span></label>
+                        <select
+                            value={cargo}
+                            onChange={(e) => setCargo(e.target.value)}
+                            className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                        >
+                            <option value="">Seleccione cargo</option>
+                            {existingCargos.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Área <span className="text-rose-500">*</span></label>
+                        <select
+                            value={area}
+                            onChange={(e) => setArea(e.target.value)}
+                            className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                        >
+                            <option value="">Seleccione área</option>
+                            {existingAreas.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="mt-8 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        disabled={!canConfirm}
+                        onClick={() => onConfirm(cargo, area)}
+                        className="flex-1 h-11 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmar'}
+                    </button>
+                </div>
+            </div>
         </div>
     )
 }
