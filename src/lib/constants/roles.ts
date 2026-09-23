@@ -363,7 +363,7 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (JEFES_MANTENIMIENTO.includes(email)) plantas.add('Mantenimiento');
     if (DIRECTORES_CON_ACCESO.includes(email)) PLANTAS_DIRECTORES_PERMITIDAS.forEach(p => plantas.add(p));
 
-    // Calidad se dividio en sub-areas por planta (Fibra/Marmol/Muebles (Calidad)),
+    // Calidad se dividio en sub-areas por planta (Fibra/Marmol/Muebles/Cefi (Calidad)),
     // ademas de la generica "Calidad" que sigue existiendo. Quien tenia acceso a
     // "Calidad" debe seguir viendo a esos mismos empleados aunque su area haya
     // cambiado de nombre.
@@ -371,6 +371,7 @@ export function getPlantasPermitidas(email: string): string[] | null {
         plantas.add('Fibra (Calidad)');
         plantas.add('Marmol (Calidad)');
         plantas.add('Muebles (Calidad)');
+        plantas.add('Cefi (Calidad)');
     }
 
     if (plantas.size === 0) return null;

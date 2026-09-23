@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Users, Sparkles, X, Check, CreditCard, FileText, Loader2, Phone, Mail, Landmark, RefreshCcw, ArrowRight, Ban } from 'lucide-react'
+import { Search, Users, Sparkles, X, Check, CreditCard, FileText, Loader2, Phone, Mail, Landmark, RefreshCcw, ArrowRight, Ban, FilePlus2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from 'sonner'
 
@@ -38,6 +38,8 @@ export function CandidatosKanban() {
     const [updatingId, setUpdatingId] = useState<string | null>(null)
     const [pendingCancel, setPendingCancel] = useState<Candidato | null>(null)
     const [pendingVerificacion, setPendingVerificacion] = useState<Candidato | null>(null)
+    const [pendingContrato, setPendingContrato] = useState<Candidato | null>(null)
+    const [creandoContrato, setCreandoContrato] = useState(false)
     const [existingCargos, setExistingCargos] = useState<string[]>([])
     const [existingAreas, setExistingAreas] = useState<string[]>([])
 
@@ -128,6 +130,52 @@ export function CandidatosKanban() {
         } catch (err: any) {
             console.error('Error creando archivo digital:', err)
             toast.warning('No se pudo crear el Archivo Digital automáticamente: ' + (err.message || ''))
+        }
+    }
+
+    const crearContrato = async (candidate: Candidato, datos: {
+        tipo: 'INDEFINIDO' | 'TERMINO_FIJO'
+        cargo: string
+        salario: string
+        direccion: string
+        fecha_nacimiento: string
+        lugar_nacimiento: string
+    }) => {
+        setCreandoContrato(true)
+        try {
+            const res = await fetch('/api/contratacion/crear-contrato', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    empleadoId: candidate.cedula,
+                    ...datos,
+                }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'No se pudo crear el contrato')
+
+            const byteChars = atob(json.archivoBase64)
+            const byteNumbers = new Array(byteChars.length)
+            for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i)
+            const blob = new Blob([new Uint8Array(byteNumbers)], { type: json.contentType })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = json.nombreArchivo
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+
+            toast.success(json.fueConvertidoAPdf
+                ? 'Contrato generado y guardado en Archivo Digital'
+                : 'Contrato generado en Word (no se pudo convertir a PDF) y guardado en Archivo Digital')
+            setPendingContrato(null)
+        } catch (err: any) {
+            console.error('Error creando contrato:', err)
+            toast.error(err.message || 'No se pudo crear el contrato')
+        } finally {
+            setCreandoContrato(false)
         }
     }
 
@@ -246,6 +294,7 @@ export function CandidatosKanban() {
                                         onAvanzar={col.estado === 'NUEVO' ? () => setPendingVerificacion(candidate) : undefined}
                                         onAprobar={col.estado === 'REVISION' ? () => handleUpdateEstado(candidate, 'APROBADO') : undefined}
                                         onCancelar={col.estado === 'REVISION' ? () => setPendingCancel(candidate) : undefined}
+                                        onCrearContrato={col.estado === 'APROBADO' ? () => setPendingContrato(candidate) : undefined}
                                     />
                                 ))}
                                 {filteredCandidates.filter(c => c.estado === col.estado).length === 0 && <EmptyColumn />}
@@ -273,6 +322,16 @@ export function CandidatosKanban() {
                 />
             )}
 
+            {pendingContrato && (
+                <CrearContratoModal
+                    candidate={pendingContrato}
+                    existingCargos={existingCargos}
+                    saving={creandoContrato}
+                    onClose={() => setPendingContrato(null)}
+                    onConfirm={(datos) => crearContrato(pendingContrato, datos)}
+                />
+            )}
+
             <ConfirmDialog
                 isOpen={!!pendingCancel}
                 variant="danger"
@@ -290,13 +349,14 @@ export function CandidatosKanban() {
     )
 }
 
-function CandidateCard({ candidate, onClick, updating, onAvanzar, onAprobar, onCancelar }: {
+function CandidateCard({ candidate, onClick, updating, onAvanzar, onAprobar, onCancelar, onCrearContrato }: {
     candidate: Candidato
     onClick: () => void
     updating?: boolean
     onAvanzar?: () => void
     onAprobar?: () => void
     onCancelar?: () => void
+    onCrearContrato?: () => void
 }) {
     return (
         <div
@@ -316,7 +376,7 @@ function CandidateCard({ candidate, onClick, updating, onAvanzar, onAprobar, onC
                 </div>
             </div>
 
-            {(onAvanzar || onAprobar || onCancelar) && (
+            {(onAvanzar || onAprobar || onCancelar || onCrearContrato) && (
                 <div className="mt-4 pt-4 border-t border-slate-50 flex gap-2" onClick={(e) => e.stopPropagation()}>
                     {updating ? (
                         <div className="flex-1 flex items-center justify-center py-2">
@@ -347,6 +407,14 @@ function CandidateCard({ candidate, onClick, updating, onAvanzar, onAprobar, onC
                                     title="Cancelar proceso"
                                 >
                                     <Ban className="h-3 w-3" />
+                                </button>
+                            )}
+                            {onCrearContrato && (
+                                <button
+                                    onClick={onCrearContrato}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all"
+                                >
+                                    Crear Contrato <FilePlus2 className="h-3 w-3" />
                                 </button>
                             )}
                         </>
@@ -421,6 +489,150 @@ function VerificacionModal({ candidate, existingCargos, existingAreas, saving, o
                         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmar'}
                     </button>
                 </div>
+            </div>
+        </div>
+    )
+}
+
+function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConfirm }: {
+    candidate: Candidato
+    existingCargos: string[]
+    saving: boolean
+    onClose: () => void
+    onConfirm: (datos: {
+        tipo: 'INDEFINIDO' | 'TERMINO_FIJO'
+        cargo: string
+        salario: string
+        direccion: string
+        fecha_nacimiento: string
+        lugar_nacimiento: string
+    }) => void
+}) {
+    const [step, setStep] = useState<1 | 2>(1)
+    const [tipo, setTipo] = useState<'INDEFINIDO' | 'TERMINO_FIJO' | null>(null)
+    const [cargo, setCargo] = useState(candidate.cargo || '')
+    const [salario, setSalario] = useState('')
+    const [direccion, setDireccion] = useState('')
+    const [fechaNacimiento, setFechaNacimiento] = useState('')
+    const [lugarNacimiento, setLugarNacimiento] = useState('')
+
+    const canConfirm = cargo.trim() !== '' && Number(salario) > 0 && direccion.trim() !== '' && fechaNacimiento !== '' && lugarNacimiento.trim() !== '' && !saving
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-300 border border-white">
+                <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-black text-xl text-slate-800 tracking-tight">Crear Contrato</h3>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-50 rounded-full transition-all">
+                        <X size={20} />
+                    </button>
+                </div>
+                <p className="text-sm text-slate-500 font-medium mb-6">{candidate.nombre_completo}</p>
+
+                {step === 1 && (
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Tipo de contrato</label>
+                        <button
+                            onClick={() => setTipo('TERMINO_FIJO')}
+                            className={`w-full text-left p-4 rounded-xl border-2 transition-all ${tipo === 'TERMINO_FIJO' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <p className="font-bold text-sm text-slate-800">Término Fijo</p>
+                            <p className="text-xs text-slate-500">Duración inicial de 3 meses</p>
+                        </button>
+                        <button
+                            onClick={() => setTipo('INDEFINIDO')}
+                            className={`w-full text-left p-4 rounded-xl border-2 transition-all ${tipo === 'INDEFINIDO' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <p className="font-bold text-sm text-slate-800">Indefinido</p>
+                            <p className="text-xs text-slate-500">Sin fecha de finalización</p>
+                        </button>
+
+                        <div className="mt-6 flex gap-3">
+                            <button onClick={onClose} className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">
+                                Cancelar
+                            </button>
+                            <button
+                                disabled={!tipo}
+                                onClick={() => setStep(2)}
+                                className="flex-1 h-11 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 2 && (
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Cargo <span className="text-rose-500">*</span></label>
+                            <input
+                                list="crear-contrato-cargos"
+                                value={cargo}
+                                onChange={(e) => setCargo(e.target.value)}
+                                placeholder="Seleccione o escriba el cargo"
+                                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                            />
+                            <datalist id="crear-contrato-cargos">
+                                {existingCargos.map(c => <option key={c} value={c} />)}
+                            </datalist>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Salario <span className="text-rose-500">*</span></label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={salario}
+                                onChange={(e) => setSalario(e.target.value)}
+                                placeholder="Ej. 1800000"
+                                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Dirección <span className="text-rose-500">*</span></label>
+                            <input
+                                value={direccion}
+                                onChange={(e) => setDireccion(e.target.value)}
+                                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Fecha nacimiento <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="date"
+                                    value={fechaNacimiento}
+                                    onChange={(e) => setFechaNacimiento(e.target.value)}
+                                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Lugar nacimiento <span className="text-rose-500">*</span></label>
+                                <input
+                                    value={lugarNacimiento}
+                                    onChange={(e) => setLugarNacimiento(e.target.value)}
+                                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex gap-3">
+                            <button onClick={() => setStep(1)} disabled={saving} className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-40 transition-all">
+                                Atrás
+                            </button>
+                            <button
+                                disabled={!canConfirm}
+                                onClick={() => tipo && onConfirm({ tipo, cargo: cargo.trim(), salario, direccion, fecha_nacimiento: fechaNacimiento, lugar_nacimiento: lugarNacimiento })}
+                                className="flex-1 h-11 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                            >
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generar contrato'}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )
