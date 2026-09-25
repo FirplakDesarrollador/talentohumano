@@ -39,7 +39,7 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
 
     useEffect(() => {
         if (isOpen) {
-            fetchMotivos()
+            fetchMotivos(proceso?.motivo_id)
             if (proceso) {
                 setTipo(proceso.tipo)
                 setMotivoId(proceso.motivo_id?.toString() || '')
@@ -53,16 +53,31 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, proceso])
 
-    const fetchMotivos = async () => {
+    const fetchMotivos = async (motivoIdActual?: number) => {
         setFetchingMotivos(true)
         try {
             const { data, error } = await supabase
                 .from('motivos_sanciones' as any)
                 .select('*')
+                .eq('activo', true)
                 .order('motivo')
 
             if (error) throw error
-            setMotivos(data || [])
+            let lista = (data || []) as any as MotivoSancion[]
+
+            // Si se esta editando un proceso cuyo motivo ya fue desactivado
+            // (reemplazado por los del nuevo reglamento), lo agregamos igual
+            // a la lista para que el desplegable lo siga mostrando.
+            if (motivoIdActual && !lista.some(m => m.id === motivoIdActual)) {
+                const { data: motivoAnterior } = await supabase
+                    .from('motivos_sanciones' as any)
+                    .select('*')
+                    .eq('id', motivoIdActual)
+                    .maybeSingle()
+                if (motivoAnterior) lista = [...lista, motivoAnterior as any]
+            }
+
+            setMotivos(lista)
         } catch (error) {
             console.error('Error fetching motivos:', error)
             toast.error('No se pudieron cargar los motivos de sanción')
@@ -104,7 +119,8 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
                     created_by: user?.user_metadata?.nombre || user?.email || 'Sistema',
                     created_at: new Date().toISOString(),
                     motivo_id: tipo === 'Compromiso' ? 19 : parseInt(motivoId),
-                    empleado_id: empleadoId
+                    empleado_id: empleadoId,
+                    estado: 'PENDIENTE'
                 }
 
                 const { error } = await (supabase as any)
@@ -182,7 +198,7 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
                                 <Label className="text-[#1D3557] font-black uppercase text-[10px] tracking-[0.2em] ml-1">
                                     Motivo de la sanción
                                 </Label>
-                                <Select value={motivoId} onValueChange={setMotivoId}>
+                                <Select value={motivoId} onValueChange={setMotivoId} searchable>
                                     <SelectTrigger className="border-2 border-gray-50 bg-gray-50 focus:border-[#1D3557] focus:ring-0 transition-all rounded-2xl h-14 px-5 font-semibold text-[#1D3557]">
                                         <SelectValue placeholder={fetchingMotivos ? "Cargando motivos..." : "Seleccione el motivo..."} />
                                     </SelectTrigger>

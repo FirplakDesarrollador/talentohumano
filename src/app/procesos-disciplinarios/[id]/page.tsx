@@ -205,6 +205,24 @@ export default function DetalleProcesosDisciplinarioPage() {
         }
     }
 
+    const handleToggleEstado = async (proceso: any) => {
+        const nuevoEstado = proceso.estado === 'PENDIENTE' ? 'FINALIZADO' : 'PENDIENTE'
+        try {
+            const { error } = await (supabase as any)
+                .from('procesos_disciplinarios')
+                .update({ estado: nuevoEstado })
+                .eq('id', proceso.id)
+
+            if (error) throw error
+
+            toast.success(nuevoEstado === 'FINALIZADO' ? 'Proceso marcado como finalizado' : 'Proceso reabierto como pendiente')
+            fetchData()
+        } catch (err: any) {
+            console.error('Error updating estado:', err)
+            toast.error('No se pudo actualizar el estado del proceso')
+        }
+    }
+
     const handleCloseModal = () => {
         setIsCreateModalOpen(false)
         setEditingProceso(null)
@@ -296,6 +314,7 @@ export default function DetalleProcesosDisciplinarioPage() {
                                                 }}
                                                 onEdit={handleEdit}
                                                 onDelete={handleDelete}
+                                                onToggleEstado={handleToggleEstado}
                                             />
                                         </div>
                                     ))}

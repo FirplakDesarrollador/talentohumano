@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO, isValid, differenceInHours } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2 } from 'lucide-react'
+import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2, Clock, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -18,12 +18,14 @@ interface ProcesoCardProps {
         motivo_id?: number
         created_by: string
         comentario: string
+        estado?: string
     }
     onEdit?: (proceso: any) => void
     onDelete?: (proceso: any) => void
+    onToggleEstado?: (proceso: any) => void
 }
 
-export function ProcesoCard({ proceso, onEdit, onDelete }: ProcesoCardProps) {
+export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: ProcesoCardProps) {
     const supabase = createClient()
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [pendingDelete, setPendingDelete] = useState(false)
@@ -72,9 +74,26 @@ export function ProcesoCard({ proceso, onEdit, onDelete }: ProcesoCardProps) {
             <div className={`h-1 w-full ${proceso.tipo === 'Descargo' ? 'bg-red-500' :
                     proceso.tipo === 'Llamado de atencion' ? 'bg-orange-500' : 'bg-blue-500'
                 }`} />
-            
-            {((onEdit && canEdit()) || (onDelete && isAdmin())) && (
+
+            {((onEdit && canEdit()) || (onDelete && isAdmin()) || (onToggleEstado && canEdit())) && (
                 <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                    {onToggleEstado && canEdit() && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onToggleEstado(proceso)}
+                            className={`bg-white/90 backdrop-blur-sm rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm ${proceso.estado === 'PENDIENTE'
+                                    ? 'border-emerald-200 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50'
+                                    : 'border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50'
+                                }`}
+                        >
+                            {proceso.estado === 'PENDIENTE' ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Marcar finalizado</>
+                            ) : (
+                                <><Clock className="h-3 w-3" /> Reabrir</>
+                            )}
+                        </Button>
+                    )}
                     {onEdit && canEdit() && (
                         <Button
                             variant="outline"
@@ -112,6 +131,17 @@ export function ProcesoCard({ proceso, onEdit, onDelete }: ProcesoCardProps) {
             />
 
             <CardContent className="p-6">
+                <div className="mb-5">
+                    {proceso.estado === 'PENDIENTE' ? (
+                        <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            <Clock className="h-3 w-3" /> Pendiente
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            <CheckCircle2 className="h-3 w-3" /> Finalizado
+                        </span>
+                    )}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Fecha */}
                     <div className="flex items-start gap-3">
