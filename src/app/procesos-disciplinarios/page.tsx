@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -17,7 +17,10 @@ import {
     Users,
     ShieldAlert,
     ChevronRight,
-    SearchX
+    SearchX,
+    Clock,
+    CheckCircle2,
+    ClipboardList
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eliminarAcentos } from '@/lib/utils'
@@ -40,18 +43,26 @@ export default function BuscadorProcesosDisciplinariosPage() {
     // UI State
     const [busqueda, setBusqueda] = useState('')
     const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState<'empleados' | 'procesos'>('empleados')
+
+    // Procesos (cross-employee) State
+    const [procesos, setProcesos] = useState<any[]>([])
+    const [loadingProcesos, setLoadingProcesos] = useState(true)
+    const [busquedaPendientes, setBusquedaPendientes] = useState('')
+    const [busquedaFinalizados, setBusquedaFinalizados] = useState('')
 
     // 2. Fetch Empleados
     const fetchEmpleados = useCallback(async (userProfile: any) => {
         setLoading(true)
         try {
-            // Fetch the whole active roster once. We need it in memory anyway to walk the
-            // jefe -> nombreCompleto chain (jefe de jefe, etc.), so filtering happens
-            // client-side below instead of via a single-level SQL "jefe.eq" match.
+            // Fetch the whole roster (activos + retirados) once. We need it in memory anyway
+            // to walk the jefe -> nombreCompleto chain (jefe de jefe, etc.), so filtering
+            // happens client-side below instead of via a single-level SQL "jefe.eq" match.
+            // Los retirados se excluyen despues para la pestana de Empleados, pero se
+            // mantienen para poder listar sus procesos disciplinarios en la pestana Procesos.
             const { data, error } = await supabase
                 .from('empleados')
                 .select('*')
-                .eq('activo', true)
                 .order('nombreCompleto', { ascending: true })
 
             if (error) throw error
@@ -99,13 +110,44 @@ export default function BuscadorProcesosDisciplinariosPage() {
                 }
             }
 
-            setEmpleados(result)
-            setFilteredEmpleados(result)
+            // La pestana de Procesos ve tambien a los retirados; la de Empleados no.
+            fetchProcesos(result.map(e => e.id))
+
+            const activos = result.filter(e => e.activo)
+            setEmpleados(activos)
+            setFilteredEmpleados(activos)
         } catch (err: any) {
             console.error('Error fetching empleados:', err)
             toast.error('No se pudieron cargar los empleados')
         } finally {
             setLoading(false)
+        }
+    }, [supabase])
+
+    // Trae todos los procesos disciplinarios de los empleados que el usuario
+    // puede ver (mismo alcance que la pestana de Empleados), para poder
+    // separarlos en Pendientes / Finalizados sin importar a que empleado
+    // pertenezcan.
+    const fetchProcesos = useCallback(async (empleadoIds: (number | string)[]) => {
+        setLoadingProcesos(true)
+        try {
+            if (empleadoIds.length === 0) {
+                setProcesos([])
+                return
+            }
+            const { data, error } = await supabase
+                .from('query_procesos_disciplinarios' as any)
+                .select('*')
+                .in('empleado_id', empleadoIds)
+                .order('created_at', { ascending: false })
+
+            if (error) throw error
+            setProcesos(data || [])
+        } catch (err: any) {
+            console.error('Error fetching procesos:', err)
+            toast.error('No se pudieron cargar los procesos disciplinarios')
+        } finally {
+            setLoadingProcesos(false)
         }
     }, [supabase])
 
@@ -157,6 +199,24 @@ export default function BuscadorProcesosDisciplinariosPage() {
         fetchUserData()
     }, [supabase, fetchEmpleados])
 
+    const handleToggleEstadoGlobal = async (proceso: any) => {
+        const nuevoEstado = proceso.estado === 'PENDIENTE' ? 'FINALIZADO' : 'PENDIENTE'
+        try {
+            const { error } = await (supabase as any)
+                .from('procesos_disciplinarios')
+                .update({ estado: nuevoEstado })
+                .eq('id', proceso.id)
+
+            if (error) throw error
+
+            toast.success(nuevoEstado === 'FINALIZADO' ? 'Proceso marcado como finalizado' : 'Proceso reabierto como pendiente')
+            setProcesos(prev => prev.map(p => p.id === proceso.id ? { ...p, estado: nuevoEstado } : p))
+        } catch (err: any) {
+            console.error('Error updating estado:', err)
+            toast.error('No se pudo actualizar el estado del proceso')
+        }
+    }
+
     // 3. Search Logic
     useEffect(() => {
         if (!busqueda) {
@@ -173,7 +233,16 @@ export default function BuscadorProcesosDisciplinariosPage() {
         setFilteredEmpleados(filtered)
     }, [busqueda, empleados])
 
-    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || 
+    const coincideBusqueda = (p: any, termino: string) => {
+        if (!termino) return true
+        const term = eliminarAcentos(termino.toLowerCase())
+        return eliminarAcentos((p.nombreCompleto || '').toLowerCase()).includes(term) ||
+            p.empleado_id?.toString().includes(term)
+    }
+    const procesosPendientes = procesos.filter(p => p.estado === 'PENDIENTE' && coincideBusqueda(p, busquedaPendientes))
+    const procesosFinalizados = procesos.filter(p => p.estado !== 'PENDIENTE' && coincideBusqueda(p, busquedaFinalizados))
+
+    const isAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) ||
                     (currentUser?.nivelCargo && (ADMIN_LEVELS as any).includes(currentUser.nivelCargo))
 
     if (isAuthorized === false) {
@@ -222,44 +291,103 @@ export default function BuscadorProcesosDisciplinariosPage() {
             </div>
 
             <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-                {/* Search Bar Row */}
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-[#1D3557] transition-colors" />
-                        </div>
-                        <Input
-                            placeholder="Buscar por nombre o cédula..."
-                            className="pl-12 h-12 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1D3557]/10 transition-all text-sm font-medium shadow-sm"
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                {/* Results Bar */}
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg flex-1 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center">
-                            <span className="font-light text-sm mr-2 text-blue-200">Empleados encontrados: </span>
-                            <span className="font-bold text-sm tracking-wider">{filteredEmpleados.length}</span>
-                        </div>
-                        {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-200" />}
-                    </div>
-
-                    <Button
-                        variant="ghost"
-                        onClick={() => {
-                            setBusqueda('')
-                            fetchEmpleados(currentUser)
-                        }}
-                        className="h-[42px] px-4 rounded-lg text-gray-500 hover:text-[#1D3557] hover:bg-white border border-gray-200 shadow-sm"
-                        title="Refrescar datos"
+                {/* Tabs */}
+                <div className="flex gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit">
+                    <button
+                        onClick={() => setActiveTab('empleados')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'empleados' ? 'bg-[#1D3557] text-white shadow-sm' : 'text-gray-500 hover:text-[#1D3557] hover:bg-gray-50'}`}
                     >
-                        <Eraser className="h-5 w-5" />
-                    </Button>
+                        <Users className="h-4 w-4" /> Empleados
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('procesos')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'procesos' ? 'bg-[#1D3557] text-white shadow-sm' : 'text-gray-500 hover:text-[#1D3557] hover:bg-gray-50'}`}
+                    >
+                        <ClipboardList className="h-4 w-4" /> Procesos
+                        {procesosPendientes.length > 0 && (
+                            <span className="bg-amber-400 text-amber-950 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                {procesosPendientes.length}
+                            </span>
+                        )}
+                    </button>
                 </div>
 
+                {activeTab === 'empleados' && (
+                    <>
+                        {/* Search Bar Row */}
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Search className="h-5 w-5 text-gray-400 group-focus-within:text-[#1D3557] transition-colors" />
+                                </div>
+                                <Input
+                                    placeholder="Buscar por nombre o cédula..."
+                                    className="pl-12 h-12 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1D3557]/10 transition-all text-sm font-medium shadow-sm"
+                                    value={busqueda}
+                                    onChange={(e) => setBusqueda(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Results Bar */}
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg flex-1 shadow-sm flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <span className="font-light text-sm mr-2 text-blue-200">Empleados encontrados: </span>
+                                    <span className="font-bold text-sm tracking-wider">{filteredEmpleados.length}</span>
+                                </div>
+                                {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-200" />}
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    setBusqueda('')
+                                    fetchEmpleados(currentUser)
+                                }}
+                                className="h-[42px] px-4 rounded-lg text-gray-500 hover:text-[#1D3557] hover:bg-white border border-gray-200 shadow-sm"
+                                title="Refrescar datos"
+                            >
+                                <Eraser className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'procesos' ? (
+                    loadingProcesos ? (
+                        <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                            <Loader2 className="h-10 w-10 text-[#1D3557] animate-spin opacity-40" />
+                            <p className="text-gray-400 font-medium text-sm animate-pulse">Sincronizando información...</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <ProcesosColumna
+                                titulo="Pendientes"
+                                icon={<Clock className="h-4 w-4" />}
+                                colorClasses="bg-amber-50 text-amber-600 border-amber-100"
+                                procesos={procesosPendientes}
+                                isAdmin={!!isAdmin}
+                                onToggleEstado={handleToggleEstadoGlobal}
+                                onOpen={(empleadoId) => router.push(`/procesos-disciplinarios/${empleadoId}`)}
+                                searchValue={busquedaPendientes}
+                                onSearchChange={setBusquedaPendientes}
+                            />
+                            <ProcesosColumna
+                                titulo="Finalizados"
+                                icon={<CheckCircle2 className="h-4 w-4" />}
+                                colorClasses="bg-emerald-50 text-emerald-600 border-emerald-100"
+                                procesos={procesosFinalizados}
+                                isAdmin={!!isAdmin}
+                                onToggleEstado={handleToggleEstadoGlobal}
+                                onOpen={(empleadoId) => router.push(`/procesos-disciplinarios/${empleadoId}`)}
+                                searchValue={busquedaFinalizados}
+                                onSearchChange={setBusquedaFinalizados}
+                            />
+                        </div>
+                    )
+                ) : (
+                <>
                 {/* Results List */}
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
@@ -301,12 +429,86 @@ export default function BuscadorProcesosDisciplinariosPage() {
                         </p>
                     </div>
                 )}
+                </>
+                )}
             </main>
 
             <ExportarProcesosModal
                 isOpen={isExportModalOpen}
                 onClose={() => setIsExportModalOpen(false)}
             />
+        </div>
+    )
+}
+
+function ProcesosColumna({ titulo, icon, colorClasses, procesos, isAdmin, onToggleEstado, onOpen, searchValue, onSearchChange }: {
+    titulo: string
+    icon: ReactNode
+    colorClasses: string
+    procesos: any[]
+    isAdmin: boolean
+    onToggleEstado: (proceso: any) => void
+    onOpen: (empleadoId: number | string) => void
+    searchValue: string
+    onSearchChange: (value: string) => void
+}) {
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className={`flex items-center gap-2 px-5 py-3.5 border-b ${colorClasses}`}>
+                {icon}
+                <h3 className="font-black uppercase text-xs tracking-widest">{titulo}</h3>
+                <span className="ml-auto font-bold text-xs">{procesos.length}</span>
+            </div>
+            <div className="p-3 border-b border-gray-50 bg-gray-50/50">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Buscar empleado..."
+                        value={searchValue}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:border-[#1D3557] focus:ring-2 focus:ring-[#1D3557]/10 transition-all"
+                    />
+                </div>
+            </div>
+            <div className="divide-y divide-gray-50 max-h-[70vh] overflow-y-auto">
+                {procesos.length === 0 ? (
+                    <div className="py-14 text-center text-gray-400 text-sm">Sin procesos en esta categoría</div>
+                ) : (
+                    procesos.map((p) => (
+                        <div
+                            key={p.id}
+                            onClick={() => onOpen(p.empleado_id)}
+                            className="px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors flex items-start justify-between gap-3"
+                        >
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold text-sm text-[#1D3557] truncate">{p.nombreCompleto || 'Empleado sin nombre'}</p>
+                                    {!p.empleado_activo && (
+                                        <span className="shrink-0 bg-gray-100 text-gray-500 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">Retirado</span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 truncate mt-0.5">{p.tipo} · {p.motivo || 'Sin motivo'}</p>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-1">
+                                    {p.created_at ? new Date(p.created_at).toLocaleDateString('es-CO') : ''}
+                                    {p.planta ? ` · ${p.planta}` : ''}
+                                </p>
+                            </div>
+                            {isAdmin && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onToggleEstado(p) }}
+                                    className={`shrink-0 h-8 px-3 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-colors ${p.estado === 'PENDIENTE'
+                                            ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                                            : 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                                        }`}
+                                >
+                                    {p.estado === 'PENDIENTE' ? 'Finalizar' : 'Reabrir'}
+                                </button>
+                            )}
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     )
 }
