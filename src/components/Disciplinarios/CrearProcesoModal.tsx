@@ -112,10 +112,27 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
                 if (error) throw error
                 toast.success('Proceso disciplinario actualizado correctamente')
             } else {
-                // Create
+                // Create — antes de guardar, mejoramos la redaccion del comentario con IA
+                // (corrige ortografia/gramatica sin cambiar los hechos). Si falla, se guarda
+                // el comentario tal cual lo escribio la persona.
+                let comentarioFinal = comentario
+                try {
+                    const mejoraRes = await fetch('/api/procesos-disciplinarios/mejorar-comentario', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ comentario }),
+                    })
+                    if (mejoraRes.ok) {
+                        const mejoraJson = await mejoraRes.json()
+                        if (mejoraJson.comentario) comentarioFinal = mejoraJson.comentario
+                    }
+                } catch (mejoraError) {
+                    console.error('No se pudo mejorar la redaccion del comentario, se guarda el original:', mejoraError)
+                }
+
                 const dataToSave = {
                     tipo,
-                    comentario,
+                    comentario: comentarioFinal,
                     created_by: user?.user_metadata?.nombre || user?.email || 'Sistema',
                     created_at: new Date().toISOString(),
                     motivo_id: tipo === 'Compromiso' ? 19 : parseInt(motivoId),
@@ -123,12 +140,25 @@ export function CrearProcesoModal({ isOpen, onClose, empleadoId, onSuccess, proc
                     estado: 'PENDIENTE'
                 }
 
-                const { error } = await (supabase as any)
+                const { data: inserted, error } = await (supabase as any)
                     .from('procesos_disciplinarios')
                     .insert([dataToSave])
+                    .select('id')
+                    .single()
 
                 if (error) throw error
                 toast.success('Proceso disciplinario creado correctamente')
+
+                // Notifica por correo a Renata (mejor esfuerzo: si falla, no bloquea la creacion)
+                if (inserted?.id) {
+                    fetch('/api/procesos-disciplinarios/notificar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ procesoId: inserted.id }),
+                    }).catch(notifError => {
+                        console.error('No se pudo notificar el nuevo proceso disciplinario:', notifError)
+                    })
+                }
             }
 
             onSuccess()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
@@ -29,6 +29,8 @@ import {
 export default function DetalleProcesosDisciplinarioPage() {
     const router = useRouter()
     const { id } = useParams()
+    const searchParams = useSearchParams()
+    const destacarId = searchParams.get('destacar')
     const supabase = createClient()
 
     // Data State
@@ -86,6 +88,15 @@ export default function DetalleProcesosDisciplinarioPage() {
     useEffect(() => {
         fetchData()
     }, [fetchData])
+
+    // Si venimos de un link de notificacion (?destacar=ID), desplaza hasta esa tarjeta
+    useEffect(() => {
+        if (!destacarId || procesos.length === 0) return
+        const el = document.getElementById(`proceso-${destacarId}`)
+        if (el) {
+            setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+        }
+    }, [destacarId, procesos])
 
     // Authorization: block direct access to employees the current user isn't allowed to see
     // (mirrors the visibility rules applied in the Procesos Disciplinarios list page).
@@ -303,7 +314,8 @@ export default function DetalleProcesosDisciplinarioPage() {
                                     {procesos.map((proceso, index) => (
                                         <div
                                             key={proceso.id}
-                                            className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                                            id={`proceso-${proceso.id}`}
+                                            className={`animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-[20px] transition-all ${destacarId && String(proceso.id) === destacarId ? 'ring-4 ring-[#1D3557]/30' : ''}`}
                                             style={{ animationDelay: `${index * 50}ms` }}
                                         >
                                             <ProcesoCard
