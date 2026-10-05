@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { ExportarProcesosModal } from '@/components/Disciplinarios/ExportarProcesosModal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
     Search,
     Eraser,
@@ -452,6 +453,8 @@ function ProcesosColumna({ titulo, icon, colorClasses, procesos, isAdmin, onTogg
     searchValue: string
     onSearchChange: (value: string) => void
 }) {
+    const [pendingToggle, setPendingToggle] = useState<any>(null)
+
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className={`flex items-center gap-2 px-5 py-3.5 border-b ${colorClasses}`}>
@@ -496,12 +499,13 @@ function ProcesosColumna({ titulo, icon, colorClasses, procesos, isAdmin, onTogg
                             </div>
                             {isAdmin && (
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); onToggleEstado(p) }}
-                                    className={`shrink-0 h-8 px-3 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-colors ${p.estado === 'PENDIENTE'
-                                            ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
-                                            : 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                                    onClick={(e) => { e.stopPropagation(); setPendingToggle(p) }}
+                                    className={`shrink-0 h-8 px-3.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 shadow-sm ${p.estado === 'PENDIENTE'
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-300'
+                                            : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:border-amber-300'
                                         }`}
                                 >
+                                    {p.estado === 'PENDIENTE' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                     {p.estado === 'PENDIENTE' ? 'Finalizar' : 'Reabrir'}
                                 </button>
                             )}
@@ -509,6 +513,24 @@ function ProcesosColumna({ titulo, icon, colorClasses, procesos, isAdmin, onTogg
                     ))
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={!!pendingToggle}
+                variant={pendingToggle?.estado === 'PENDIENTE' ? 'info' : 'warning'}
+                title={pendingToggle?.estado === 'PENDIENTE' ? '¿Marcar como finalizado?' : '¿Reabrir este proceso?'}
+                description={pendingToggle
+                    ? pendingToggle.estado === 'PENDIENTE'
+                        ? `Se marcará como finalizado el proceso de "${pendingToggle.nombreCompleto || 'este empleado'}".`
+                        : `Se reabrirá como pendiente el proceso de "${pendingToggle.nombreCompleto || 'este empleado'}".`
+                    : ''}
+                confirmLabel={pendingToggle?.estado === 'PENDIENTE' ? 'Finalizar' : 'Reabrir'}
+                cancelLabel="Cancelar"
+                onConfirm={() => {
+                    if (pendingToggle) onToggleEstado(pendingToggle)
+                    setPendingToggle(null)
+                }}
+                onCancel={() => setPendingToggle(null)}
+            />
         </div>
     )
 }
