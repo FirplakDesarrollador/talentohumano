@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 
 const APP_URL = 'https://talentohumano.vercel.app';
-const SENDER_EMAIL = 'talentos@firplak.com';
+const SENDER_EMAIL = 'analista.desarrollador@firplak.com';
 
 const UMBRAL_MESES: Record<string, number> = {
     TEMPORAL: 3,

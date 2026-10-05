@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generarContratoTerminoFijoDocx, convertirDocxAPdf, sumarMeses, formatearFechaLarga } from '@/lib/contratos/generarContratoTerminoFijo';
 import { generarContratoIndefinidoDocx } from '@/lib/contratos/generarContratoIndefinido';
 
-const SENDER_EMAIL = 'talentos@firplak.com';
+const SENDER_EMAIL = 'analista.desarrollador@firplak.com';
 const RENATA_EMAIL = 'renata.lainez@firplak.com';
 
 function sanitizeStorageKey(text: string): string {

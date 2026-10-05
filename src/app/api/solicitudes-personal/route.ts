@@ -11,7 +11,7 @@ const PLANNER_BASE_TASK_ID = 'A-rb0xxzfkiy2V2ZSiX-EGQAOUgu';
 const PLANNER_PRIORITY_IMPORTANTE = 3;
 const PLANNER_PERCENT_EN_CURSO = 50;
 
-const SENDER_EMAIL = 'talentos@firplak.com';
+const SENDER_EMAIL = 'analista.desarrollador@firplak.com';
 const NOTIFY_EMAILS = ['talentos@firplak.com', 'camila.jimenez@firplak.com'];
 const APP_URL = 'https://talentohumano.vercel.app';
 
