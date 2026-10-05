@@ -29,6 +29,7 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
     const supabase = createClient()
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [pendingDelete, setPendingDelete] = useState(false)
+    const [pendingToggle, setPendingToggle] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
@@ -81,8 +82,8 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => onToggleEstado(proceso)}
-                            className={`bg-white/90 backdrop-blur-sm rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm ${proceso.estado === 'PENDIENTE'
+                            onClick={() => setPendingToggle(true)}
+                            className={`bg-white/90 backdrop-blur-sm rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all hover:scale-105 active:scale-95 ${proceso.estado === 'PENDIENTE'
                                     ? 'border-emerald-200 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50'
                                     : 'border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-50'
                                 }`}
@@ -128,6 +129,19 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                 cancelLabel="Cancelar"
                 onConfirm={() => { onDelete?.(proceso); setPendingDelete(false) }}
                 onCancel={() => setPendingDelete(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={pendingToggle}
+                variant={proceso.estado === 'PENDIENTE' ? 'info' : 'warning'}
+                title={proceso.estado === 'PENDIENTE' ? '¿Marcar como finalizado?' : '¿Reabrir este proceso?'}
+                description={proceso.estado === 'PENDIENTE'
+                    ? 'Este proceso disciplinario pasará a la categoría de Finalizados.'
+                    : 'Este proceso disciplinario volverá a la categoría de Pendientes.'}
+                confirmLabel={proceso.estado === 'PENDIENTE' ? 'Finalizar' : 'Reabrir'}
+                cancelLabel="Cancelar"
+                onConfirm={() => { onToggleEstado?.(proceso); setPendingToggle(false) }}
+                onCancel={() => setPendingToggle(false)}
             />
 
             <CardContent className="p-6">
