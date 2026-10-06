@@ -65,6 +65,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
         cedula: '',
         nombreCompleto: '',
         motivo: 'Pendiente',
+        codigoIncapacidad: '',
         fechaInicio: format(new Date(), 'yyyy-MM-dd'),
         fechaFinal: format(new Date(), 'yyyy-MM-dd'),
         observaciones: '',
@@ -96,6 +97,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                         cedula: data['Título']?.toString() || '',
                         nombreCompleto: data['Nombre Completo'] || '',
                         motivo: data['Motivo Ausentismo'] || 'Pendiente',
+                        codigoIncapacidad: data['Codigo Incapacidad'] || '',
                         fechaInicio: data['FechaInicio'] || format(new Date(), 'yyyy-MM-dd'),
                         fechaFinal: data['FechaFinal'] || format(new Date(), 'yyyy-MM-dd'),
                         observaciones: data['Observaciones'] || '',
@@ -211,7 +213,14 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
             return;
         }
 
-        if (formData.motivo.toLowerCase().includes('incapacidad') && !formData.documentoSoporte) {
+        const esIncapacidad = formData.motivo.toLowerCase().includes('incapacidad');
+
+        if (esIncapacidad && !formData.codigoIncapacidad.trim()) {
+            toast.error('Debe ingresar el código de incapacidad');
+            return;
+        }
+
+        if (esIncapacidad && !formData.documentoSoporte) {
             toast.error('Debe adjuntar el documento soporte de la incapacidad');
             return;
         }
@@ -225,6 +234,7 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 'Título': parseInt(formData.cedula),
                 'Nombre Completo': formData.nombreCompleto,
                 'Motivo Ausentismo': formData.motivo,
+                'Codigo Incapacidad': esIncapacidad ? formData.codigoIncapacidad.trim() : null,
                 'FechaInicio': formData.fechaInicio,
                 'FechaFinal': formData.fechaFinal,
                 'Observaciones': formData.observaciones,
@@ -366,6 +376,20 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                                 {MOTIVOS.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
                         </div>
+
+                        {(formData.motivo.toLowerCase().includes('incapacidad')) && (
+                            <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
+                                <Label htmlFor="codigoIncapacidad" className="text-xs font-bold text-gray-500 mb-1.5 block">Código de Incapacidad <span className="text-red-500">*</span></Label>
+                                <Input
+                                    id="codigoIncapacidad"
+                                    value={formData.codigoIncapacidad}
+                                    onChange={(e) => setFormData({ ...formData, codigoIncapacidad: e.target.value })}
+                                    placeholder="Ingrese el código de incapacidad"
+                                    required
+                                    className="h-12 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {(formData.motivo.toLowerCase().includes('incapacidad')) && (
