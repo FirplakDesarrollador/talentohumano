@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react'
 import { format, parseISO, isValid, differenceInHours } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2, Clock, CheckCircle2 } from 'lucide-react'
+import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2, Clock, CheckCircle2, FileDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { GenerarDocumentoModal } from '@/components/Disciplinarios/GenerarDocumentoModal'
 import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
+
+const TIPOS_CON_DOCUMENTO = ['Llamado de atencion', 'Descargo']
 
 interface ProcesoCardProps {
     proceso: {
@@ -30,6 +33,7 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [pendingDelete, setPendingDelete] = useState(false)
     const [pendingToggle, setPendingToggle] = useState(false)
+    const [showGenerarDocumento, setShowGenerarDocumento] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
@@ -76,7 +80,7 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                     proceso.tipo === 'Llamado de atencion' ? 'bg-orange-500' : 'bg-blue-500'
                 }`} />
 
-            {((onEdit && canEdit()) || (onDelete && isAdmin()) || (onToggleEstado && canEdit())) && (
+            {((onEdit && canEdit()) || (onDelete && isAdmin()) || (onToggleEstado && canEdit()) || (TIPOS_CON_DOCUMENTO.includes(proceso.tipo) && canEdit())) && (
                 <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
                     {onToggleEstado && canEdit() && (
                         <Button
@@ -93,6 +97,17 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                             ) : (
                                 <><Clock className="h-3 w-3" /> Reabrir</>
                             )}
+                        </Button>
+                    )}
+                    {TIPOS_CON_DOCUMENTO.includes(proceso.tipo) && canEdit() && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowGenerarDocumento(true)}
+                            className="bg-white/90 backdrop-blur-sm border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all hover:scale-105 active:scale-95"
+                        >
+                            <FileDown className="h-3 w-3" />
+                            Generar documento
                         </Button>
                     )}
                     {onEdit && canEdit() && (
@@ -143,6 +158,13 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                 onConfirm={() => { onToggleEstado?.(proceso); setPendingToggle(false) }}
                 onCancel={() => setPendingToggle(false)}
             />
+
+            {showGenerarDocumento && (
+                <GenerarDocumentoModal
+                    proceso={proceso}
+                    onClose={() => setShowGenerarDocumento(false)}
+                />
+            )}
 
             <CardContent className="p-6">
                 <div className="mb-5">
