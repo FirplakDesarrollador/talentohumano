@@ -27,8 +27,17 @@ import {
     Stethoscope,
     UserCircle,
     GraduationCap,
-    Network
+    Network,
+    Download
 } from 'lucide-react'
+import { toast } from 'sonner'
+
+const EXPORT_INCAPACIDADES_EMAIL = 'analista.sst@firplak.com'
+const MOTIVOS_INCAPACIDAD_EXPORT = [
+    'incapacidad arl',
+    'incapacidad accidente de tránsito',
+    'incapacidad enfermedad general'
+]
 
 const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura',
@@ -88,6 +97,51 @@ export default function MenuPage() {
             // sigue al fallback de abajo
         }
         window.open('https://academia-fpk.vercel.app/login', '_blank', 'noopener,noreferrer')
+    }
+
+    // Exporta solo incapacidades (ARL, accidente de tránsito, enfermedad general).
+    // Hay registros con "incapacidad" en minúscula, por eso se filtra sin distinguir mayúsculas.
+    // Se pagina porque Supabase devuelve máximo 1000 filas por consulta.
+    const handleExportIncapacidades = async () => {
+        const toastId = toast.loading('Generando archivo Excel...')
+        try {
+            const pageSize = 1000
+            const rows: any[] = []
+            for (let from = 0; ; from += pageSize) {
+                const { data, error } = await supabase
+                    .from('ausentismos' as any)
+                    .select('*')
+                    .ilike('Motivo Ausentismo', '%incapacidad%')
+                    .order('FechaInicio', { ascending: false })
+                    .order('Id', { ascending: true })
+                    .range(from, from + pageSize - 1)
+                if (error) throw error
+                rows.push(...(data || []))
+                if (!data || data.length < pageSize) break
+            }
+
+            const filtrados = rows.filter((r: any) =>
+                MOTIVOS_INCAPACIDAD_EXPORT.includes(String(r['Motivo Ausentismo'] || '').toLowerCase().trim())
+            )
+
+            if (filtrados.length === 0) {
+                toast.error('No hay ausentismos para exportar', { id: toastId })
+                return
+            }
+
+            const XLSX = await import('xlsx')
+            const worksheet = XLSX.utils.json_to_sheet(filtrados)
+            const workbook = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Ausentismos')
+
+            const date = new Date().toLocaleDateString('es-CO').replace(/\//g, '-')
+            XLSX.writeFile(workbook, `Ausentismos_Incapacidades_${date}.xlsx`)
+
+            toast.success(`Se exportaron ${filtrados.length} ausentismos`, { id: toastId })
+        } catch (error: any) {
+            console.error('Error exportando ausentismos:', error)
+            toast.error('Error al exportar ausentismos: ' + error.message, { id: toastId })
+        }
     }
 
     const normalizedUserEmail = (user?.email || '').toLowerCase().trim()
@@ -224,6 +278,15 @@ export default function MenuPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {normalizedUserEmail === EXPORT_INCAPACIDADES_EMAIL && (
+                        <Button
+                            onClick={handleExportIncapacidades}
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs px-4 h-8 flex items-center gap-2 rounded-md transition-all shadow-sm"
+                        >
+                            <Download className="h-4 w-4" />
+                            <span className="hidden sm:inline">Exportar ausentismos</span>
+                        </Button>
+                    )}
                     {/* Logout Button */}
                     <Button
                         onClick={handleLogout}
