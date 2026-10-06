@@ -205,14 +205,22 @@ export default function AusentismosPage() {
     const handleDownloadExcel = async () => {
         const toastId = toast.loading('Generando archivo Excel...')
         try {
-            const { data, error } = await supabase
-                .from('ausentismos' as any)
-                .select('*')
-                .order('FechaInicio', { ascending: false })
+            // Se pagina porque Supabase devuelve máximo 1000 filas por consulta
+            const pageSize = 1000
+            const data: any[] = []
+            for (let from = 0; ; from += pageSize) {
+                const { data: page, error } = await supabase
+                    .from('ausentismos' as any)
+                    .select('*')
+                    .order('FechaInicio', { ascending: false })
+                    .order('Id', { ascending: true })
+                    .range(from, from + pageSize - 1)
+                if (error) throw error
+                data.push(...(page || []))
+                if (!page || page.length < pageSize) break
+            }
 
-            if (error) throw error
-
-            if (!data || data.length === 0) {
+            if (data.length === 0) {
                 toast.error('No hay datos para exportar', { id: toastId })
                 return
             }
