@@ -221,6 +221,8 @@ export const JEFES_INGENIERIA_MOLDES = [
  */
 export const JEFES_MANTENIMIENTO = [
     'roberto.aguilar@firplak.com',
+    // Maria Elena Perez Ospina: conserva sus plantas de coordinadora y suma Mantenimiento
+    'maria.perez@firplak.com',
 ];
 
 /**
