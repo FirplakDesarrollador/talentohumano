@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { format, parseISO, isValid, differenceInHours } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2, Clock, CheckCircle2, FileDown } from 'lucide-react'
+import { Calendar, Briefcase, FileText, User, MessageCircle, AlertTriangle, Pencil, Trash2, Clock, CheckCircle2, FileDown, Video } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { GenerarDocumentoModal } from '@/components/Disciplinarios/GenerarDocumentoModal'
+import { ProgramarReunionModal } from '@/components/Disciplinarios/ProgramarReunionModal'
 import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
 
 const TIPOS_CON_DOCUMENTO = ['Llamado de atencion', 'Descargo']
@@ -34,6 +35,7 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
     const [pendingDelete, setPendingDelete] = useState(false)
     const [pendingToggle, setPendingToggle] = useState(false)
     const [showGenerarDocumento, setShowGenerarDocumento] = useState(false)
+    const [showProgramarReunion, setShowProgramarReunion] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
@@ -80,7 +82,7 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                     proceso.tipo === 'Llamado de atencion' ? 'bg-orange-500' : 'bg-blue-500'
                 }`} />
 
-            {((onEdit && canEdit()) || (onDelete && isAdmin()) || (onToggleEstado && canEdit()) || (TIPOS_CON_DOCUMENTO.includes(proceso.tipo) && canEdit())) && (
+            {((onEdit && canEdit()) || (onDelete && isAdmin()) || (onToggleEstado && canEdit()) || (TIPOS_CON_DOCUMENTO.includes(proceso.tipo) && isAdmin()) || (proceso.tipo === 'Descargo' && isAdmin())) && (
                 <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
                     {onToggleEstado && canEdit() && (
                         <Button
@@ -99,7 +101,7 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                             )}
                         </Button>
                     )}
-                    {TIPOS_CON_DOCUMENTO.includes(proceso.tipo) && canEdit() && (
+                    {TIPOS_CON_DOCUMENTO.includes(proceso.tipo) && isAdmin() && (
                         <Button
                             variant="outline"
                             size="sm"
@@ -108,6 +110,17 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                         >
                             <FileDown className="h-3 w-3" />
                             Generar documento
+                        </Button>
+                    )}
+                    {proceso.tipo === 'Descargo' && isAdmin() && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowProgramarReunion(true)}
+                            className="bg-white/90 backdrop-blur-sm border-violet-200 text-violet-600 hover:border-violet-400 hover:bg-violet-50 rounded-full h-8 px-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all hover:scale-105 active:scale-95"
+                        >
+                            <Video className="h-3 w-3" />
+                            Programar reunión
                         </Button>
                     )}
                     {onEdit && canEdit() && (
@@ -163,6 +176,13 @@ export function ProcesoCard({ proceso, onEdit, onDelete, onToggleEstado }: Proce
                 <GenerarDocumentoModal
                     proceso={proceso}
                     onClose={() => setShowGenerarDocumento(false)}
+                />
+            )}
+
+            {showProgramarReunion && (
+                <ProgramarReunionModal
+                    proceso={proceso}
+                    onClose={() => setShowProgramarReunion(false)}
                 />
             )}
 
