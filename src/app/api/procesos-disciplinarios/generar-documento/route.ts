@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { convertirDocxAPdf } from '@/lib/contratos/generarContratoTerminoFijo'
+import { convertirDocxAPdf, formatearFechaLarga } from '@/lib/contratos/generarContratoTerminoFijo'
 import {
     generarLlamadoAtencionDocx,
     generarCitacionDescargosDocx,
     generarRespuestaDescargosDocx,
+    generarActaDescargosDocx,
 } from '@/lib/procesosDisciplinarios/generarDocumento'
 
 const BUCKET = 'archivo-digital'
@@ -14,6 +15,7 @@ const NOMBRES_DOCUMENTO: Record<string, string> = {
     llamado: 'Llamado de atención',
     citacion: 'Citación a audiencia de descargos',
     respuesta: 'Decisión disciplinaria',
+    acta: 'Acta de audiencia de descargos',
 }
 
 function sanitizeStorageKey(text: string): string {
@@ -30,11 +32,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
         }
 
-        const { procesoId, tipoDocumento, tipo_sancion, dias_suspension } = await request.json()
+        const {
+            procesoId, tipoDocumento, tipo_sancion, dias_suspension,
+            fecha_descargos, asistio_acompanante, nombre_acompanante,
+            descargos_trabajador, interrogatorio, pruebas_aportadas, solicitudes_especiales,
+        } = await request.json()
         if (!procesoId || !tipoDocumento) {
             return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
         }
-        if (!['llamado', 'citacion', 'respuesta'].includes(tipoDocumento)) {
+        if (!['llamado', 'citacion', 'respuesta', 'acta'].includes(tipoDocumento)) {
             return NextResponse.json({ error: 'Tipo de documento inválido' }, { status: 400 })
         }
 
@@ -58,8 +64,11 @@ export async function POST(request: Request) {
         if (tipoDocumento === 'llamado' && p.tipo !== 'Llamado de atencion') {
             return NextResponse.json({ error: 'Este proceso no es de tipo Llamado de atención' }, { status: 400 })
         }
-        if ((tipoDocumento === 'citacion' || tipoDocumento === 'respuesta') && p.tipo !== 'Descargo') {
+        if (['citacion', 'respuesta', 'acta'].includes(tipoDocumento) && p.tipo !== 'Descargo') {
             return NextResponse.json({ error: 'Este proceso no es de tipo Descargo' }, { status: 400 })
+        }
+        if (tipoDocumento === 'acta' && !fecha_descargos) {
+            return NextResponse.json({ error: 'Falta la fecha de los descargos' }, { status: 400 })
         }
 
         // Si se genera la Respuesta/Decision, guardamos el tipo de sancion y los dias
@@ -101,10 +110,20 @@ export async function POST(request: Request) {
             docxBuffer = generarLlamadoAtencionDocx(datosProceso, fecha)
         } else if (tipoDocumento === 'citacion') {
             docxBuffer = generarCitacionDescargosDocx(datosProceso, fecha)
-        } else {
+        } else if (tipoDocumento === 'respuesta') {
             docxBuffer = generarRespuestaDescargosDocx(datosProceso, fecha, {
                 tipoSancion: tipoSancionFinal,
                 diasSuspension: diasSuspensionFinal,
+            })
+        } else {
+            docxBuffer = generarActaDescargosDocx(datosProceso, {
+                fechaDescargos: formatearFechaLarga(new Date(`${fecha_descargos}T00:00:00`)),
+                asistioAcompanante: !!asistio_acompanante,
+                nombreAcompanante: nombre_acompanante || '',
+                descargosTrabajador: descargos_trabajador || '',
+                interrogatorio: interrogatorio || '',
+                pruebasAportadas: pruebas_aportadas || '',
+                solicitudesEspeciales: solicitudes_especiales || '',
             })
         }
 

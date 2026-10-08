@@ -54,6 +54,10 @@ export function buildSancionCheckboxes(tipoSancion: string | null): string {
     return opciones.map(o => `${o === tipoSancion ? '☒' : '☐'} ${o}`).join('   ');
 }
 
+export function buildAsistenciaAcompanante(asistio: boolean): string {
+    return asistio ? '☒ Sí   ☐ No asistió' : '☐ Sí   ☒ No asistió';
+}
+
 function renderTemplate(templateFile: string, data: Record<string, any>): Buffer {
     const templatePath = path.join(process.cwd(), 'templates', 'procesos-disciplinarios', templateFile);
     const templateContent = fs.readFileSync(templatePath, 'binary');
@@ -93,6 +97,30 @@ export function generarCitacionDescargosDocx(p: ProcesoParaDocumento, fecha: Dat
         observaciones: p.observaciones,
         calificacion_falta: buildCalificacionFalta(p.motivo.categoria),
         norma_infringida: buildNormaInfringida(p.motivo),
+    });
+}
+
+export interface ActaDescargosDatos {
+    fechaDescargos: string
+    asistioAcompanante: boolean
+    nombreAcompanante: string
+    descargosTrabajador: string
+    interrogatorio: string
+    pruebasAportadas: string
+    solicitudesEspeciales: string
+}
+
+export function generarActaDescargosDocx(p: ProcesoParaDocumento, acta: ActaDescargosDatos): Buffer {
+    return renderTemplate('acta_descargos.docx', {
+        nombre_trabajador: p.nombre_trabajador,
+        cedula_trabajador: String(p.cedula_trabajador),
+        asistencia_acompanante: buildAsistenciaAcompanante(acta.asistioAcompanante),
+        nombre_acompanante: acta.asistioAcompanante ? (acta.nombreAcompanante || '') : '',
+        fecha_descargos: acta.fechaDescargos,
+        descargos_trabajador: acta.descargosTrabajador || 'No se registró versión del trabajador.',
+        interrogatorio: acta.interrogatorio || 'No se registraron preguntas y respuestas.',
+        pruebas_aportadas: acta.pruebasAportadas?.trim() || 'No se aportaron pruebas adicionales',
+        solicitudes_especiales: acta.solicitudesEspeciales?.trim() || 'Ninguna',
     });
 }
 
