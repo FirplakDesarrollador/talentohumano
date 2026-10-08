@@ -358,7 +358,11 @@ export function getPlantasPermitidas(email: string): string[] | null {
     }
     if (COORDINADORES_CON_ACCESO.includes(email)) PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
     if (JEFES_CON_ACCESO.includes(email)) PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
-    if (JEFES_MUEBLES_CEFI.includes(email)) { plantas.add('Muebles'); plantas.add('Cefi'); }
+    if (JEFES_MUEBLES_CEFI.includes(email)) {
+        plantas.add('Muebles');
+        plantas.add('Cefi');
+        if (email === 'juliana.ramirez@firplak.com') plantas.add('Calidad');
+    }
     if (JEFES_ALMACEN_CEDI.includes(email)) { plantas.add('Almacen'); plantas.add('CEDI'); }
     if (JEFES_INGENIERIA_MOLDES.includes(email)) { plantas.add('Ingenieria'); plantas.add('Moldes'); }
     if (JEFES_MOLDES.includes(email)) plantas.add('Moldes');
