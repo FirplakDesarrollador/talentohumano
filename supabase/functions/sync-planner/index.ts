@@ -338,6 +338,17 @@ Deno.serve(async (req: Request) => {
                     assigned_at: ad.assignedDateTime || null, order_hint: ad.orderHint || null,
                   }, { onConflict: "task_id,user_id" });
                 }));
+
+                // Graph only reports CURRENT assignments, so a user removed from a
+                // task in Planner simply disappears from task.assignments — without
+                // this delete, their stale row in planner_task_assignments lingers
+                // forever and the task keeps showing up as "theirs" in the app.
+                const currentUserIds = Object.keys(task.assignments || {});
+                let staleQuery = supabase.from("planner_task_assignments").delete().eq("task_id", task.id);
+                if (currentUserIds.length > 0) {
+                  staleQuery = staleQuery.not("user_id", "in", `(${currentUserIds.join(",")})`);
+                }
+                await staleQuery;
               }));
             }
           }
