@@ -49,7 +49,14 @@ function chunk<T>(arr: T[], size: number): T[][] {
 // ways: BATCH=1 (one group per invocation) and a hard cap on how many task
 // pages get processed before returning early with a resume cursor.
 const BATCH = 1;
-const MAX_TASK_PAGES_PER_INVOCATION = 15;
+// Kept low on purpose: a plan with ~11 pages (FPK MANTENIMIENTO, 4354 tasks)
+// was found running right at the edge of the compute budget with the old
+// cap of 15 — close enough that it never actually hit the cap (so it never
+// checkpointed a resume cursor) before the platform killed the invocation
+// outright, which left it retrying the same plan from page 1 forever. A
+// lower cap guarantees the invocation returns (and persists progress) with
+// margin to spare, well before that happens.
+const MAX_TASK_PAGES_PER_INVOCATION = 5;
 
 // A chain of ~460 self-invoking hops (one per group) will occasionally break
 // somewhere no matter how reliable each individual hop is — a cold start, a
@@ -244,7 +251,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const group = allGroups[skip];
-    console.log(`[sync-planner] Group ${skip} of ${allGroups.length}, planIndex=${planIndex}, resuming=${!!resumeTasksUrl}`);
+    console.log(`[sync-planner] Group ${skip} of ${allGroups.length} (${group?.displayName}), planIndex=${planIndex}, resuming=${!!resumeTasksUrl}`);
 
     if (group) {
       const { data: eu } = await supabase.from("planner_users").select("id");
@@ -282,11 +289,27 @@ Deno.serve(async (req: Request) => {
           isResumedPlan ? resumeTasksUrl : `https://graph.microsoft.com/v1.0/planner/plans/${plan.id}/tasks`;
         let pagesProcessed = 0;
 
+        // Collected across every page this invocation handles for this plan and
+        // flushed in a single RPC call (see flushCleanup below) instead of one
+        // delete per task or even one per page — large plans (seen in prod:
+        // FPK MANTENIMIENTO, 4354 tasks / ~11 pages) are already close to the
+        // invocation's compute budget, and extra round trips per page was
+        // enough on its own to push them past WORKER_RESOURCE_LIMIT.
+        const pendingCleanup: { task_id: string; user_ids: string[] }[] = [];
+        const flushCleanup = async () => {
+          if (pendingCleanup.length === 0) return;
+          try {
+            await supabase.rpc("cleanup_stale_planner_assignments", { payload: pendingCleanup });
+          } catch (_) { /* best-effort — a missed cleanup self-heals on the next sync pass */ }
+          pendingCleanup.length = 0;
+        };
+
         try {
           while (nextTasksUrl) {
             if (pagesProcessed >= MAX_TASK_PAGES_PER_INVOCATION) {
               // This plan has more tasks than fit in one invocation's compute budget.
               // Stop here and resume this exact plan (same planIndex) next call.
+              await flushCleanup();
               return await respond(req, {
                 isFinished: false, nextSkip: skip, nextPlanIndex: i, nextResumeTasksUrl: nextTasksUrl,
                 totalGroups: allGroups.length,
@@ -340,19 +363,15 @@ Deno.serve(async (req: Request) => {
                 }));
 
                 // Graph only reports CURRENT assignments, so a user removed from a
-                // task in Planner simply disappears from task.assignments — without
-                // this delete, their stale row in planner_task_assignments lingers
-                // forever and the task keeps showing up as "theirs" in the app.
-                const currentUserIds = Object.keys(task.assignments || {});
-                let staleQuery = supabase.from("planner_task_assignments").delete().eq("task_id", task.id);
-                if (currentUserIds.length > 0) {
-                  staleQuery = staleQuery.not("user_id", "in", `(${currentUserIds.join(",")})`);
-                }
-                await staleQuery;
+                // task in Planner simply disappears from task.assignments — queued
+                // here and flushed in one batched call via flushCleanup() above.
+                pendingCleanup.push({ task_id: task.id, user_ids: Object.keys(task.assignments || {}) });
               }));
             }
           }
         } catch (_) { /* Graph error mid-plan — move on to the next plan rather than failing the whole group */ }
+
+        await flushCleanup();
 
         // Done with this plan (fully, or gave up after a Graph error) — clear any resume state
         // so the next plan in this group starts fresh instead of inheriting this plan's cursor.
