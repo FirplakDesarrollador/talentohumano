@@ -188,6 +188,41 @@ export default function AumentosSalarialesPage() {
         }
     }, [activeTab, empleado, fetchHistory])
 
+    // Al entrar, si el usuario no es admin, precarga por defecto los empleados
+    // que tiene a cargo (mismo criterio de permisos que ya usa la busqueda),
+    // para que no tenga que escribir nada para verlos.
+    useEffect(() => {
+        if (!currentUser) return
+        if (empleado || cedula) return // ya hay una busqueda/seleccion en curso
+
+        const fetchMisEmpleados = async () => {
+            const isAdminUser = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(currentUser?.nivelCargo as any)
+            if (isAdminUser) return // los admins ya pueden buscar a cualquiera
+
+            const isMoldesRestricted = currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo)
+            const myName = (currentUser?.nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+            if (!isMoldesRestricted && myName.length < 3) return
+
+            const { data, error } = await (supabase.from('empleados') as any)
+                .select('*')
+                .eq('activo', true)
+                .order('nombreCompleto')
+
+            if (error || !data) return
+
+            const misEmpleados = (data as any[]).filter(emp => {
+                if (isMoldesRestricted) return emp.planta === 'Moldes' || emp.area === 'Moldes'
+
+                const empJefe = (emp.jefe || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+                if (!empJefe || empJefe.length < 3) return false
+                return empJefe.includes(myName) || myName.includes(empJefe)
+            })
+
+            if (misEmpleados.length > 0) setSearchResults(misEmpleados)
+        }
+        fetchMisEmpleados()
+    }, [currentUser, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
+
     const handleDecidir = async (item: any, decision: 'Aprobada' | 'Rechazada') => {
         setApprovingId(item.id)
         try {
@@ -537,7 +572,11 @@ export default function AumentosSalarialesPage() {
 
                         {/* Search Results List */}
                         {searchResults.length > 0 && !empleado && (
-                            <div className="mt-4 border rounded-lg divide-y bg-gray-50 max-h-60 overflow-y-auto shadow-inner">
+                            <div className="mt-4">
+                                {!cedula && (
+                                    <p className="text-xs font-bold text-[#716E6A] uppercase tracking-wider mb-2">Empleados a tu cargo</p>
+                                )}
+                                <div className="border rounded-lg divide-y bg-gray-50 max-h-60 overflow-y-auto shadow-inner">
                                 {searchResults.map((result) => (
                                     <button
                                         key={result.id}
@@ -553,6 +592,7 @@ export default function AumentosSalarialesPage() {
                                         <UserCheck className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
                                     </button>
                                 ))}
+                                </div>
                             </div>
                         )}
                     </CardContent>
@@ -849,7 +889,7 @@ export default function AumentosSalarialesPage() {
                     </div>
                 )}
 
-                {!empleado && !loading && (
+                {!empleado && !loading && searchResults.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
                         <UserCheck size={80} className="text-[#716E6A] mb-4" />
                         <h2 className="text-2xl font-bold text-[#45433F]">Busque un empleado para comenzar</h2>
