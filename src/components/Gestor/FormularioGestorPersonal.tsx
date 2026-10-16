@@ -95,6 +95,7 @@ const TIPOS_CAMISA = [
 ];
 const TIPOS_PANTALON = ['Jean clasico indigo', 'Pantalon beige hombre', 'Pantalon beige mujer'];
 const SEXOS = ['Masculino', 'Femenino'];
+const CENTRO_COSTOS_CON_ACCESO = ['ismael.correa@firplak.com', 'luis.escobar@firplak.com'];
 
 // Fixed Section Component
 const FormSection: React.FC<{
@@ -228,6 +229,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [isRestrictedJefe, setIsRestrictedJefe] = useState(false);
     const [isRestrictedDirector, setIsRestrictedDirector] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [canSeeCentroCostos, setCanSeeCentroCostos] = useState(false);
     const { plantas: PLANTAS } = usePlantas();
 
     useEffect(() => {
@@ -240,6 +242,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 setIsRestrictedJefe(JEFES_CON_ACCESO.includes(user.email || '') || JEFES_MUEBLES_CEFI.includes(user.email || '') || JEFES_ALMACEN_CEDI.includes(user.email || '') || JEFES_INGENIERIA_MOLDES.includes(user.email || '') || JEFES_MOLDES.includes(user.email || ''));
                 setIsRestrictedDirector(DIRECTORES_CON_ACCESO.includes(user.email || ''));
                 setIsAdmin(ADMIN_EMAILS.includes(user.email || ''));
+                setCanSeeCentroCostos(ADMIN_EMAILS.includes(user.email || '') || CENTRO_COSTOS_CON_ACCESO.includes(user.email || ''));
             }
         };
         fetchUser();
@@ -913,14 +916,16 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             {EMPRESAS.map(e => <option key={e} value={e}>{e}</option>)}
                         </select>
                     </FormField>
-                    <FormField label="Centro de Costos" icon={<Building2 className="h-3 w-3" />}>
-                        <Input
-                            value={formData.centro_costos}
-                            onChange={(e) => updateField('centro_costos', e.target.value)}
-                            placeholder="Ej: GA-FICOG"
-                            className={inputClass}
-                        />
-                    </FormField>
+                    {canSeeCentroCostos && (
+                        <FormField label="Centro de Costos" icon={<Building2 className="h-3 w-3" />}>
+                            <Input
+                                value={formData.centro_costos}
+                                onChange={(e) => updateField('centro_costos', e.target.value)}
+                                placeholder="Ej: GA-FICOG"
+                                className={inputClass}
+                            />
+                        </FormField>
+                    )}
                     <FormField label="Primer Ingreso" icon={<Calendar className="h-3 w-3" />}>
                         <Input
                             type="date"
