@@ -269,6 +269,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         planta: '',
         jefe: '',
         empresa: '',
+        centro_costos: '',
         primer_ingreso: '',
         tipo_contrato: '',
         fecha_inicio_contrato_actual: '',
@@ -455,6 +456,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         planta: emp.planta || '',
                         jefe: emp.jefe || '',
                         empresa: emp.empresa || '',
+                        centro_costos: emp.centro_costos || '',
                         primer_ingreso: emp.primer_ingreso || '',
                         tipo_contrato: emp.tipo_contrato || '',
                         fecha_inicio_contrato_actual: emp.fecha_inicio_contrato_actual || '',
@@ -538,6 +540,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 area: formData.planta || null,
                 jefe: formData.jefe || null,
                 empresa: formData.empresa || null,
+                centro_costos: formData.centro_costos || null,
                 primer_ingreso: formData.primer_ingreso || null,
                 tipo_contrato: formData.tipo_contrato || null,
                 fecha_inicio_contrato_actual: formData.fecha_inicio_contrato_actual || null,
@@ -909,6 +912,14 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             <option value="">Seleccione empresa</option>
                             {EMPRESAS.map(e => <option key={e} value={e}>{e}</option>)}
                         </select>
+                    </FormField>
+                    <FormField label="Centro de Costos" icon={<Building2 className="h-3 w-3" />}>
+                        <Input
+                            value={formData.centro_costos}
+                            onChange={(e) => updateField('centro_costos', e.target.value)}
+                            placeholder="Ej: GA-FICOG"
+                            className={inputClass}
+                        />
                     </FormField>
                     <FormField label="Primer Ingreso" icon={<Calendar className="h-3 w-3" />}>
                         <Input
