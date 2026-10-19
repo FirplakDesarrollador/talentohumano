@@ -95,7 +95,8 @@ const TIPOS_CAMISA = [
 ];
 const TIPOS_PANTALON = ['Jean clasico indigo', 'Pantalon beige hombre', 'Pantalon beige mujer'];
 const SEXOS = ['Masculino', 'Femenino'];
-const CENTRO_COSTOS_CON_ACCESO = ['ismael.correa@firplak.com', 'luis.escobar@firplak.com'];
+// Centro de Costos y Zona son visibles solo para administradores y estas dos personas.
+const CAMPOS_RESTRINGIDOS_CON_ACCESO = ['ismael.correa@firplak.com', 'luis.escobar@firplak.com'];
 
 // Fixed Section Component
 const FormSection: React.FC<{
@@ -229,7 +230,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [isRestrictedJefe, setIsRestrictedJefe] = useState(false);
     const [isRestrictedDirector, setIsRestrictedDirector] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [canSeeCentroCostos, setCanSeeCentroCostos] = useState(false);
+    const [canSeeCamposRestringidos, setCanSeeCamposRestringidos] = useState(false);
     const { plantas: PLANTAS } = usePlantas();
 
     useEffect(() => {
@@ -242,7 +243,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 setIsRestrictedJefe(JEFES_CON_ACCESO.includes(user.email || '') || JEFES_MUEBLES_CEFI.includes(user.email || '') || JEFES_ALMACEN_CEDI.includes(user.email || '') || JEFES_INGENIERIA_MOLDES.includes(user.email || '') || JEFES_MOLDES.includes(user.email || ''));
                 setIsRestrictedDirector(DIRECTORES_CON_ACCESO.includes(user.email || ''));
                 setIsAdmin(ADMIN_EMAILS.includes(user.email || ''));
-                setCanSeeCentroCostos(ADMIN_EMAILS.includes(user.email || '') || CENTRO_COSTOS_CON_ACCESO.includes(user.email || ''));
+                setCanSeeCamposRestringidos(ADMIN_EMAILS.includes(user.email || '') || CAMPOS_RESTRINGIDOS_CON_ACCESO.includes(user.email || ''));
             }
         };
         fetchUser();
@@ -273,6 +274,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         jefe: '',
         empresa: '',
         centro_costos: '',
+        zona: '',
         primer_ingreso: '',
         tipo_contrato: '',
         fecha_inicio_contrato_actual: '',
@@ -460,6 +462,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         jefe: emp.jefe || '',
                         empresa: emp.empresa || '',
                         centro_costos: emp.centro_costos || '',
+                        zona: emp.zona || '',
                         primer_ingreso: emp.primer_ingreso || '',
                         tipo_contrato: emp.tipo_contrato || '',
                         fecha_inicio_contrato_actual: emp.fecha_inicio_contrato_actual || '',
@@ -544,6 +547,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 jefe: formData.jefe || null,
                 empresa: formData.empresa || null,
                 centro_costos: formData.centro_costos || null,
+                zona: formData.zona || null,
                 primer_ingreso: formData.primer_ingreso || null,
                 tipo_contrato: formData.tipo_contrato || null,
                 fecha_inicio_contrato_actual: formData.fecha_inicio_contrato_actual || null,
@@ -916,12 +920,22 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             {EMPRESAS.map(e => <option key={e} value={e}>{e}</option>)}
                         </select>
                     </FormField>
-                    {canSeeCentroCostos && (
+                    {canSeeCamposRestringidos && (
                         <FormField label="Centro de Costos" icon={<Building2 className="h-3 w-3" />}>
                             <Input
                                 value={formData.centro_costos}
                                 onChange={(e) => updateField('centro_costos', e.target.value)}
                                 placeholder="Ej: GA-FICOG"
+                                className={inputClass}
+                            />
+                        </FormField>
+                    )}
+                    {canSeeCamposRestringidos && (
+                        <FormField label="Zona" icon={<MapPin className="h-3 w-3" />}>
+                            <Input
+                                value={formData.zona}
+                                onChange={(e) => updateField('zona', e.target.value)}
+                                placeholder="Ej: ANTIOQUIA"
                                 className={inputClass}
                             />
                         </FormField>
