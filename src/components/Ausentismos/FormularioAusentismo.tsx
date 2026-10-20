@@ -258,10 +258,23 @@ export const FormularioAusentismo: React.FC<FormularioAusentismoProps> = ({ onSu
                 dataToSave['Creado por'] = userEmail;
                 dataToSave['Creado'] = new Date().toISOString();
 
-                const { error } = await (supabase.from('ausentismos') as any).insert(dataToSave);
+                const { data: inserted, error } = await (supabase.from('ausentismos') as any)
+                    .insert(dataToSave)
+                    .select('Id')
+                    .single();
                 if (error) throw error;
 
                 toast.success('Ausentismo registrado correctamente');
+
+                // Notifica a Renata (y a Vinculamos si aplica) en segundo plano: un fallo
+                // al enviar el correo no debe impedir que el registro quede guardado.
+                if (inserted?.Id) {
+                    fetch('/api/ausentismos/notificar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ausentismoId: inserted.Id }),
+                    }).catch((err) => console.error('Error notificando ausentismo:', err));
+                }
             }
 
             if (onSuccess) onSuccess();
