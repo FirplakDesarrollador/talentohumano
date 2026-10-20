@@ -24,6 +24,10 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
     const [diasSuspension, setDiasSuspension] = useState('')
     const [generando, setGenerando] = useState(false)
 
+    // Datos de la Citación
+    const [fechaAudiencia, setFechaAudiencia] = useState('')
+    const [horaAudiencia, setHoraAudiencia] = useState('')
+
     // Datos del Acta de audiencia
     const [fechaDescargos, setFechaDescargos] = useState('')
     const [asistioAcompanante, setAsistioAcompanante] = useState(false)
@@ -35,10 +39,12 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
 
     const necesitaDatosSancion = tipoDocumento === 'respuesta'
     const esActa = tipoDocumento === 'acta'
+    const esCitacion = tipoDocumento === 'citacion'
 
     const puedeGenerar = tipoDocumento && (
         (!necesitaDatosSancion || (tipoSancion && (tipoSancion !== 'Suspensión' || diasSuspension))) &&
-        (!esActa || !!fechaDescargos)
+        (!esActa || !!fechaDescargos) &&
+        (!esCitacion || (!!fechaAudiencia && !!horaAudiencia))
     )
 
     const handleGenerar = async () => {
@@ -53,6 +59,8 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
                     tipoDocumento,
                     tipo_sancion: necesitaDatosSancion ? tipoSancion : undefined,
                     dias_suspension: necesitaDatosSancion && tipoSancion === 'Suspensión' ? Number(diasSuspension) : undefined,
+                    fecha_audiencia: esCitacion ? fechaAudiencia : undefined,
+                    hora_audiencia: esCitacion ? horaAudiencia : undefined,
                     fecha_descargos: esActa ? fechaDescargos : undefined,
                     asistio_acompanante: esActa ? asistioAcompanante : undefined,
                     nombre_acompanante: esActa ? nombreAcompanante : undefined,
@@ -128,6 +136,29 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
                         </div>
                     ) : (
                         <p className="text-sm text-slate-500 font-medium mt-1 mb-2">Se generará la carta de Llamado de Atención con la información de este proceso.</p>
+                    )}
+
+                    {esCitacion && (
+                        <div className="mt-5 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div>
+                                <label className={labelClass}>Fecha de la audiencia <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="date"
+                                    value={fechaAudiencia}
+                                    onChange={(e) => setFechaAudiencia(e.target.value)}
+                                    className={inputClass}
+                                />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Hora <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="time"
+                                    value={horaAudiencia}
+                                    onChange={(e) => setHoraAudiencia(e.target.value)}
+                                    className={inputClass}
+                                />
+                            </div>
+                        </div>
                     )}
 
                     {necesitaDatosSancion && (

@@ -36,6 +36,7 @@ export async function POST(request: Request) {
             procesoId, tipoDocumento, tipo_sancion, dias_suspension,
             fecha_descargos, asistio_acompanante, nombre_acompanante,
             descargos_trabajador, interrogatorio, pruebas_aportadas, solicitudes_especiales,
+            fecha_audiencia, hora_audiencia,
         } = await request.json()
         if (!procesoId || !tipoDocumento) {
             return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
@@ -69,6 +70,9 @@ export async function POST(request: Request) {
         }
         if (tipoDocumento === 'acta' && !fecha_descargos) {
             return NextResponse.json({ error: 'Falta la fecha de los descargos' }, { status: 400 })
+        }
+        if (tipoDocumento === 'citacion' && (!fecha_audiencia || !hora_audiencia)) {
+            return NextResponse.json({ error: 'Falta la fecha y/o la hora de la audiencia' }, { status: 400 })
         }
 
         // Si se genera la Respuesta/Decision, guardamos el tipo de sancion y los dias
@@ -109,7 +113,11 @@ export async function POST(request: Request) {
         if (tipoDocumento === 'llamado') {
             docxBuffer = generarLlamadoAtencionDocx(datosProceso, fecha)
         } else if (tipoDocumento === 'citacion') {
-            docxBuffer = generarCitacionDescargosDocx(datosProceso, fecha)
+            const horaFormateada = new Date(`2000-01-01T${hora_audiencia}:00`).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true })
+            docxBuffer = generarCitacionDescargosDocx(datosProceso, fecha, {
+                fechaAudiencia: formatearFechaLarga(new Date(`${fecha_audiencia}T00:00:00`)),
+                horaAudiencia: horaFormateada,
+            })
         } else if (tipoDocumento === 'respuesta') {
             docxBuffer = generarRespuestaDescargosDocx(datosProceso, fecha, {
                 tipoSancion: tipoSancionFinal,

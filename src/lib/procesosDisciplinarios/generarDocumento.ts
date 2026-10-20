@@ -89,7 +89,12 @@ export function generarLlamadoAtencionDocx(p: ProcesoParaDocumento, fecha: Date)
     });
 }
 
-export function generarCitacionDescargosDocx(p: ProcesoParaDocumento, fecha: Date): Buffer {
+export interface AudienciaDatos {
+    fechaAudiencia: string
+    horaAudiencia: string
+}
+
+export function generarCitacionDescargosDocx(p: ProcesoParaDocumento, fecha: Date, audiencia: AudienciaDatos): Buffer {
     return renderTemplate('citacion_descargos.docx', {
         fecha: formatearFechaLarga(fecha),
         nombre_trabajador: p.nombre_trabajador,
@@ -97,6 +102,8 @@ export function generarCitacionDescargosDocx(p: ProcesoParaDocumento, fecha: Dat
         observaciones: p.observaciones,
         calificacion_falta: buildCalificacionFalta(p.motivo.categoria),
         norma_infringida: buildNormaInfringida(p.motivo),
+        fecha_audiencia: audiencia.fechaAudiencia,
+        hora_audiencia: audiencia.horaAudiencia,
     });
 }
 
