@@ -97,6 +97,8 @@ const TIPOS_PANTALON = ['Jean clasico indigo', 'Pantalon beige hombre', 'Pantalo
 const SEXOS = ['Masculino', 'Femenino'];
 // Centro de Costos y Zona son visibles solo para administradores y estas dos personas.
 const CAMPOS_RESTRINGIDOS_CON_ACCESO = ['ismael.correa@firplak.com', 'luis.escobar@firplak.com'];
+// Salario es visible solo para administradores e Ismael Correa (no Luis Guillermo Escobar).
+const SALARIO_CON_ACCESO = ['ismael.correa@firplak.com'];
 
 // Fixed Section Component
 const FormSection: React.FC<{
@@ -231,6 +233,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
     const [isRestrictedDirector, setIsRestrictedDirector] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [canSeeCamposRestringidos, setCanSeeCamposRestringidos] = useState(false);
+    const [canSeeSalario, setCanSeeSalario] = useState(false);
     const { plantas: PLANTAS } = usePlantas();
 
     useEffect(() => {
@@ -244,6 +247,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 setIsRestrictedDirector(DIRECTORES_CON_ACCESO.includes(user.email || ''));
                 setIsAdmin(ADMIN_EMAILS.includes(user.email || ''));
                 setCanSeeCamposRestringidos(ADMIN_EMAILS.includes(user.email || '') || CAMPOS_RESTRINGIDOS_CON_ACCESO.includes(user.email || ''));
+                setCanSeeSalario(ADMIN_EMAILS.includes(user.email || '') || SALARIO_CON_ACCESO.includes(user.email || ''));
             }
         };
         fetchUser();
@@ -973,7 +977,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                             />
                         </FormField>
                     )}
-                    {isAdmin && (
+                    {canSeeSalario && (
                         <FormField label="Salario" icon={<DollarSign className="h-3 w-3" />}>
                             <Input
                                 type="number"
