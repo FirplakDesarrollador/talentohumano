@@ -299,7 +299,6 @@ export const AUSENTISMOS_SIN_DETALLE = [
 export const ADMIN_EMAILS = [
     'milton.rendon@firplak.com',
     'angie.zapata@firplak.com',
-    'talentos@firplak.com',
     'camila.jimenez@firplak.com',
     'renata.lainez@firplak.com',
     'analista2.desarrollo@firplak.com',
@@ -321,8 +320,7 @@ export const SUPER_ADMIN_EMAILS = [
     'analista2.desarrollo@firplak.com',
     'alejandro.isaza@firplak.com',
     'daniel.jimenez@firplak.com',
-    'juan.bedoya@firplak.com',
-    'talentos@firplak.com'
+    'juan.bedoya@firplak.com'
 ];
 
 // For backward compatibility during migration

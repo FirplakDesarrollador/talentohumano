@@ -1,14 +1,16 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { 
-  X, Search, Edit2, Check, Loader2, Award, Briefcase, Plus, Trash2, AlertTriangle
+import {
+  X, Search, Edit2, Check, Loader2, Award, Briefcase, Plus, Trash2, AlertTriangle, ListChecks, FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Label } from '@/components/ui/label'
+import { FuncionesCargoModal } from './FuncionesCargoModal'
+import { PerfilCargoModal } from './PerfilCargoModal'
 
 interface CargosModalProps {
   isOpen: boolean
@@ -23,7 +25,9 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
   const [newName, setNewName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [deletingCargo, setDeletingCargo] = useState<number | null>(null)
-  
+  const [funcionesCargoAbierto, setFuncionesCargoAbierto] = useState<string | null>(null)
+  const [perfilCargoAbierto, setPerfilCargoAbierto] = useState<string | null>(null)
+
   // New Cargo state
   const [showAdd, setShowAdd] = useState(false)
   const [newCargoName, setNewCargoName] = useState('')
@@ -325,9 +329,27 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
                       </span>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-10 w-10 rounded-xl text-teal-500 hover:bg-teal-100/50"
+                        title="Ver perfil completo del cargo"
+                        onClick={() => setPerfilCargoAbierto(item.cargo)}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-10 w-10 rounded-xl text-indigo-500 hover:bg-indigo-100/50"
+                        title="Ver funciones del cargo"
+                        onClick={() => setFuncionesCargoAbierto(item.cargo)}
+                      >
+                        <ListChecks className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
                         className="h-10 w-10 rounded-xl text-blue-500 hover:bg-blue-100/50"
                         onClick={() => {
                           setEditingCargo(item.id)
@@ -337,9 +359,9 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
+                      <Button
+                        size="icon"
+                        variant="ghost"
                         className="h-10 w-10 rounded-xl text-red-500 hover:bg-red-100/50"
                         onClick={() => {
                           setDeletingCargo(item.id)
@@ -366,6 +388,22 @@ export const CargosModal: React.FC<CargosModalProps> = ({ isOpen, onClose }) => 
           </Button>
         </div>
       </div>
+
+      {funcionesCargoAbierto && (
+        <FuncionesCargoModal
+          isOpen={!!funcionesCargoAbierto}
+          onClose={() => setFuncionesCargoAbierto(null)}
+          cargo={funcionesCargoAbierto}
+        />
+      )}
+
+      {perfilCargoAbierto && (
+        <PerfilCargoModal
+          isOpen={!!perfilCargoAbierto}
+          onClose={() => setPerfilCargoAbierto(null)}
+          cargo={perfilCargoAbierto}
+        />
+      )}
     </div>
   )
 }
