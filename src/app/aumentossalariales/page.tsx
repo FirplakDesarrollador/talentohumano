@@ -379,11 +379,18 @@ export default function AumentosSalarialesPage() {
         if (!emp) return
         setEmpleado(emp)
         setSearchResults([])
-        
+
         // Actualizar el campo de búsqueda con la cédula del seleccionado
         const idDisplay = emp.cedula?.toString() || emp.id?.toString() || ''
         setCedula(idDisplay)
-        
+
+        // Trae el salario actual directamente del registro del empleado, para
+        // no depender de que el solicitante lo escriba (y se equivoque) a mano.
+        setFormData(prev => ({
+            ...prev,
+            salarioActual: emp.salario != null ? String(emp.salario) : ''
+        }))
+
         setLoading(true)
         setError(null)
 
@@ -653,14 +660,20 @@ export default function AumentosSalarialesPage() {
                                                             <Input
                                                                 type="text"
                                                                 placeholder="Ingrese salario actual..."
-                                                                className="h-12 text-lg font-medium"
+                                                                className="h-12 text-lg font-medium disabled:cursor-default disabled:opacity-100 disabled:bg-gray-100"
                                                                 value={formData.salarioActual}
                                                                 onChange={(e) => setFormData({ ...formData, salarioActual: e.target.value })}
+                                                                disabled={empleado?.salario != null}
                                                                 required
                                                             />
                                                             <div className="mt-1 text-sm font-bold text-[#2a7b37]">
                                                                 {formatCurrency(formData.salarioActual)}
                                                             </div>
+                                                            {empleado?.salario != null ? (
+                                                                <p className="mt-1 text-[11px] text-gray-400">Tomado automáticamente del registro del empleado</p>
+                                                            ) : (
+                                                                <p className="mt-1 text-[11px] text-amber-600">Este empleado no tiene salario registrado, ingrésalo manualmente</p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
