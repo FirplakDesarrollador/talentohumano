@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlantas } from '@/lib/hooks/usePlantas';
-import { ADMIN_EMAILS, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, JEFES_MOLDES, DIRECTORES_CON_ACCESO } from '@/lib/constants/roles';
+import { ADMIN_EMAILS, ADMIN_EMAILS_SIN_SALARIO, RESTRICTED_SUPERVISORS, COORDINADORES_CON_ACCESO, JEFES_CON_ACCESO, JEFES_MUEBLES_CEFI, JEFES_ALMACEN_CEDI, JEFES_INGENIERIA_MOLDES, JEFES_MOLDES, DIRECTORES_CON_ACCESO } from '@/lib/constants/roles';
 import Image from 'next/image';
 import type { Database } from '@/lib/supabase/types';
 
@@ -247,7 +247,10 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 setIsRestrictedDirector(DIRECTORES_CON_ACCESO.includes(user.email || ''));
                 setIsAdmin(ADMIN_EMAILS.includes(user.email || ''));
                 setCanSeeCamposRestringidos(ADMIN_EMAILS.includes(user.email || '') || CAMPOS_RESTRINGIDOS_CON_ACCESO.includes(user.email || ''));
-                setCanSeeSalario(ADMIN_EMAILS.includes(user.email || '') || SALARIO_CON_ACCESO.includes(user.email || ''));
+                setCanSeeSalario(
+                    (ADMIN_EMAILS.includes(user.email || '') || SALARIO_CON_ACCESO.includes(user.email || ''))
+                    && !ADMIN_EMAILS_SIN_SALARIO.includes(user.email || '')
+                );
             }
         };
         fetchUser();

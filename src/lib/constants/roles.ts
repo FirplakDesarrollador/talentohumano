@@ -299,6 +299,7 @@ export const AUSENTISMOS_SIN_DETALLE = [
 export const ADMIN_EMAILS = [
     'milton.rendon@firplak.com',
     'angie.zapata@firplak.com',
+    'talentos@firplak.com',
     'camila.jimenez@firplak.com',
     'renata.lainez@firplak.com',
     'analista2.desarrollo@firplak.com',
@@ -321,6 +322,15 @@ export const SUPER_ADMIN_EMAILS = [
     'alejandro.isaza@firplak.com',
     'daniel.jimenez@firplak.com',
     'juan.bedoya@firplak.com'
+];
+
+/**
+ * Admins who have full administrative access EXCEPT they must never see
+ * employee salaries. Checked wherever a Salario field/value would otherwise
+ * be shown to an admin, to subtract them from that visibility.
+ */
+export const ADMIN_EMAILS_SIN_SALARIO = [
+    'talentos@firplak.com',
 ];
 
 // For backward compatibility during migration
