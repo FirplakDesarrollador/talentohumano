@@ -134,7 +134,12 @@ export function generarActaDescargosDocx(p: ProcesoParaDocumento, acta: ActaDesc
 export function generarRespuestaDescargosDocx(
     p: ProcesoParaDocumento,
     fecha: Date,
-    sancion: { tipoSancion: string | null; diasSuspension: number | null }
+    sancion: {
+        tipoSancion: string | null
+        diasSuspension: number | null
+        fechaInicioSuspension?: string
+        fechaFinSuspension?: string
+    }
 ): Buffer {
     return renderTemplate('respuesta_descargos.docx', {
         fecha: formatearFechaLarga(fecha),
@@ -145,8 +150,8 @@ export function generarRespuestaDescargosDocx(
         norma_infringida: buildNormaInfringida(p.motivo),
         dias_suspension_texto: sancion.diasSuspension ? diasEnPalabras(sancion.diasSuspension) : '',
         dias_suspension: sancion.diasSuspension != null ? String(sancion.diasSuspension) : '',
-        fecha_inicio_suspension: '',
-        fecha_fin_suspension: '',
+        fecha_inicio_suspension: sancion.fechaInicioSuspension || '',
+        fecha_fin_suspension: sancion.fechaFinSuspension || '',
         sancion_checkboxes: buildSancionCheckboxes(sancion.tipoSancion),
     });
 }
