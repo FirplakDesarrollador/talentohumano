@@ -28,7 +28,8 @@ import {
     UserCircle,
     GraduationCap,
     Network,
-    Download
+    Download,
+    UserSearch
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -211,6 +212,12 @@ export default function MenuPage() {
             title: 'Contratación',
             href: '/contratacion',
             icon: UserPlus,
+            visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
+        },
+        {
+            title: 'Selección',
+            href: '/seleccion',
+            icon: UserSearch,
             visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
         },
         {
