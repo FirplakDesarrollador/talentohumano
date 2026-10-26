@@ -22,6 +22,8 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
     const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento | null>(esDescargo ? null : 'llamado')
     const [tipoSancion, setTipoSancion] = useState('')
     const [diasSuspension, setDiasSuspension] = useState('')
+    const [fechaInicioSuspension, setFechaInicioSuspension] = useState('')
+    const [fechaFinSuspension, setFechaFinSuspension] = useState('')
     const [generando, setGenerando] = useState(false)
 
     // Datos de la Citación
@@ -41,8 +43,10 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
     const esActa = tipoDocumento === 'acta'
     const esCitacion = tipoDocumento === 'citacion'
 
+    const esSuspension = necesitaDatosSancion && tipoSancion === 'Suspensión'
+
     const puedeGenerar = tipoDocumento && (
-        (!necesitaDatosSancion || (tipoSancion && (tipoSancion !== 'Suspensión' || diasSuspension))) &&
+        (!necesitaDatosSancion || (tipoSancion && (!esSuspension || (diasSuspension && fechaInicioSuspension && fechaFinSuspension)))) &&
         (!esActa || !!fechaDescargos) &&
         (!esCitacion || (!!fechaAudiencia && !!horaAudiencia))
     )
@@ -58,7 +62,9 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
                     procesoId: proceso.id,
                     tipoDocumento,
                     tipo_sancion: necesitaDatosSancion ? tipoSancion : undefined,
-                    dias_suspension: necesitaDatosSancion && tipoSancion === 'Suspensión' ? Number(diasSuspension) : undefined,
+                    dias_suspension: esSuspension ? Number(diasSuspension) : undefined,
+                    fecha_inicio_suspension: esSuspension ? fechaInicioSuspension : undefined,
+                    fecha_fin_suspension: esSuspension ? fechaFinSuspension : undefined,
                     fecha_audiencia: esCitacion ? fechaAudiencia : undefined,
                     hora_audiencia: esCitacion ? horaAudiencia : undefined,
                     fecha_descargos: esActa ? fechaDescargos : undefined,
@@ -174,18 +180,40 @@ export function GenerarDocumentoModal({ proceso, onClose }: GenerarDocumentoModa
                                     {TIPOS_SANCION.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
-                            {tipoSancion === 'Suspensión' && (
-                                <div>
-                                    <label className={labelClass}>Días de suspensión <span className="text-rose-500">*</span></label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={diasSuspension}
-                                        onChange={(e) => setDiasSuspension(e.target.value)}
-                                        placeholder="Ej. 3"
-                                        className={inputClass}
-                                    />
-                                </div>
+                            {esSuspension && (
+                                <>
+                                    <div>
+                                        <label className={labelClass}>Días de suspensión <span className="text-rose-500">*</span></label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={diasSuspension}
+                                            onChange={(e) => setDiasSuspension(e.target.value)}
+                                            placeholder="Ej. 3"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Fecha inicio <span className="text-rose-500">*</span></label>
+                                            <input
+                                                type="date"
+                                                value={fechaInicioSuspension}
+                                                onChange={(e) => setFechaInicioSuspension(e.target.value)}
+                                                className={inputClass}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Fecha fin <span className="text-rose-500">*</span></label>
+                                            <input
+                                                type="date"
+                                                value={fechaFinSuspension}
+                                                onChange={(e) => setFechaFinSuspension(e.target.value)}
+                                                className={inputClass}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}

@@ -34,6 +34,7 @@ export async function POST(request: Request) {
 
         const {
             procesoId, tipoDocumento, tipo_sancion, dias_suspension,
+            fecha_inicio_suspension, fecha_fin_suspension,
             fecha_descargos, asistio_acompanante, nombre_acompanante,
             descargos_trabajador, interrogatorio, pruebas_aportadas, solicitudes_especiales,
             fecha_audiencia, hora_audiencia,
@@ -79,19 +80,31 @@ export async function POST(request: Request) {
         // de suspension (si aplica) en el proceso, para dejar constancia.
         let tipoSancionFinal: string | null = p.tipo_sancion ?? null
         let diasSuspensionFinal: number | null = p.dias_suspension ?? null
+        let fechaInicioSuspensionFinal: string | null = p.fecha_inicio_suspension ?? null
+        let fechaFinSuspensionFinal: string | null = p.fecha_fin_suspension ?? null
         if (tipoDocumento === 'respuesta') {
             if (!tipo_sancion) {
                 return NextResponse.json({ error: 'Seleccione el tipo de sanción' }, { status: 400 })
             }
             tipoSancionFinal = tipo_sancion
             diasSuspensionFinal = tipo_sancion === 'Suspensión' ? (dias_suspension || null) : null
+            fechaInicioSuspensionFinal = tipo_sancion === 'Suspensión' ? (fecha_inicio_suspension || null) : null
+            fechaFinSuspensionFinal = tipo_sancion === 'Suspensión' ? (fecha_fin_suspension || null) : null
             if (tipo_sancion === 'Suspensión' && !diasSuspensionFinal) {
                 return NextResponse.json({ error: 'Ingrese los días de suspensión' }, { status: 400 })
+            }
+            if (tipo_sancion === 'Suspensión' && (!fechaInicioSuspensionFinal || !fechaFinSuspensionFinal)) {
+                return NextResponse.json({ error: 'Ingrese la fecha de inicio y fin de la suspensión' }, { status: 400 })
             }
 
             const { error: updateError } = await admin
                 .from('procesos_disciplinarios')
-                .update({ tipo_sancion: tipoSancionFinal, dias_suspension: diasSuspensionFinal })
+                .update({
+                    tipo_sancion: tipoSancionFinal,
+                    dias_suspension: diasSuspensionFinal,
+                    fecha_inicio_suspension: fechaInicioSuspensionFinal,
+                    fecha_fin_suspension: fechaFinSuspensionFinal,
+                })
                 .eq('id', procesoId)
             if (updateError) throw updateError
         }
@@ -122,6 +135,8 @@ export async function POST(request: Request) {
             docxBuffer = generarRespuestaDescargosDocx(datosProceso, fecha, {
                 tipoSancion: tipoSancionFinal,
                 diasSuspension: diasSuspensionFinal,
+                fechaInicioSuspension: fechaInicioSuspensionFinal ? formatearFechaLarga(new Date(`${fechaInicioSuspensionFinal}T00:00:00`)) : undefined,
+                fechaFinSuspension: fechaFinSuspensionFinal ? formatearFechaLarga(new Date(`${fechaFinSuspensionFinal}T00:00:00`)) : undefined,
             })
         } else {
             docxBuffer = generarActaDescargosDocx(datosProceso, {
