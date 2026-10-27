@@ -1,7 +1,24 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, UserSearch, Sparkles } from 'lucide-react'
+import { ArrowLeft, Database, GraduationCap, Sparkles, ChevronRight } from 'lucide-react'
+
+const APARTADOS = [
+    {
+        title: 'Base de Datos General',
+        description: 'Histórico de vacantes y solicitudes de personal, con seguimiento de cumplimiento de ANS.',
+        href: '/seleccion/base-datos-general',
+        icon: Database,
+        activo: true,
+    },
+    {
+        title: 'Practicantes',
+        description: 'Seguimiento de los cupos de practicantes y aprendices: perfiles, fechas y estado.',
+        href: '/seleccion/practicantes',
+        icon: GraduationCap,
+        activo: true,
+    },
+]
 
 export default function SeleccionPage() {
     const router = useRouter()
@@ -19,23 +36,42 @@ export default function SeleccionPage() {
                 <div className="w-8" />
             </div>
 
-            <div className="flex flex-col items-center justify-center py-28 px-4 text-center">
-                <div className="relative mb-8">
-                    <div className="absolute inset-0 bg-blue-200/40 blur-2xl rounded-full" />
-                    <div className="relative bg-white rounded-full p-7 shadow-[0_8px_30px_rgba(29,53,87,0.12)] border border-blue-50">
-                        <UserSearch className="h-14 w-14 text-[#1D3557]" />
-                    </div>
+            <div className="max-w-2xl mx-auto px-4 py-10">
+                <h2 className="text-2xl font-black text-[#1D3557] mb-1 tracking-tight">Apartados</h2>
+                <p className="text-gray-500 text-sm mb-8">Elige qué parte del proceso de Selección quieres gestionar.</p>
+
+                <div className="space-y-4">
+                    {APARTADOS.map((a) => {
+                        const Icon = a.icon
+                        return (
+                            <button
+                                key={a.href}
+                                onClick={() => a.activo && router.push(a.href)}
+                                disabled={!a.activo}
+                                className="w-full text-left bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all p-6 flex items-center gap-5 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                <div className="bg-blue-50 text-[#1D3557] rounded-2xl p-4 shrink-0">
+                                    <Icon className="h-7 w-7" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-black text-slate-800 text-lg">{a.title}</h3>
+                                        {!a.activo && (
+                                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                                                <Sparkles className="h-3 w-3" />
+                                                Próximamente
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-gray-500 mt-1">{a.description}</p>
+                                </div>
+                                {a.activo && <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />}
+                            </button>
+                        )
+                    })}
                 </div>
 
-                <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 text-[11px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Próximamente
-                </span>
-
-                <h2 className="text-3xl font-black text-[#1D3557] mb-3 tracking-tight">Módulo en desarrollo</h2>
-                <p className="text-gray-500 max-w-sm leading-relaxed">
-                    Estamos construyendo el proceso de Selección. Muy pronto vas a poder gestionarlo desde acá.
-                </p>
+                <p className="text-center text-xs text-gray-400 mt-10">Más apartados del proceso de Selección próximamente.</p>
             </div>
         </div>
     )
