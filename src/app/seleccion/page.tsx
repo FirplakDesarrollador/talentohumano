@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Database, GraduationCap, Sparkles, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Database, GraduationCap, BarChart3, Sparkles, ChevronRight } from 'lucide-react'
 
 const APARTADOS = [
     {
@@ -16,6 +16,13 @@ const APARTADOS = [
         description: 'Seguimiento de los cupos de practicantes y aprendices: perfiles, fechas y estado.',
         href: '/seleccion/practicantes',
         icon: GraduationCap,
+        activo: true,
+    },
+    {
+        title: 'Indicadores',
+        description: 'Métricas y tableros del proceso de Selección.',
+        href: '/seleccion/indicadores',
+        icon: BarChart3,
         activo: true,
     },
 ]
