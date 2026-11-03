@@ -29,6 +29,14 @@ function sanitizeStorageKey(text: string): string {
         .replace(/[^A-Za-z0-9._-]+/g, '_')
 }
 
+// "SOPORTE RETIRO" y "Soporte2" son columnas de texto (no array) en la BD,
+// asi que varias URLs se guardan en el mismo campo separadas por salto de
+// linea para poder permitir varios archivos sin tener que migrar el esquema.
+function parseUrls(value: string | null | undefined): string[] {
+    if (!value) return []
+    return value.split('\n').map(v => v.trim()).filter(Boolean)
+}
+
 interface SolicitudDetalleProps {
     solicitud: any
     onClose: () => void
@@ -38,7 +46,7 @@ interface SolicitudDetalleProps {
 export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, onClose, onUpdate }) => {
     const [isUploading, setIsUploading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [supportPaymentUrl, setSupportPaymentUrl] = useState(solicitud["SOPORTE RETIRO"] || '')
+    const [supportPaymentUrls, setSupportPaymentUrls] = useState<string[]>(parseUrls(solicitud["SOPORTE RETIRO"]))
     const [pagado, setPagado] = useState<boolean>(!!solicitud["Pagado"])
     const [isSavingPagado, setIsSavingPagado] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -50,7 +58,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
     // cesantías (factura, escritura, etc.), distinto del "SOPORTE RETIRO"
     // (comprobante de que la empresa pagó el retiro). Se pide 15 días
     // después de aprobada la solicitud mediante un recordatorio por correo.
-    const [comprobanteCompraUrl, setComprobanteCompraUrl] = useState(solicitud["Soporte2"] || '')
+    const [comprobanteCompraUrls, setComprobanteCompraUrls] = useState<string[]>(parseUrls(solicitud["Soporte2"]))
     const [isUploadingCompra, setIsUploadingCompra] = useState(false)
     const [isSavingCompra, setIsSavingCompra] = useState(false)
     const [errorCompra, setErrorCompra] = useState<string | null>(null)
@@ -82,34 +90,44 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
 
         setIsUploading(true)
         setError(null)
-        const file = e.target.files[0]
+        const files = Array.from(e.target.files)
 
         try {
-            const fileName = `pago_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-            const filePath = `SoportePago/${sanitizeStorageKey(solicitud.Nombre)}/${fileName}`
+            const newUrls: string[] = []
+            for (const file of files) {
+                const fileName = `pago_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
+                const filePath = `SoportePago/${sanitizeStorageKey(solicitud.Nombre)}/${fileName}`
 
-            const { data, error: uploadError } = await supabase.storage
-                .from('Cesantias')
-                .upload(filePath, file)
+                const { error: uploadError } = await supabase.storage
+                    .from('Cesantias')
+                    .upload(filePath, file)
 
-            if (uploadError) throw uploadError
+                if (uploadError) throw uploadError
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('Cesantias')
-                .getPublicUrl(filePath)
+                const { data: { publicUrl } } = supabase.storage
+                    .from('Cesantias')
+                    .getPublicUrl(filePath)
 
-            setSupportPaymentUrl(publicUrl)
+                newUrls.push(publicUrl)
+            }
+
+            setSupportPaymentUrls(prev => [...prev, ...newUrls])
             setSuccess('Soporte de pago subido. No olvides guardar los cambios.')
         } catch (err: any) {
             console.error('Error uploading payment support:', err)
             setError(err.message || 'Error al subir el archivo')
         } finally {
             setIsUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
         }
     }
 
+    const handleRemovePaymentUrl = (url: string) => {
+        setSupportPaymentUrls(prev => prev.filter(u => u !== url))
+    }
+
     const handleSave = async () => {
-        if (!supportPaymentUrl && !solicitud["¿Entregó soporte de pago?"]) {
+        if (supportPaymentUrls.length === 0 && !solicitud["¿Entregó soporte de pago?"]) {
             setError('Debes subir un soporte de pago antes de marcar como entregado.')
             return
         }
@@ -122,7 +140,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                 .from('Cesantias')
                 .update({
                     "¿Entregó soporte de pago?": true,
-                    "SOPORTE RETIRO": supportPaymentUrl,
+                    "SOPORTE RETIRO": supportPaymentUrls.join('\n'),
                     "Aprobación THT": 'Aprobado', // Assuming payment means approval in this context
                     "Fecha Aprobación": new Date().toISOString()
                 })
@@ -148,34 +166,44 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
 
         setIsUploadingCompra(true)
         setErrorCompra(null)
-        const file = e.target.files[0]
+        const files = Array.from(e.target.files)
 
         try {
-            const fileName = `compra_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-            const filePath = `SoporteCompra/${sanitizeStorageKey(solicitud.Nombre)}/${fileName}`
+            const newUrls: string[] = []
+            for (const file of files) {
+                const fileName = `compra_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
+                const filePath = `SoporteCompra/${sanitizeStorageKey(solicitud.Nombre)}/${fileName}`
 
-            const { error: uploadError } = await supabase.storage
-                .from('Cesantias')
-                .upload(filePath, file)
+                const { error: uploadError } = await supabase.storage
+                    .from('Cesantias')
+                    .upload(filePath, file)
 
-            if (uploadError) throw uploadError
+                if (uploadError) throw uploadError
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('Cesantias')
-                .getPublicUrl(filePath)
+                const { data: { publicUrl } } = supabase.storage
+                    .from('Cesantias')
+                    .getPublicUrl(filePath)
 
-            setComprobanteCompraUrl(publicUrl)
+                newUrls.push(publicUrl)
+            }
+
+            setComprobanteCompraUrls(prev => [...prev, ...newUrls])
             setSuccessCompra('Comprobante subido. No olvides guardar los cambios.')
         } catch (err: any) {
             console.error('Error uploading purchase support:', err)
             setErrorCompra(err.message || 'Error al subir el archivo')
         } finally {
             setIsUploadingCompra(false)
+            if (compraFileInputRef.current) compraFileInputRef.current.value = ''
         }
     }
 
+    const handleRemoveCompraUrl = (url: string) => {
+        setComprobanteCompraUrls(prev => prev.filter(u => u !== url))
+    }
+
     const handleSaveCompra = async () => {
-        if (!comprobanteCompraUrl) {
+        if (comprobanteCompraUrls.length === 0) {
             setErrorCompra('Debes subir un comprobante antes de guardar.')
             return
         }
@@ -186,7 +214,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
         try {
             const { error: updateError } = await (supabase as any)
                 .from('Cesantias')
-                .update({ Soporte2: comprobanteCompraUrl })
+                .update({ Soporte2: comprobanteCompraUrls.join('\n') })
                 .eq('id', solicitud.id as number)
 
             if (updateError) throw updateError
@@ -358,11 +386,27 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
 
                             {!solicitud["¿Entregó soporte de pago?"] ? (
                                 <div className="space-y-4">
-                                    <p className="text-sm text-gray-500">Sube el comprobante de pago para finalizar esta solicitud.</p>
+                                    <p className="text-sm text-gray-500">Sube el comprobante de pago para finalizar esta solicitud. Puedes subir varios archivos.</p>
+
+                                    {supportPaymentUrls.length > 0 && (
+                                        <div className="space-y-2">
+                                            {supportPaymentUrls.map((url, idx) => (
+                                                <div key={url} className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg">
+                                                    <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 overflow-hidden text-xs font-semibold text-green-800 hover:underline">
+                                                        <FileText className="h-4 w-4 shrink-0" />
+                                                        <span className="truncate">Soporte de retiro #{idx + 1}</span>
+                                                    </a>
+                                                    <button type="button" onClick={() => handleRemovePaymentUrl(url)} className="p-1 text-gray-400 hover:text-red-500 shrink-0">
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     <div
                                         onClick={() => !isUploading && fileInputRef.current?.click()}
-                                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer group ${supportPaymentUrl ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:border-blue-400'
+                                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer group ${supportPaymentUrls.length > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:border-blue-400'
                                             }`}
                                     >
                                         <input
@@ -371,6 +415,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                             className="hidden"
                                             onChange={handleFileUpload}
                                             accept=".pdf,.jpg,.jpeg,.png"
+                                            multiple
                                             disabled={isUploading}
                                         />
                                         {isUploading ? (
@@ -378,16 +423,10 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                                 <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
                                                 <p className="text-sm font-bold text-blue-600">Subiendo archivo...</p>
                                             </div>
-                                        ) : supportPaymentUrl ? (
-                                            <div className="space-y-2">
-                                                <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto" />
-                                                <p className="text-sm font-bold text-green-800 italic">¡Soporte de pago cargado!</p>
-                                                <a href={supportPaymentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver archivo subido</a>
-                                            </div>
                                         ) : (
                                             <div className="space-y-2">
                                                 <Upload className="h-8 w-8 text-gray-400 mx-auto group-hover:text-blue-500 transition-colors" />
-                                                <p className="text-sm font-bold text-gray-700">Subir soporte de retiro</p>
+                                                <p className="text-sm font-bold text-gray-700">{supportPaymentUrls.length > 0 ? 'Subir otro soporte de retiro' : 'Subir soporte de retiro'}</p>
                                             </div>
                                         )}
                                     </div>
@@ -398,15 +437,15 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                     <Button
                                         onClick={handleSave}
                                         className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold"
-                                        disabled={isSaving || isUploading || !supportPaymentUrl}
+                                        disabled={isSaving || isUploading || supportPaymentUrls.length === 0}
                                     >
                                         {isSaving ? <Loader2 className="animate-spin mr-2" /> : 'GUARDAR Y APROBAR'}
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center justify-between">
+                                <div className="bg-green-50 border border-green-100 p-4 rounded-xl space-y-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                                             <FileText className="h-5 w-5 text-green-600" />
                                         </div>
                                         <div>
@@ -414,9 +453,13 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                             <p className="text-xs text-green-600">Esta solicitud ya está procesada.</p>
                                         </div>
                                     </div>
-                                    <a href={solicitud["SOPORTE RETIRO"]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md text-sm font-bold border border-green-200 text-green-700 hover:bg-green-100 h-9 px-3 transition-colors">
-                                        VER COMPROBANTE
-                                    </a>
+                                    <div className="flex flex-wrap gap-2">
+                                        {parseUrls(solicitud["SOPORTE RETIRO"]).map((url, idx) => (
+                                            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md text-xs font-bold border border-green-200 text-green-700 hover:bg-green-100 h-9 px-3 transition-colors">
+                                                VER COMPROBANTE {parseUrls(solicitud["SOPORTE RETIRO"]).length > 1 ? `#${idx + 1}` : ''}
+                                            </a>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -434,13 +477,29 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                 {!solicitud["Soporte2"] ? (
                                     <div className="space-y-4">
                                         <p className="text-sm text-gray-500">
-                                            Sube el comprobante de en qué usaste el dinero de las cesantías (factura, escritura, recibo, etc.).
+                                            Sube el comprobante de en qué usaste el dinero de las cesantías (factura, escritura, recibo, etc.). Puedes subir varios archivos.
                                             Recuerda que a los 15 días de aprobada la solicitud te llegará un recordatorio por correo si aún no lo has subido.
                                         </p>
 
+                                        {comprobanteCompraUrls.length > 0 && (
+                                            <div className="space-y-2">
+                                                {comprobanteCompraUrls.map((url, idx) => (
+                                                    <div key={url} className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg">
+                                                        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 overflow-hidden text-xs font-semibold text-green-800 hover:underline">
+                                                            <FileText className="h-4 w-4 shrink-0" />
+                                                            <span className="truncate">Comprobante #{idx + 1}</span>
+                                                        </a>
+                                                        <button type="button" onClick={() => handleRemoveCompraUrl(url)} className="p-1 text-gray-400 hover:text-red-500 shrink-0">
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
                                         <div
                                             onClick={() => !isUploadingCompra && compraFileInputRef.current?.click()}
-                                            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer group ${comprobanteCompraUrl ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:border-blue-400'
+                                            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer group ${comprobanteCompraUrls.length > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:border-blue-400'
                                                 }`}
                                         >
                                             <input
@@ -449,6 +508,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                                 className="hidden"
                                                 onChange={handleCompraFileUpload}
                                                 accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple
                                                 disabled={isUploadingCompra}
                                             />
                                             {isUploadingCompra ? (
@@ -456,16 +516,10 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                                     <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
                                                     <p className="text-sm font-bold text-blue-600">Subiendo archivo...</p>
                                                 </div>
-                                            ) : comprobanteCompraUrl ? (
-                                                <div className="space-y-2">
-                                                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto" />
-                                                    <p className="text-sm font-bold text-green-800 italic">¡Comprobante cargado!</p>
-                                                    <a href={comprobanteCompraUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver archivo subido</a>
-                                                </div>
                                             ) : (
                                                 <div className="space-y-2">
                                                     <Upload className="h-8 w-8 text-gray-400 mx-auto group-hover:text-blue-500 transition-colors" />
-                                                    <p className="text-sm font-bold text-gray-700">Subir soporte de compra</p>
+                                                    <p className="text-sm font-bold text-gray-700">{comprobanteCompraUrls.length > 0 ? 'Subir otro comprobante' : 'Subir soporte de compra'}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -476,15 +530,15 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                         <Button
                                             onClick={handleSaveCompra}
                                             className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                                            disabled={isSavingCompra || isUploadingCompra || !comprobanteCompraUrl}
+                                            disabled={isSavingCompra || isUploadingCompra || comprobanteCompraUrls.length === 0}
                                         >
                                             {isSavingCompra ? <Loader2 className="animate-spin mr-2" /> : 'GUARDAR COMPROBANTE'}
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center justify-between">
+                                    <div className="bg-green-50 border border-green-100 p-4 rounded-xl space-y-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                                                 <FileText className="h-5 w-5 text-green-600" />
                                             </div>
                                             <div>
@@ -492,9 +546,13 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
                                                 <p className="text-xs text-green-600">Gracias por confirmar el uso de tus cesantías.</p>
                                             </div>
                                         </div>
-                                        <a href={solicitud["Soporte2"]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md text-sm font-bold border border-green-200 text-green-700 hover:bg-green-100 h-9 px-3 transition-colors">
-                                            VER COMPROBANTE
-                                        </a>
+                                        <div className="flex flex-wrap gap-2">
+                                            {parseUrls(solicitud["Soporte2"]).map((url, idx) => (
+                                                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md text-xs font-bold border border-green-200 text-green-700 hover:bg-green-100 h-9 px-3 transition-colors">
+                                                    VER COMPROBANTE {parseUrls(solicitud["Soporte2"]).length > 1 ? `#${idx + 1}` : ''}
+                                                </a>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
