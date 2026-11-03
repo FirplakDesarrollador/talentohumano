@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Database, GraduationCap, BarChart3, Sparkles, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Database, GraduationCap, BarChart3, UserPlus2, Sparkles, ChevronRight } from 'lucide-react'
 
 const APARTADOS = [
     {
@@ -9,6 +9,13 @@ const APARTADOS = [
         description: 'Histórico de vacantes y solicitudes de personal, con seguimiento de cumplimiento de ANS.',
         href: '/seleccion/base-datos-general',
         icon: Database,
+        activo: true,
+    },
+    {
+        title: 'Inscripción de Candidatos',
+        description: 'Candidatos que se postulan a las vacantes activas y envío de cartas (agradecimiento, bienvenida, confirmación de archivos).',
+        href: '/seleccion/candidatos',
+        icon: UserPlus2,
         activo: true,
     },
     {

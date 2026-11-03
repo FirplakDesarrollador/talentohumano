@@ -20,6 +20,15 @@ import {
 } from 'lucide-react'
 import { formatMotivo } from '@/lib/utils'
 
+// Supabase Storage rechaza keys con tildes/ñ/espacios y otros caracteres fuera
+// de [A-Za-z0-9._-], y "solicitud.Nombre" (usado como carpeta) casi siempre
+// los trae (ej: "Guicela Andrea Gómez Usme").
+function sanitizeStorageKey(text: string): string {
+    return text
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^A-Za-z0-9._-]+/g, '_')
+}
+
 interface SolicitudDetalleProps {
     solicitud: any
     onClose: () => void
@@ -77,7 +86,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
 
         try {
             const fileName = `pago_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-            const filePath = `SoportePago/${solicitud.Nombre}/${fileName}`
+            const filePath = `SoportePago/${sanitizeStorageKey(solicitud.Nombre)}/${fileName}`
 
             const { data, error: uploadError } = await supabase.storage
                 .from('Cesantias')
@@ -143,7 +152,7 @@ export const SolicitudDetalle: React.FC<SolicitudDetalleProps> = ({ solicitud, o
 
         try {
             const fileName = `compra_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-            const filePath = `SoporteCompra/${solicitud.Nombre}/${fileName}`
+            const filePath = `SoporteCompra/${sanitizeStorageKey(solicitud.Nombre)}/${fileName}`
 
             const { error: uploadError } = await supabase.storage
                 .from('Cesantias')
