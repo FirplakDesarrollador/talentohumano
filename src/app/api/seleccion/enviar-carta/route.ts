@@ -54,8 +54,9 @@ async function enviarCorreo(token: string, toEmail: string, subject: string, con
     }
 }
 
-// NOTA: plantillas provisionales. Talento Humano va a enviar el texto definitivo
-// de cada carta para reemplazar este contenido.
+// NOTA: "bienvenida" usa el texto/diseño definitivo que envió Talento Humano
+// (tarjeta "Bienvenido a la familia Firplak"). "agradecimiento" y "archivos"
+// siguen siendo plantillas provisionales hasta que envíen su texto definitivo.
 function buildCarta(tipo: TipoCarta, nombre: string, cargo: string): { subject: string; html: string } {
     const wrapper = (titulo: string, cuerpo: string) => `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 560px;">
@@ -77,12 +78,30 @@ function buildCarta(tipo: TipoCarta, nombre: string, cargo: string): { subject: 
     }
     if (tipo === 'bienvenida') {
         return {
-            subject: `¡Bienvenido/a a FIRPLAK! — ${cargo}`,
-            html: wrapper('¡Bienvenido/a a FIRPLAK!', `
-                <p>Hola ${nombre},</p>
-                <p>Nos complace darte la bienvenida al equipo FIRPLAK para el cargo de <strong>${cargo}</strong>. Estamos muy contentos de que te unas a nosotros.</p>
-                <p>Pronto recibirás más información sobre los siguientes pasos de tu proceso de vinculación.</p>
-            `),
+            subject: `¡Bienvenido/a a la familia FIRPLAK! — ${cargo}`,
+            html: `
+                <div style="font-family: Arial, Helvetica, sans-serif; max-width: 560px; margin: 0 auto; background:#ffffff;">
+                    <div style="height:10px; background: linear-gradient(90deg, #1D3557 0%, #1D3557 40%, #8aa0b3 40%, #8aa0b3 55%, #c9d2da 55%, #c9d2da 100%);"></div>
+                    <div style="padding: 32px 36px;">
+                        <h1 style="font-family: 'Brush Script MT', 'Segoe Script', cursive; font-weight: 400; font-size: 34px; color:#6b7280; margin: 0 0 24px; line-height:1.2;">
+                            Bienvenido/a a la familia<br/>Firplak
+                        </h1>
+                        <p style="font-size:15px; color:#374151; line-height:1.7; margin: 0 0 16px;">Hola ${nombre},</p>
+                        <p style="font-size:15px; color:#374151; line-height:1.7; margin: 0 0 16px;">
+                            Para FIRPLAK S.A. es un orgullo contar con personas tan íntegras y talentosas como tú.
+                        </p>
+                        <p style="font-size:15px; color:#374151; line-height:1.7; margin: 0 0 16px;">
+                            Tenemos la certeza de que encontrarás oportunidades para aprender y crecer junto con nosotros como parte de nuestro equipo de <strong>${cargo}</strong>, enriqueciéndote de experiencias inolvidables.
+                        </p>
+                        <p style="text-align:center; margin: 32px 0 8px;">
+                            <span style="color:#60a5fa; font-size:20px;">&#10022;</span>
+                            <span style="color:#6b7280; font-size:22px; font-weight:700; letter-spacing:1px; margin: 0 10px;">&iexcl;&Eacute;XITOS!</span>
+                            <span style="color:#60a5fa; font-size:20px;">&#10022;</span>
+                        </p>
+                        <p style="text-align:right; color:#1D3557; font-weight:800; font-size:20px; letter-spacing:2px; margin: 24px 0 0;">FIRPLAK</p>
+                    </div>
+                </div>
+            `,
         }
     }
     return {
