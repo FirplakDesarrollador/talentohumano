@@ -54,9 +54,10 @@ async function enviarCorreo(token: string, toEmail: string, subject: string, con
     }
 }
 
-// NOTA: "bienvenida" usa el texto/diseño definitivo que envió Talento Humano
-// (tarjeta "Bienvenido a la familia Firplak"). "agradecimiento" y "archivos"
-// siguen siendo plantillas provisionales hasta que envíen su texto definitivo.
+// NOTA: "bienvenida" y "agradecimiento" usan el texto/diseño definitivo que
+// envió Talento Humano (tarjetas "Bienvenido a la familia Firplak" y
+// "¡Gracias por tu participación!"). "archivos" sigue siendo una plantilla
+// provisional hasta que envíen su texto definitivo.
 function buildCarta(tipo: TipoCarta, nombre: string, cargo: string): { subject: string; html: string } {
     const wrapper = (titulo: string, cuerpo: string) => `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 560px;">
@@ -68,12 +69,28 @@ function buildCarta(tipo: TipoCarta, nombre: string, cargo: string): { subject: 
 
     if (tipo === 'agradecimiento') {
         return {
-            subject: `Gracias por tu interés en FIRPLAK — ${cargo}`,
-            html: wrapper('¡Gracias por postularte!', `
-                <p>Hola ${nombre},</p>
-                <p>Queremos agradecerte por tu interés en la vacante de <strong>${cargo}</strong> en FIRPLAK S.A. y por el tiempo dedicado a tu postulación.</p>
-                <p>Nuestro equipo de Talento Humano revisará tu perfil y, si hay avances en el proceso, nos pondremos en contacto contigo.</p>
-            `),
+            subject: `Gracias por tu participación en nuestro proceso de selección — ${cargo}`,
+            html: `
+                <div style="font-family: Arial, Helvetica, sans-serif; max-width: 580px; margin: 0 auto; background:#2d4356; color:#f1f3f5; padding: 40px 36px;">
+                    <h1 style="font-size:26px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin: 0 0 28px; color:#ffffff;">
+                        &iexcl;Gracias por tu participaci&oacute;n!
+                    </h1>
+                    <p style="font-size:14px; line-height:1.8; margin: 0 0 18px; color:#dbe2e8;">Hola ${nombre},</p>
+                    <p style="font-size:14px; line-height:1.8; margin: 0 0 18px; color:#dbe2e8; text-align:center;">
+                        En nombre de FIRPLAK queremos agradecerte por haber participado en nuestro proceso de selección para <strong>${cargo}</strong>. Para nosotros es muy valioso contar con personas como t&uacute;, que por sus cualidades, hicieron del proceso una dif&iacute;cil decisi&oacute;n.
+                    </p>
+                    <p style="font-size:14px; line-height:1.8; margin: 0 0 18px; color:#dbe2e8; text-align:center;">
+                        En esta ocasi&oacute;n, tu perfil no fue seleccionado para continuar en el proceso, sin embargo, valoramos mucho tu experiencia y habilidades por lo que conservaremos tu hoja de vida en nuestra base de datos para considerarte en futuras oportunidades que se ajusten a tu perfil.
+                    </p>
+                    <p style="font-size:14px; line-height:1.8; margin: 0 0 32px; color:#dbe2e8; text-align:center;">
+                        Agradecemos de nuevo tu tiempo e inter&eacute;s, te deseamos muchos &eacute;xitos en tus pr&oacute;ximos retos profesionales.
+                    </p>
+                    <div style="text-align:center;">
+                        <p style="font-size:26px; font-weight:800; letter-spacing:3px; color:#ffffff; margin: 0;">FIRPLAK</p>
+                        <p style="font-size:12px; letter-spacing:2px; color:#9fb0bd; margin: 4px 0 0; text-transform:lowercase;">inspirando hogares</p>
+                    </div>
+                </div>
+            `,
         }
     }
     if (tipo === 'bienvenida') {
