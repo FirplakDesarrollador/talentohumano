@@ -364,7 +364,11 @@ export function getPlantasPermitidas(email: string): string[] | null {
         plantas.add('Fibra de vidrio');
         if (email === 'david.ramirez@firplak.com') plantas.add('Marmol sintetico');
     }
-    if (COORDINADORES_CON_ACCESO.includes(email)) PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
+    if (COORDINADORES_CON_ACCESO.includes(email)) {
+        PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
+        // Jakeline Chaverra: suma Quarzstone a sus plantas de coordinadora
+        if (email === 'jakeline.chaverra@firplak.com') plantas.add('Quarzstone');
+    }
     if (JEFES_CON_ACCESO.includes(email)) PLANTAS_COORDINADORES_PERMITIDAS.forEach(p => plantas.add(p));
     if (JEFES_MUEBLES_CEFI.includes(email)) {
         plantas.add('Muebles');
