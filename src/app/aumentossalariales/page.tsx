@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS, AUMENTOS_SALARIALES_LEVELS, JEFES_MOLDES } from '@/lib/constants/roles'
+import { NIVELES_CARGO, APPROVER_LEVELS, ADMIN_LEVELS, ADMIN_EMAILS, AUMENTOS_SALARIALES_LEVELS, JEFES_MOLDES, AUMENTOS_SALARIALES_MOLDES_WIDE } from '@/lib/constants/roles'
 import { EmpleadoCard } from '@/components/EmpleadoCard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -199,7 +199,7 @@ export default function AumentosSalarialesPage() {
             const isAdminUser = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(currentUser?.nivelCargo as any)
             if (isAdminUser) return // los admins ya pueden buscar a cualquiera
 
-            const isMoldesRestricted = currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo)
+            const isMoldesRestricted = currentUser?.correo && (JEFES_MOLDES.includes(currentUser.correo) || AUMENTOS_SALARIALES_MOLDES_WIDE.includes(currentUser.correo))
             const myName = (currentUser?.nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
             if (!isMoldesRestricted && myName.length < 3) return
 
@@ -333,7 +333,7 @@ export default function AumentosSalarialesPage() {
                     // Validar permisos: un usuario normal solo puede ver a los empleados donde él figura como jefe
                     const isSystemAdmin = (currentUser?.correo && ADMIN_EMAILS.includes(currentUser.correo)) || ADMIN_LEVELS.includes(currentUser?.nivelCargo as any)
                     
-                    const isMoldesRestricted = currentUser?.correo && JEFES_MOLDES.includes(currentUser.correo);
+                    const isMoldesRestricted = currentUser?.correo && (JEFES_MOLDES.includes(currentUser.correo) || AUMENTOS_SALARIALES_MOLDES_WIDE.includes(currentUser.correo));
 
                     const permitidosData = activosData.filter(emp => {
                         if (isSystemAdmin) return true;
