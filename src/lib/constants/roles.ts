@@ -258,13 +258,16 @@ export const JEFES_MOLDES = [
 ];
 
 /**
- * Emails with Moldes-plant-wide employee visibility in the Aumentos Salariales
- * module specifically (see/manage every employee in Moldes, not only their
+ * Emails with plant-wide employee visibility in the Aumentos Salariales module
+ * specifically (see/manage every employee in the listed plants, not only their
  * direct reports), in addition to whoever JEFES_MOLDES already covers there.
+ * Sara Aguilar es Jefe de Ingenieria: esto cubre tambien a quienes reportan
+ * indirectamente a ella (p. ej. un operario a cargo de alguien que a su vez
+ * reporta a Sara), ya que el filtro normal solo compara jefe directo.
  */
-export const AUMENTOS_SALARIALES_MOLDES_WIDE = [
-    'sara.aguilar@firplak.com',
-];
+export const AUMENTOS_SALARIALES_PLANTAS_EXTRA: Record<string, string[]> = {
+    'sara.aguilar@firplak.com': ['Ingenieria', 'Moldes'],
+};
 
 /**
  * Directors explicitly permitted to access the Gestor de Personal module.
