@@ -212,8 +212,8 @@ export default function AumentosSalarialesPage() {
             if (error || !data) return
 
             const misEmpleados = (data as any[]).filter(emp => {
-                if (isMoldesRestricted) return emp.planta === 'Moldes' || emp.area === 'Moldes'
-                if (plantasExtra) return plantasExtra.includes(emp.planta) || plantasExtra.includes(emp.area)
+                if (isMoldesRestricted && (emp.planta === 'Moldes' || emp.area === 'Moldes')) return true
+                if (plantasExtra && (plantasExtra.includes(emp.planta) || plantasExtra.includes(emp.area))) return true
 
                 const empJefe = (emp.jefe || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
                 if (!empJefe || empJefe.length < 3) return false
@@ -341,8 +341,8 @@ export default function AumentosSalarialesPage() {
                     const permitidosData = activosData.filter(emp => {
                         if (isSystemAdmin) return true;
 
-                        if (isMoldesRestricted) return emp.planta === 'Moldes' || emp.area === 'Moldes';
-                        if (plantasExtra) return plantasExtra.includes(emp.planta) || plantasExtra.includes(emp.area);
+                        if (isMoldesRestricted && (emp.planta === 'Moldes' || emp.area === 'Moldes')) return true;
+                        if (plantasExtra && (plantasExtra.includes(emp.planta) || plantasExtra.includes(emp.area))) return true;
 
                         const empJefe = (emp.jefe || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                         const myName = (currentUser?.nombre || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
