@@ -29,6 +29,8 @@ type FormState = {
     observacion_general: string
 }
 
+const ESTADO_OPCIONES = ['Activo', 'En Proceso', 'Recientemente salió']
+
 function toForm(p: Practicante | null): FormState {
     return {
         tipo: p?.tipo || '',
@@ -214,14 +216,20 @@ export function PracticanteModal({
                             </div>
                             <div className="space-y-1.5 md:col-span-2">
                                 <label className={labelClass}>Estado</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={form.estado}
                                     disabled={!editando}
                                     onChange={(e) => set('estado', e.target.value)}
                                     className={fieldClass}
-                                    placeholder="Activo, Recientemente salió..."
-                                />
+                                >
+                                    <option value="">Sin estado</option>
+                                    {ESTADO_OPCIONES.map(op => (
+                                        <option key={op} value={op}>{op}</option>
+                                    ))}
+                                    {form.estado && !ESTADO_OPCIONES.includes(form.estado) && (
+                                        <option value={form.estado}>{form.estado}</option>
+                                    )}
+                                </select>
                             </div>
                             <div className="space-y-1.5 md:col-span-2">
                                 <label className={labelClass}>Status / seguimiento</label>
