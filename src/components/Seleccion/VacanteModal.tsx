@@ -20,6 +20,7 @@ export interface Vacante {
     numero_personas_solicitada: number
     solicita: string | null
     solicitud_personal_id: number | null
+    planner_task_url: string | null
 }
 
 const ESTADOS: Vacante['estado'][] = ['ACTIVA', 'CERRADA', 'CANCELADA']
@@ -30,7 +31,6 @@ type FormState = {
     fecha_real_ingreso: string
     ans: string
     cargo: string
-    planta: string
     area: string
     nivel_cargo: string
     origen_solicitud: string
@@ -45,7 +45,6 @@ function toForm(v: Vacante | null): FormState {
         fecha_real_ingreso: v?.fecha_real_ingreso || '',
         ans: v?.ans != null ? String(v.ans) : '',
         cargo: v?.cargo || '',
-        planta: v?.planta || '',
         area: v?.area || '',
         nivel_cargo: v?.nivel_cargo || '',
         origen_solicitud: v?.origen_solicitud || '',
@@ -56,11 +55,13 @@ function toForm(v: Vacante | null): FormState {
 
 export function VacanteModal({
     vacante,
+    areas,
     onClose,
     onSaved,
     onDeleted,
 }: {
     vacante: Vacante | null // null = creando una nueva
+    areas: string[]
     onClose: () => void
     onSaved: () => void
     onDeleted: () => void
@@ -93,7 +94,6 @@ export function VacanteModal({
         fecha_real_ingreso: form.estado === 'ACTIVA' ? null : (form.fecha_real_ingreso || null),
         ans: form.ans.trim() ? parseInt(form.ans, 10) : null,
         cargo: form.cargo.trim(),
-        planta: form.planta.trim() || null,
         area: form.area.trim() || null,
         nivel_cargo: form.nivel_cargo.trim() || null,
         origen_solicitud: form.origen_solicitud.trim() || null,
@@ -112,9 +112,25 @@ export function VacanteModal({
         try {
             const payload = buildPayload()
             if (esNueva) {
-                const { error } = await (supabase.from('seleccion_vacantes' as any) as any).insert(payload)
+                const { data: creada, error } = await (supabase.from('seleccion_vacantes' as any) as any)
+                    .insert(payload)
+                    .select('id')
+                    .single()
                 if (error) throw error
                 toast.success('Vacante creada correctamente')
+
+                // Mismo mecanismo de creación de tareas en Planner que usa "Solicitar personal".
+                // Best-effort: si falla, la vacante ya quedó guardada igual.
+                try {
+                    const res = await fetch('/api/seleccion/crear-tarea-planner', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ vacanteId: creada.id, cargo: payload.cargo }),
+                    })
+                    if (res.ok) toast.success('Tarea de seguimiento creada en Planner')
+                } catch (plannerErr) {
+                    console.error('Error creando tarea de Planner para la vacante:', plannerErr)
+                }
             } else {
                 const { error } = await (supabase.from('seleccion_vacantes' as any) as any)
                     .update(payload)
@@ -176,6 +192,16 @@ export function VacanteModal({
                             <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700 font-medium">
                                 Esta vacante se sincroniza automáticamente desde una solicitud de personal creada en Contratación. Los cambios de estado y datos básicos se actualizan solos cuando cambie la solicitud original.
                             </div>
+                        )}
+                        {vacante?.planner_task_url && (
+                            <a
+                                href={vacante.planner_task_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-xs text-emerald-700 font-bold hover:bg-emerald-100 transition-colors"
+                            >
+                                Ver tarea de seguimiento en Planner →
+                            </a>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
@@ -243,24 +269,19 @@ export function VacanteModal({
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className={labelClass}>Planta</label>
-                                <input
-                                    type="text"
-                                    value={form.planta}
-                                    disabled={!editando}
-                                    onChange={(e) => set('planta', e.target.value)}
-                                    className={fieldClass}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
                                 <label className={labelClass}>Área</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={form.area}
                                     disabled={!editando}
                                     onChange={(e) => set('area', e.target.value)}
                                     className={fieldClass}
-                                />
+                                >
+                                    <option value="">Selecciona un área</option>
+                                    {areas.map(a => <option key={a} value={a}>{a}</option>)}
+                                    {form.area && !areas.includes(form.area) && (
+                                        <option value={form.area}>{form.area}</option>
+                                    )}
+                                </select>
                             </div>
                             <div className="space-y-1.5">
                                 <label className={labelClass}>Nivel del cargo</label>

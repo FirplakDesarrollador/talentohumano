@@ -35,6 +35,12 @@ const ESTADO_BADGE: Record<string, string> = {
     CANCELADA: 'bg-slate-200 text-slate-600 border-slate-300',
 }
 
+function finDeMes(yyyyMm: string): string {
+    const [y, m] = yyyyMm.split('-').map(Number)
+    const ultimoDia = new Date(y, m, 0).getDate()
+    return `${yyyyMm}-${String(ultimoDia).padStart(2, '0')}`
+}
+
 function diffDias(a: string, b: string): number {
     const d1 = new Date(`${a}T00:00:00`)
     const d2 = new Date(`${b}T00:00:00`)
@@ -92,6 +98,8 @@ export default function BaseDatosGeneralPage() {
     const [tab, setTab] = useState<typeof TABS[number]['value']>('TODAS')
     const [areaFiltro, setAreaFiltro] = useState('TODAS')
     const [plantaFiltro, setPlantaFiltro] = useState('TODAS')
+    const [fechaDesde, setFechaDesde] = useState('')
+    const [fechaHasta, setFechaHasta] = useState('')
     const [modalVacante, setModalVacante] = useState<Vacante | null | undefined>(undefined) // undefined = cerrado
     const [linkCopiado, setLinkCopiado] = useState(false)
 
@@ -111,19 +119,11 @@ export default function BaseDatosGeneralPage() {
         }
     }
 
-    // Opciones de filtro Área/Planta y conteos por estado: se cargan aparte (solo
-    // columnas livianas, sin paginar) para no depender de lo que esté filtrado.
-    const fetchStatsYOpciones = useCallback(async () => {
+    // Opciones de filtro Área/Planta: se cargan una sola vez, sin filtrar, para
+    // que las listas desplegables no cambien según lo que esté seleccionado.
+    const fetchOpciones = useCallback(async () => {
         try {
-            const base = () => supabase.from('seleccion_vacantes' as any) as any
-            const [{ count: cTotal }, { count: cActiva }, { count: cCerrada }, { count: cCancelada }, { data: opciones }] = await Promise.all([
-                base().select('*', { count: 'exact', head: true }),
-                base().select('*', { count: 'exact', head: true }).eq('estado', 'ACTIVA'),
-                base().select('*', { count: 'exact', head: true }).eq('estado', 'CERRADA'),
-                base().select('*', { count: 'exact', head: true }).eq('estado', 'CANCELADA'),
-                base().select('area, planta'),
-            ])
-            setStats({ total: cTotal || 0, activa: cActiva || 0, cerrada: cCerrada || 0, cancelada: cCancelada || 0 })
+            const { data: opciones } = await (supabase.from('seleccion_vacantes' as any) as any).select('area, planta')
             const areaSet = new Set<string>()
             const plantaSet = new Set<string>()
             for (const row of (opciones || [])) {
@@ -133,10 +133,63 @@ export default function BaseDatosGeneralPage() {
             setAreas([...areaSet].sort((a, b) => a.localeCompare(b)))
             setPlantas([...plantaSet].sort((a, b) => a.localeCompare(b)))
         } catch (err) {
+            console.error('Error cargando opciones de filtro:', err)
+        }
+    }, [])
+
+    // Conteos por estado para las tarjetas y pestañas: respetan los filtros
+    // activos (búsqueda, área, planta, fechas), pero no el estado/pestaña.
+    // Cuando hay un rango de fechas, las 4 tarjetas usan el historial de
+    // estados y comparten la misma base de tiempo ("vacantes que tocaron
+    // ese periodo en cada estado"), para que Total sea siempre >= las demás
+    // y no aparezcan, por ejemplo, más activas que el total.
+    const fetchStats = useCallback(async () => {
+        try {
+            const hayFiltroFecha = Boolean(fechaDesde || fechaHasta)
+
+            if (hayFiltroFecha) {
+                const params = {
+                    p_desde: fechaDesde ? `${fechaDesde}-01` : '1900-01-01',
+                    p_hasta: fechaHasta ? finDeMes(fechaHasta) : '2999-12-31',
+                    p_area: areaFiltro !== 'TODAS' ? areaFiltro : null,
+                    p_planta: plantaFiltro !== 'TODAS' ? plantaFiltro : null,
+                    p_search: search.trim() || null,
+                }
+                const rpc = (estado: string | null) =>
+                    (supabase as any).rpc('seleccion_contar_vacantes_en_rango', { ...params, p_estado: estado })
+
+                const [{ data: dTotal }, { data: dActiva }, { data: dCerrada }, { data: dCancelada }] = await Promise.all([
+                    rpc(null),
+                    rpc('ACTIVA'),
+                    rpc('CERRADA'),
+                    rpc('CANCELADA'),
+                ])
+                setStats({ total: Number(dTotal) || 0, activa: Number(dActiva) || 0, cerrada: Number(dCerrada) || 0, cancelada: Number(dCancelada) || 0 })
+                return
+            }
+
+            const base = () => {
+                let q = (supabase.from('seleccion_vacantes' as any) as any).select('*', { count: 'exact', head: true })
+                if (areaFiltro !== 'TODAS') q = q.eq('area', areaFiltro)
+                if (plantaFiltro !== 'TODAS') q = q.eq('planta', plantaFiltro)
+                if (search.trim()) {
+                    const term = search.trim()
+                    q = q.or(`cargo.ilike.%${term}%,planta.ilike.%${term}%,area.ilike.%${term}%,solicita.ilike.%${term}%`)
+                }
+                return q
+            }
+            const [{ count: cTotal }, { count: cActiva }, { count: cCerrada }, { count: cCancelada }] = await Promise.all([
+                base(),
+                base().eq('estado', 'ACTIVA'),
+                base().eq('estado', 'CERRADA'),
+                base().eq('estado', 'CANCELADA'),
+            ])
+            setStats({ total: cTotal || 0, activa: cActiva || 0, cerrada: cCerrada || 0, cancelada: cCancelada || 0 })
+        } catch (err) {
             console.error('Error cargando estadísticas de selección:', err)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [areaFiltro, plantaFiltro, search, fechaDesde, fechaHasta])
 
     const fetchVacantes = useCallback(async () => {
         setLoading(true)
@@ -159,6 +212,12 @@ export default function BaseDatosGeneralPage() {
                 const term = search.trim()
                 query = query.or(`cargo.ilike.%${term}%,planta.ilike.%${term}%,area.ilike.%${term}%,solicita.ilike.%${term}%`)
             }
+            if (fechaDesde) {
+                query = query.gte('fecha_solicitud', `${fechaDesde}-01`)
+            }
+            if (fechaHasta) {
+                query = query.lte('fecha_solicitud', finDeMes(fechaHasta))
+            }
 
             const { data, error, count } = await query
             if (error) throw error
@@ -170,11 +229,15 @@ export default function BaseDatosGeneralPage() {
             setLoading(false)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, tab, areaFiltro, plantaFiltro, search])
+    }, [page, tab, areaFiltro, plantaFiltro, search, fechaDesde, fechaHasta])
 
     useEffect(() => {
-        fetchStatsYOpciones()
-    }, [fetchStatsYOpciones])
+        fetchOpciones()
+    }, [fetchOpciones])
+
+    useEffect(() => {
+        fetchStats()
+    }, [fetchStats])
 
     useEffect(() => {
         fetchVacantes()
@@ -182,7 +245,7 @@ export default function BaseDatosGeneralPage() {
 
     useEffect(() => {
         setPage(0)
-    }, [search, tab, areaFiltro, plantaFiltro])
+    }, [search, tab, areaFiltro, plantaFiltro, fechaDesde, fechaHasta])
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
     const pageNumbers = useMemo(() => buildPageNumbers(page + 1, totalPages), [page, totalPages])
@@ -190,19 +253,22 @@ export default function BaseDatosGeneralPage() {
     const handleSaved = () => {
         setModalVacante(undefined)
         fetchVacantes()
-        fetchStatsYOpciones()
+        fetchStats()
+        fetchOpciones()
     }
     const handleDeleted = () => {
         setModalVacante(undefined)
         fetchVacantes()
-        fetchStatsYOpciones()
+        fetchStats()
+        fetchOpciones()
     }
 
+    const hayFiltroFecha = Boolean(fechaDesde || fechaHasta)
     const statCards = [
-        { label: 'Total de vacantes', value: stats.total, desc: 'Todas las solicitudes', icon: Database, color: 'text-blue-600 bg-blue-50' },
-        { label: 'Activas', value: stats.activa, desc: 'En búsqueda de candidatos', icon: Clock, color: 'text-blue-600 bg-blue-50' },
-        { label: 'Cerradas', value: stats.cerrada, desc: 'Procesos finalizados', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
-        { label: 'Canceladas', value: stats.cancelada, desc: 'Solicitud no continuó', icon: XCircle, color: 'text-slate-500 bg-slate-100' },
+        { label: 'Total de vacantes', value: stats.total, desc: hayFiltroFecha ? 'Con actividad en el periodo' : 'Todas las solicitudes', icon: Database, color: 'text-blue-600 bg-blue-50' },
+        { label: 'Activas', value: stats.activa, desc: hayFiltroFecha ? 'Estuvieron activas en el periodo' : 'En búsqueda de candidatos', icon: Clock, color: 'text-blue-600 bg-blue-50' },
+        { label: 'Cerradas', value: stats.cerrada, desc: hayFiltroFecha ? 'Se cerraron en el periodo' : 'Procesos finalizados', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
+        { label: 'Canceladas', value: stats.cancelada, desc: hayFiltroFecha ? 'Se cancelaron en el periodo' : 'Solicitud no continuó', icon: XCircle, color: 'text-slate-500 bg-slate-100' },
     ]
 
     return (
@@ -306,6 +372,33 @@ export default function BaseDatosGeneralPage() {
                             <option value="TODAS">Planta: todas</option>
                             {plantas.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
+                        <div className="flex items-center gap-1.5">
+                            <input
+                                type="month"
+                                value={fechaDesde}
+                                onChange={(e) => setFechaDesde(e.target.value)}
+                                max={fechaHasta || undefined}
+                                className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                                title="Mes de solicitud desde"
+                            />
+                            <span className="text-xs font-bold text-slate-300">—</span>
+                            <input
+                                type="month"
+                                value={fechaHasta}
+                                onChange={(e) => setFechaHasta(e.target.value)}
+                                min={fechaDesde || undefined}
+                                className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                                title="Mes de solicitud hasta"
+                            />
+                        </div>
+                        {(fechaDesde || fechaHasta) && (
+                            <button
+                                onClick={() => { setFechaDesde(''); setFechaHasta('') }}
+                                className="h-11 px-3 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                            >
+                                Limpiar fechas
+                            </button>
+                        )}
                     </div>
 
                     {loading ? (
@@ -417,6 +510,7 @@ export default function BaseDatosGeneralPage() {
             {modalVacante !== undefined && (
                 <VacanteModal
                     vacante={modalVacante}
+                    areas={areas}
                     onClose={() => setModalVacante(undefined)}
                     onSaved={handleSaved}
                     onDeleted={handleDeleted}
