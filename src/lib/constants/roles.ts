@@ -258,6 +258,15 @@ export const JEFES_MOLDES = [
 ];
 
 /**
+ * Emails with Moldes-plant-wide employee visibility in the Aumentos Salariales
+ * module specifically (see/manage every employee in Moldes, not only their
+ * direct reports), in addition to whoever JEFES_MOLDES already covers there.
+ */
+export const AUMENTOS_SALARIALES_MOLDES_WIDE = [
+    'sara.aguilar@firplak.com',
+];
+
+/**
  * Directors explicitly permitted to access the Gestor de Personal module.
  * All other Directors are blocked by default.
  */
