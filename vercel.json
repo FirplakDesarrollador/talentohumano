@@ -7,6 +7,10 @@
         {
             "path": "/api/cron/alertas-contrato",
             "schedule": "0 14 * * *"
+        },
+        {
+            "path": "/api/cron/aumentos-salariales-recordatorio",
+            "schedule": "0 14 * * *"
         }
     ]
 }
