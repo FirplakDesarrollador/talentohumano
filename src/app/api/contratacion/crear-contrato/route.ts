@@ -90,7 +90,7 @@ export async function POST(request: Request) {
         const archivoBuffer = pdfBuffer || docxBuffer
         const extension = pdfBuffer ? 'pdf' : 'docx'
         const contentType = pdfBuffer ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        const empleadoNombre = (empleado as any).nombreCompleto as string
+        const empleadoNombre = ((empleado as any).nombreCompleto as string).trim()
         const nombreCarpeta = sanitizeStorageKey(empleadoNombre.toUpperCase())
         const nombreArchivo = `Contrato ${nombreContrato} - ${formatearFechaLarga(fechaInicio)}.${extension}`
         const storagePath = `activos/${nombreCarpeta}/Documentos/Contrato/${Date.now()}_${sanitizeStorageKey(nombreArchivo)}`

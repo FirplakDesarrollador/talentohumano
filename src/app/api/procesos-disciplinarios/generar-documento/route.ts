@@ -161,7 +161,7 @@ export async function POST(request: Request) {
         const extension = pdfBuffer ? 'pdf' : 'docx'
         const contentType = pdfBuffer ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         const nombreDocumento = NOMBRES_DOCUMENTO[tipoDocumento]
-        const empleadoNombre = datosProceso.nombre_trabajador
+        const empleadoNombre = datosProceso.nombre_trabajador.trim()
         const nombreCarpeta = sanitizeStorageKey(empleadoNombre.toUpperCase())
         const nombreArchivo = `${nombreDocumento} - ${empleadoNombre}.${extension}`
         const storagePath = `activos/${nombreCarpeta}/Documentos/Procesos Disciplinarios/${Date.now()}_${sanitizeStorageKey(nombreArchivo)}`
