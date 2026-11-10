@@ -139,7 +139,7 @@ export async function POST(request: Request) {
                 await enviarCorreo(msToken, RENATA_EMAIL, `No continuidad: ${(empleado as any).nombreCompleto}`, contenido);
             } else {
                 const empleadoCorreo = ((empleado as any).correo_electronico || '').trim();
-                const empleadoNombre = (empleado as any).nombreCompleto;
+                const empleadoNombre = ((empleado as any).nombreCompleto || '').trim();
                 const mensaje = MENSAJES_EMPLEADO[decision];
 
                 let contratoNota = '';
@@ -160,6 +160,7 @@ export async function POST(request: Request) {
                             .update({
                                 tipo_contrato: esIndefinido ? 'INDEFINIDO' : 'TERMINO_FIJO',
                                 fecha_inicio_contrato_actual: fechaInicio.toISOString().slice(0, 10),
+                                fecha_fin_contrato_actual: fechaFin ? fechaFin.toISOString().slice(0, 10) : null,
                             })
                             .eq('id', (empleado as any).id);
 

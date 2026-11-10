@@ -13,8 +13,11 @@ import {
     ChevronDown,
     ChevronRight,
     UploadCloud,
+    Trash2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { SubirArchivoModal } from './SubirArchivoModal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface Documento {
     id: number
@@ -93,6 +96,8 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
     // se despliega por separado, con clic, igual que la carpeta del empleado.
     const [expandedSubcarpetas, setExpandedSubcarpetas] = useState<Set<string>>(new Set())
     const [uploadCarpeta, setUploadCarpeta] = useState<string | null>(null)
+    const [docPorEliminar, setDocPorEliminar] = useState<{ doc: Documento; carpeta: string } | null>(null)
+    const [eliminando, setEliminando] = useState(false)
 
     // Si el padre cambia el filtro (ej. "Ver en Archivo Digital" desde un
     // empleado especifico), sincroniza categoria/busqueda con lo nuevo.
@@ -173,6 +178,33 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
     const handleFileUploaded = (carpeta: string) => {
         fetchFolderFiles(carpeta)
         setFolders(prev => prev.map(f => f.carpeta === carpeta ? { ...f, cantidad: f.cantidad + 1 } : f))
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!docPorEliminar) return
+        const { doc, carpeta } = docPorEliminar
+        setEliminando(true)
+        try {
+            const res = await fetch('/api/archivo-digital/eliminar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: doc.id }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'No se pudo eliminar el archivo')
+
+            setFilesByFolder(prev => ({
+                ...prev,
+                [carpeta]: (prev[carpeta] || []).filter(d => d.id !== doc.id),
+            }))
+            setFolders(prev => prev.map(f => f.carpeta === carpeta ? { ...f, cantidad: Math.max(0, f.cantidad - 1) } : f))
+            toast.success('Archivo eliminado correctamente')
+            setDocPorEliminar(null)
+        } catch (error: any) {
+            toast.error(error.message || 'Error al eliminar el archivo')
+        } finally {
+            setEliminando(false)
+        }
     }
 
     const filteredFolders = useMemo(() => {
@@ -332,25 +364,35 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                         {isSubOpen && (
                                                         <div className="divide-y divide-slate-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                                             {grouped.get(sub)!.map(doc => (
-                                                                <button
+                                                                <div
                                                                     key={doc.id}
-                                                                    onClick={() => handleOpen(doc)}
-                                                                    disabled={openingId === doc.id}
                                                                     className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-blue-50/30 transition-colors text-left group"
                                                                 >
-                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                    <button
+                                                                        onClick={() => handleOpen(doc)}
+                                                                        disabled={openingId === doc.id}
+                                                                        className="flex items-center gap-3 min-w-0 flex-1"
+                                                                    >
                                                                         <FileText className="h-4 w-4 text-slate-400 shrink-0" />
                                                                         <span className="text-sm font-medium text-slate-700 truncate">{doc.nombre_archivo}</span>
-                                                                    </div>
+                                                                    </button>
                                                                     <div className="flex items-center gap-3 shrink-0 pl-4">
                                                                         <span className="text-[10px] font-bold text-slate-400">{formatSize(doc.tamano_bytes)}</span>
                                                                         {openingId === doc.id ? (
                                                                             <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
                                                                         ) : (
-                                                                            <ExternalLink className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                                                            <ExternalLink className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors cursor-pointer" onClick={() => handleOpen(doc)} />
                                                                         )}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setDocPorEliminar({ doc, carpeta })}
+                                                                            className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                                            title="Eliminar archivo"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </button>
                                                                     </div>
-                                                                </button>
+                                                                </div>
                                                             ))}
                                                         </div>
                                                         )}
@@ -373,6 +415,17 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                 categoria={categoria}
                 carpetaOrigen={uploadCarpeta || ''}
                 onUploaded={() => uploadCarpeta && handleFileUploaded(uploadCarpeta)}
+            />
+
+            <ConfirmDialog
+                isOpen={docPorEliminar !== null}
+                title="¿Eliminar este archivo?"
+                description={`Se eliminará "${docPorEliminar?.doc.nombre_archivo}" de forma permanente. Esta acción no se puede deshacer.`}
+                confirmLabel={eliminando ? 'Eliminando...' : 'Eliminar'}
+                cancelLabel="Cancelar"
+                variant="danger"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => { if (!eliminando) setDocPorEliminar(null) }}
             />
         </div>
     )
