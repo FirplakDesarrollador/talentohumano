@@ -12,12 +12,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
         }
 
-        const { empleadoId, fechaInicioContratoActual } = await request.json()
+        const { empleadoId, fechaInicioContratoActual, fechaFinContratoActual } = await request.json()
         if (!empleadoId || !fechaInicioContratoActual) {
             return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
         }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaInicioContratoActual)) {
             return NextResponse.json({ error: 'Formato de fecha inválido' }, { status: 400 })
+        }
+        if (fechaFinContratoActual && !/^\d{4}-\d{2}-\d{2}$/.test(fechaFinContratoActual)) {
+            return NextResponse.json({ error: 'Formato de fecha de finalización inválido' }, { status: 400 })
         }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -29,7 +32,10 @@ export async function POST(request: Request) {
 
         const { error: updateError } = await admin
             .from('empleados')
-            .update({ fecha_inicio_contrato_actual: fechaInicioContratoActual })
+            .update({
+                fecha_inicio_contrato_actual: fechaInicioContratoActual,
+                fecha_fin_contrato_actual: fechaFinContratoActual || null,
+            })
             .eq('id', empleadoId)
         if (updateError) {
             return NextResponse.json({ error: updateError.message }, { status: 500 })

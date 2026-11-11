@@ -62,6 +62,7 @@ interface Candidato {
     jefe: string | null
     tipo_contrato: 'TEMPORAL' | 'TERMINO_FIJO'
     fecha_inicio_contrato_actual: string
+    fecha_fin_contrato_actual: string | null
 }
 
 function mesesTranscurridos(fechaInicio: string): number {
@@ -83,6 +84,7 @@ export function AlertasContratoTab() {
     const [loadingCandidatos, setLoadingCandidatos] = useState(true)
     const [editandoId, setEditandoId] = useState<number | null>(null)
     const [fechaEditada, setFechaEditada] = useState('')
+    const [fechaFinEditada, setFechaFinEditada] = useState('')
     const [guardando, setGuardando] = useState(false)
 
     const fetchAlertas = async () => {
@@ -107,7 +109,7 @@ export function AlertasContratoTab() {
         try {
             const { data, error } = await (supabase as any)
                 .from('empleados')
-                .select('id, nombreCompleto, cargo, planta, jefe, tipo_contrato, fecha_inicio_contrato_actual')
+                .select('id, nombreCompleto, cargo, planta, jefe, tipo_contrato, fecha_inicio_contrato_actual, fecha_fin_contrato_actual')
                 .eq('activo', true)
                 .in('tipo_contrato', ['TEMPORAL', 'TERMINO_FIJO'])
                 .not('fecha_inicio_contrato_actual', 'is', null)
@@ -133,11 +135,13 @@ export function AlertasContratoTab() {
     const handleEmpezarEdicion = (c: Candidato) => {
         setEditandoId(c.id)
         setFechaEditada(c.fecha_inicio_contrato_actual)
+        setFechaFinEditada(c.fecha_fin_contrato_actual || '')
     }
 
     const handleCancelarEdicion = () => {
         setEditandoId(null)
         setFechaEditada('')
+        setFechaFinEditada('')
     }
 
     const handleGuardarFecha = async (c: Candidato) => {
@@ -150,7 +154,11 @@ export function AlertasContratoTab() {
             const res = await fetch('/api/alertas-contrato/actualizar-fecha', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ empleadoId: c.id, fechaInicioContratoActual: fechaEditada }),
+                body: JSON.stringify({
+                    empleadoId: c.id,
+                    fechaInicioContratoActual: fechaEditada,
+                    fechaFinContratoActual: fechaFinEditada || null,
+                }),
             })
             const json = await res.json()
             if (!res.ok) throw new Error(json.error || 'No se pudo actualizar la fecha')
@@ -158,6 +166,7 @@ export function AlertasContratoTab() {
             toast.success(`Fecha actualizada para ${c.nombreCompleto}`)
             setEditandoId(null)
             setFechaEditada('')
+            setFechaFinEditada('')
             fetchCandidatos()
         } catch (error: any) {
             toast.error(error.message || 'Error al actualizar la fecha')
@@ -277,15 +286,39 @@ export function AlertasContratoTab() {
                                                 <div className="flex items-center gap-2 text-slate-500">
                                                     <Calendar size={14} className="text-blue-500 shrink-0" />
                                                     {editando ? (
-                                                        <input
-                                                            type="date"
-                                                            value={fechaEditada}
-                                                            onChange={(e) => setFechaEditada(e.target.value)}
-                                                            disabled={guardando}
-                                                            className="h-8 px-2 rounded-lg border border-slate-200 text-xs font-medium outline-none focus:border-blue-400"
-                                                        />
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-400 font-bold uppercase">Inicio</span>
+                                                            <input
+                                                                type="date"
+                                                                value={fechaEditada}
+                                                                onChange={(e) => setFechaEditada(e.target.value)}
+                                                                disabled={guardando}
+                                                                className="h-8 px-2 rounded-lg border border-slate-200 text-xs font-medium outline-none focus:border-blue-400"
+                                                            />
+                                                        </div>
                                                     ) : (
                                                         <>Inicio: {new Date(`${c.fecha_inicio_contrato_actual}T00:00:00`).toLocaleDateString()}</>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <Calendar size={14} className="text-rose-500 shrink-0" />
+                                                    {editando ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-400 font-bold uppercase">Fin</span>
+                                                            <input
+                                                                type="date"
+                                                                value={fechaFinEditada}
+                                                                onChange={(e) => setFechaFinEditada(e.target.value)}
+                                                                disabled={guardando}
+                                                                className="h-8 px-2 rounded-lg border border-slate-200 text-xs font-medium outline-none focus:border-blue-400"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            Fin: {c.fecha_fin_contrato_actual
+                                                                ? new Date(`${c.fecha_fin_contrato_actual}T00:00:00`).toLocaleDateString()
+                                                                : 'No especificada'}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
