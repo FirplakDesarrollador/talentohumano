@@ -285,6 +285,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
         primer_ingreso: '',
         tipo_contrato: '',
         fecha_inicio_contrato_actual: '',
+        fecha_fin_contrato_actual: '',
         salario: '',
         nivel_cargo: '',
         // Contact
@@ -473,6 +474,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                         primer_ingreso: emp.primer_ingreso || '',
                         tipo_contrato: emp.tipo_contrato || '',
                         fecha_inicio_contrato_actual: emp.fecha_inicio_contrato_actual || '',
+                        fecha_fin_contrato_actual: emp.fecha_fin_contrato_actual || '',
                         salario: emp.salario != null ? String(emp.salario) : '',
                         nivel_cargo: emp.nivel_cargo || emp.nivelCargo || '',
                         direccion: emp.direccion || '',
@@ -558,6 +560,7 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                 primer_ingreso: formData.primer_ingreso || null,
                 tipo_contrato: formData.tipo_contrato || null,
                 fecha_inicio_contrato_actual: formData.fecha_inicio_contrato_actual || null,
+                fecha_fin_contrato_actual: formData.fecha_fin_contrato_actual || null,
                 salario: formData.salario ? parseFloat(formData.salario) : null,
                 nivelCargo: formData.nivel_cargo || null,
                 direccion: formData.direccion || null,
@@ -976,6 +979,16 @@ export const FormularioGestorPersonal: React.FC<FormularioGestorPersonalProps> =
                                 type="date"
                                 value={formData.fecha_inicio_contrato_actual}
                                 onChange={(e) => updateField('fecha_inicio_contrato_actual', e.target.value)}
+                                className={inputClass}
+                            />
+                        </FormField>
+                    )}
+                    {isAdmin && (
+                        <FormField label="Fecha Finalización Contrato Actual" icon={<Calendar className="h-3 w-3" />}>
+                            <Input
+                                type="date"
+                                value={formData.fecha_fin_contrato_actual}
+                                onChange={(e) => updateField('fecha_fin_contrato_actual', e.target.value)}
                                 className={inputClass}
                             />
                         </FormField>
