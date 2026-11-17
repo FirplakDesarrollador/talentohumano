@@ -44,7 +44,8 @@ import {
     JEFES_MANTENIMIENTO,
     DIRECTORES_CON_ACCESO,
     HILU_OPERATIVA_RESTRINGIDA_MOLDES,
-    HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO
+    HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO,
+    HILU_OPERATIVA_EDIT_OVERRIDES
 } from '@/lib/constants/roles'
 
 type QueryHiluRow = Database['public']['Views']['query_hilu']['Row']
@@ -370,16 +371,21 @@ export default function EntrenamientoDetailPage() {
             const empPlanta = (emp.planta || '').trim()
             const hasPlantAccess = !userPlantas || userPlantas.some((p: string) => p.trim().toLowerCase() === empPlanta.toLowerCase())
             const hasMantenimientoAutonomoOverride = HILU_OPERATIVA_MANTENIMIENTO_AUTONOMO_ACCESO.includes(email)
+            const hasOperativaEditOverride = HILU_OPERATIVA_EDIT_OVERRIDES[email]?.includes(resolvedId)
 
             if (!isAdmin && userPlantas && !hasPlantAccess) {
-                if (!hasMantenimientoAutonomoOverride) {
+                if (hasMantenimientoAutonomoOverride) {
+                    // Fuera de su alcance normal por planta, pero tiene el permiso especial:
+                    // puede ver el registro completo, edicion queda restringida a un solo campo.
+                    setRestrictToMantenimientoAutonomo(true)
+                } else if (!hasOperativaEditOverride) {
                     setIsAuthorized(false)
                     setLoading(false)
                     return
+                } else {
+                    // Override puntual para un empleado especifico: acceso completo, sin restriccion.
+                    setRestrictToMantenimientoAutonomo(false)
                 }
-                // Fuera de su alcance normal por planta, pero tiene el permiso especial:
-                // puede ver el registro completo, edicion queda restringida a un solo campo.
-                setRestrictToMantenimientoAutonomo(true)
             } else {
                 setRestrictToMantenimientoAutonomo(false)
             }

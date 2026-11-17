@@ -70,7 +70,8 @@ export function EmpleadoCardHILU({ empleado, onClick, isAdminContext = false }: 
         normalizedName.includes('carlos jose mier') ||
         normalizedName.includes('ederson estiven') ||
         normalizedName.includes('juliana ramirez') ||
-        normalizedName.includes('maria isabel escobar');
+        normalizedName.includes('maria isabel escobar') ||
+        normalizedName.includes('brian stiven sanchez');
 
     // Un área de oficina (no de planta) es lo único que realmente excluye a alguien
     // del seguimiento Operativo. El nivel de cargo (Jefe, Coordinador, etc.) solo
