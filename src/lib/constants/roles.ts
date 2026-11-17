@@ -419,6 +419,8 @@ export const HILU_ADMIN_EDIT_OVERRIDES: Record<string, number[]> = {
     'practicontabilidad@firplak.com': [6524368],
     // Roberto Aguilar (Jefe de Mantenimiento) -> puede ver/editar unicamente la HILU Administrativa de Maria Elena Perez Ospina
     'roberto.aguilar@firplak.com': [1017173682],
+    // Maria Isabel Escobar (supervisora de Calidad) -> puede ver/editar la HILU Administrativa de Brian Stiven Sanchez Hernandez
+    'supervisorcalidad3@firplak.com': [1192727809],
 };
 
 /**
