@@ -434,6 +434,15 @@ export const HILU_OPERATIVA_EDIT_OVERRIDES: Record<string, number[]> = {
     'supervisorcalidad3@firplak.com': [1192727809],
 };
 
+/**
+ * Employee ids in an administrative area that must ALSO get a HILU Sistema de
+ * Produccion (Operativa) record tracked, even though their area would
+ * normally exclude them from it entirely.
+ */
+export const EMPLEADOS_ADMINISTRATIVOS_CON_HILU_SISTEMA: number[] = [
+    1192727809, // Brian Stiven Sanchez Hernandez (Coordinador de Moldes, area I+D+I)
+];
+
 export const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI',
     'Talento y Cultura', 'Negociacion y compras',
