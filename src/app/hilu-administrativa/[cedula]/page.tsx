@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ADMIN_EMAILS, ADMIN_LEVELS } from '@/lib/constants/roles'
+import { ADMIN_EMAILS, ADMIN_LEVELS, EMPLEADOS_ADMINISTRATIVOS_CON_HILU_SISTEMA } from '@/lib/constants/roles'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -110,6 +110,7 @@ export default function HiluAdministrativaPage() {
                 // planta de produccion, asi que cuenta como area administrativa.
                 const AREAS_ADMINISTRATIVAS = ['Contabilidad', 'Financiera', 'Legal', 'TI', 'Talento y Cultura', 'Negociacion y compras', 'Mercadeo', 'Servicios', 'Logistica', 'I+D+I', 'Comercial', 'Todos']
                 const isAdministrative = AREAS_ADMINISTRATIVAS.includes(empRecordAny.area)
+                    && !EMPLEADOS_ADMINISTRATIVOS_CON_HILU_SISTEMA.includes(empRecordAny.id)
 
                 // Fetch Operative HILU Record (for HILU Sistema) ONLY if not strictly administrative
                 if (!isAdministrative) {
