@@ -421,6 +421,19 @@ export const HILU_ADMIN_EDIT_OVERRIDES: Record<string, number[]> = {
     'roberto.aguilar@firplak.com': [1017173682],
 };
 
+/**
+ * Scoped overrides that grant a specific user full view/edit access to a
+ * specific employee's HILU Operativa (Sistema de Produccion) record in
+ * /entrenamiento/[cedula], bypassing the normal plant-based restriction.
+ * Key: user email. Value: list of employee ids (cedula) they may access.
+ */
+export const HILU_OPERATIVA_EDIT_OVERRIDES: Record<string, number[]> = {
+    // Maria Isabel Escobar (supervisora de Calidad) -> puede ver/editar la HILU
+    // de Sistemas de Produccion de Brian Stiven Sanchez Hernandez, aunque el es
+    // de planta I+D+I (fuera de las plantas de Calidad/RR Moldes de Maria).
+    'supervisorcalidad3@firplak.com': [1192727809],
+};
+
 export const AREAS_ADMINISTRATIVAS = [
     'Contabilidad', 'Financiera', 'Legal', 'TI',
     'Talento y Cultura', 'Negociacion y compras',
