@@ -1,34 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Database, GraduationCap, UserPlus2, Sparkles, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Database, Users, GraduationCap } from 'lucide-react'
+import { VacantesTab } from '@/components/Seleccion/VacantesTab'
+import { CandidatosInscritosTab } from '@/components/Seleccion/CandidatosInscritosTab'
+import { PracticantesTab } from '@/components/Seleccion/PracticantesTab'
 
-const APARTADOS = [
-    {
-        title: 'Base de Datos General',
-        description: 'Histórico de vacantes y solicitudes de personal, con seguimiento de cumplimiento de ANS.',
-        href: '/seleccion/base-datos-general',
-        icon: Database,
-        activo: true,
-    },
-    {
-        title: 'Inscripción de Candidatos',
-        description: 'Candidatos que se postulan a las vacantes activas y envío de cartas (agradecimiento, bienvenida, confirmación de archivos).',
-        href: '/seleccion/candidatos',
-        icon: UserPlus2,
-        activo: true,
-    },
-    {
-        title: 'Practicantes',
-        description: 'Seguimiento de los cupos de practicantes y aprendices: perfiles, fechas y estado.',
-        href: '/seleccion/practicantes',
-        icon: GraduationCap,
-        activo: true,
-    },
-]
+type TabKey = 'vacantes' | 'candidatos' | 'practicantes'
 
 export default function SeleccionPage() {
     const router = useRouter()
+    const [activeTab, setActiveTab] = useState<TabKey>('vacantes')
 
     return (
         <div className="min-h-screen bg-[#f8fafc]">
@@ -43,42 +26,37 @@ export default function SeleccionPage() {
                 <div className="w-8" />
             </div>
 
-            <div className="max-w-2xl mx-auto px-4 py-10">
-                <h2 className="text-2xl font-black text-[#1D3557] mb-1 tracking-tight">Apartados</h2>
-                <p className="text-gray-500 text-sm mb-8">Elige qué parte del proceso de Selección quieres gestionar.</p>
-
-                <div className="space-y-4">
-                    {APARTADOS.map((a) => {
-                        const Icon = a.icon
-                        return (
-                            <button
-                                key={a.href}
-                                onClick={() => a.activo && router.push(a.href)}
-                                disabled={!a.activo}
-                                className="w-full text-left bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all p-6 flex items-center gap-5 disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                                <div className="bg-blue-50 text-[#1D3557] rounded-2xl p-4 shrink-0">
-                                    <Icon className="h-7 w-7" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-black text-slate-800 text-lg">{a.title}</h3>
-                                        {!a.activo && (
-                                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
-                                                <Sparkles className="h-3 w-3" />
-                                                Próximamente
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-gray-500 mt-1">{a.description}</p>
-                                </div>
-                                {a.activo && <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />}
-                            </button>
-                        )
-                    })}
+            <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit">
+                    <button
+                        onClick={() => setActiveTab('vacantes')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'vacantes' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                    >
+                        <Database className="h-4 w-4" />
+                        Vacantes
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('candidatos')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'candidatos' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                    >
+                        <Users className="h-4 w-4" />
+                        Candidatos Inscritos
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('practicantes')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'practicantes' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                    >
+                        <GraduationCap className="h-4 w-4" />
+                        Practicantes
+                    </button>
                 </div>
 
-                <p className="text-center text-xs text-gray-400 mt-10">Más apartados del proceso de Selección próximamente.</p>
+                {activeTab === 'vacantes' && <VacantesTab />}
+                {activeTab === 'candidatos' && <CandidatosInscritosTab />}
+                {activeTab === 'practicantes' && <PracticantesTab />}
             </div>
         </div>
     )
