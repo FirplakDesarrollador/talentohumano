@@ -36,6 +36,9 @@ export async function POST(request: Request) {
             reemplazo_de,
             cantidad_personas,
             fecha_requerida,
+            descripcion_cargo,
+            descripcion_cargo_archivo_url,
+            descripcion_cargo_archivo_nombre,
             perfil,
             perfil_archivo_url,
             perfil_archivo_nombre,
@@ -45,6 +48,9 @@ export async function POST(request: Request) {
 
         if (!solicitante_nombre || !solicitante_correo || !cargo_solicitado || !motivo) {
             return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
+        }
+        if (!descripcion_cargo && !descripcion_cargo_archivo_url) {
+            return NextResponse.json({ error: 'Falta la descripción del cargo (texto o archivo)' }, { status: 400 });
         }
 
         // Algunos correos en empleados.correo_electronico traen espacios o
@@ -68,6 +74,9 @@ export async function POST(request: Request) {
                 reemplazo_de: reemplazo_de || null,
                 cantidad_personas: cantidad_personas || 1,
                 fecha_requerida: fecha_requerida || null,
+                descripcion_cargo: descripcion_cargo || null,
+                descripcion_cargo_archivo_url: descripcion_cargo_archivo_url || null,
+                descripcion_cargo_archivo_nombre: descripcion_cargo_archivo_nombre || null,
                 perfil: perfil || null,
                 perfil_archivo_url: perfil_archivo_url || null,
                 perfil_archivo_nombre: perfil_archivo_nombre || null,
@@ -84,8 +93,28 @@ export async function POST(request: Request) {
 
         const solicitudId = inserted.id;
 
-        // Planner + correo son "best effort": si fallan, la solicitud ya quedo
-        // guardada y visible para Talento Humano en la pestaña correspondiente.
+        // La Base de Datos General de Selección (seleccion_vacantes) es ahora la
+        // vista unica para Talento Humano: cada solicitud crea tambien su propia
+        // vacante vinculada (solicitud_personal_id), para no duplicar pantallas.
+        const { error: vacanteError } = await supabase
+            .from('seleccion_vacantes')
+            .insert({
+                estado: 'ACTIVA',
+                fecha_solicitud: new Date().toISOString().slice(0, 10),
+                cargo: cargo_solicitado,
+                planta: area_planta || null,
+                origen_solicitud: `${motivo}${reemplazo_de ? ` (de ${reemplazo_de})` : ''}`,
+                numero_personas_solicitada: cantidad_personas || 1,
+                solicita: solicitante_nombre,
+                solicitud_personal_id: solicitudId,
+                activo: true,
+            });
+        if (vacanteError) {
+            console.error('Error creando vacante vinculada en seleccion_vacantes:', vacanteError);
+        }
+
+        // Planner + correo son "best effort": si fallan, la solicitud y su vacante
+        // ya quedaron guardadas y visibles en la Base de Datos General de Selección.
         try {
             const token = await getMsToken();
             const titulo = `Proceso de contratación de cargo ${cargo_solicitado}`;
@@ -96,6 +125,11 @@ export async function POST(request: Request) {
                 .update({ planner_task_id: taskId, planner_task_url: taskUrl })
                 .eq('id', solicitudId);
 
+            await supabase
+                .from('seleccion_vacantes')
+                .update({ planner_task_id: taskId, planner_task_url: taskUrl })
+                .eq('solicitud_personal_id', solicitudId);
+
             const destinatarios = Array.from(new Set([...NOTIFY_EMAILS, solicitanteCorreoLimpio]));
             const contenido = `
                 <div style="font-family: Arial, sans-serif; color: #333;">
@@ -105,6 +139,8 @@ export async function POST(request: Request) {
                     <p><strong>Motivo:</strong> ${motivo}${reemplazo_de ? ` (de ${reemplazo_de})` : ''}</p>
                     <p><strong>Cantidad:</strong> ${cantidad_personas || 1}</p>
                     <p><strong>Solicitado por:</strong> ${solicitante_nombre}</p>
+                    ${descripcion_cargo ? `<p><strong>Descripción del cargo:</strong> ${descripcion_cargo}</p>` : ''}
+                    ${descripcion_cargo_archivo_url ? `<p><strong>Descripción del cargo:</strong> <a href="${descripcion_cargo_archivo_url}">${descripcion_cargo_archivo_nombre || 'Ver archivo'}</a></p>` : ''}
                     ${perfil_archivo_url ? `<p><strong>Perfil de cargo:</strong> <a href="${perfil_archivo_url}">${perfil_archivo_nombre || 'Ver archivo'}</a></p>` : ''}
                     <p>Se creó una tarea de seguimiento en Planner:</p>
                     <p><a href="${taskUrl}">Ver tarea en Planner</a></p>

@@ -21,6 +21,7 @@ export interface Vacante {
     solicita: string | null
     solicitud_personal_id: number | null
     planner_task_url: string | null
+    activo: boolean
 }
 
 const ESTADOS: Vacante['estado'][] = ['ACTIVA', 'CERRADA', 'CANCELADA']
