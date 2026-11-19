@@ -28,6 +28,9 @@ import { VacanteModal, type Vacante } from '@/components/Seleccion/VacanteModal'
 // a esta vacante, cuando existe. Se traen via embed de PostgREST a partir de
 // la FK seleccion_vacantes.solicitud_personal_id.
 type SolicitudVinculada = {
+    descripcion_cargo: string | null
+    descripcion_cargo_archivo_url: string | null
+    descripcion_cargo_archivo_nombre: string | null
     perfil: string | null
     perfil_archivo_url: string | null
     perfil_archivo_nombre: string | null
@@ -214,7 +217,7 @@ export function VacantesTab() {
         setLoading(true)
         try {
             let query = (supabase.from('seleccion_vacantes' as any) as any)
-                .select('*, solicitudes_personal(perfil, perfil_archivo_url, perfil_archivo_nombre, salario, horario, motivo, reemplazo_de, planner_task_url)', { count: 'exact' })
+                .select('*, solicitudes_personal(descripcion_cargo, descripcion_cargo_archivo_url, descripcion_cargo_archivo_nombre, perfil, perfil_archivo_url, perfil_archivo_nombre, salario, horario, motivo, reemplazo_de, planner_task_url)', { count: 'exact' })
                 .order('fecha_solicitud', { ascending: false })
                 .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
 
@@ -436,6 +439,11 @@ export function VacantesTab() {
                                             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${cump.color}`}>
                                                 {cump.label}
                                             </span>
+                                            {v.activo === false && (
+                                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border bg-slate-100 text-slate-500 border-slate-200">
+                                                    Inactivo
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
@@ -474,6 +482,23 @@ export function VacantesTab() {
                                                             {v.solicitudes_personal.motivo}
                                                             {v.solicitudes_personal.reemplazo_de ? ` (de ${v.solicitudes_personal.reemplazo_de})` : ''}
                                                         </span>
+                                                    </p>
+                                                )}
+                                                {v.solicitudes_personal.descripcion_cargo && (
+                                                    <p><span className="font-bold text-slate-600">Descripción del cargo:</span> <span className="text-slate-500">{v.solicitudes_personal.descripcion_cargo}</span></p>
+                                                )}
+                                                {v.solicitudes_personal.descripcion_cargo_archivo_url && (
+                                                    <p>
+                                                        <span className="font-bold text-slate-600">Descripción del cargo:</span>{' '}
+                                                        <a
+                                                            href={v.solicitudes_personal.descripcion_cargo_archivo_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="text-blue-600 hover:text-blue-800 underline underline-offset-2 inline-flex items-center gap-1"
+                                                        >
+                                                            {v.solicitudes_personal.descripcion_cargo_archivo_nombre || 'Ver archivo adjunto'} <ExternalLink size={11} />
+                                                        </a>
                                                     </p>
                                                 )}
                                                 {v.solicitudes_personal.perfil && (

@@ -218,7 +218,7 @@ export default function MenuPage() {
             title: 'Selección',
             href: '/seleccion',
             icon: UserSearch,
-            visible: normalizedUserEmail && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedUserEmail)
+            visible: isSystemAdmin || tienePersonalACargo
         },
         {
             title: 'Academia',

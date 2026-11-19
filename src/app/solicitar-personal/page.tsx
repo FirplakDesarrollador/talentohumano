@@ -26,10 +26,17 @@ export default function SolicitarPersonalPage() {
         reemplazo_de: '',
         cantidad_personas: '1',
         fecha_requerida: '',
+        descripcion_cargo: '',
         perfil: '',
         salario: '',
         horario: '',
     })
+
+    // Descripción del Cargo (funciones): obligatoria, texto libre o un archivo
+    // adjunto, no ambos.
+    const [descripcionCargoModo, setDescripcionCargoModo] = useState<'texto' | 'archivo'>('texto')
+    const [descripcionCargoArchivo, setDescripcionCargoArchivo] = useState<{ url: string; nombre: string } | null>(null)
+    const [uploadingDescripcionCargo, setUploadingDescripcionCargo] = useState(false)
 
     // Perfil / Requisitos: texto libre o un archivo adjunto (perfil de cargo), no ambos.
     const [perfilModo, setPerfilModo] = useState<'texto' | 'archivo'>('texto')
@@ -204,6 +211,37 @@ export default function SolicitarPersonalPage() {
 
     const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
+    const handleDescripcionCargoArchivoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setUploadingDescripcionCargo(true)
+        try {
+            const fileExt = file.name.includes('.') ? file.name.split('.').pop() : ''
+            const randomName = Math.random().toString(36).substring(2)
+            const fileName = `${Date.now()}_descripcion_cargo_${randomName}${fileExt ? `.${fileExt}` : ''}`
+
+            const { data, error } = await supabase.storage
+                .from('solicitudes-personal')
+                .upload(fileName, file)
+
+            if (error) throw error
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('solicitudes-personal')
+                .getPublicUrl(data.path)
+
+            setDescripcionCargoArchivo({ url: publicUrl, nombre: file.name })
+        } catch (err: any) {
+            console.error('Error uploading descripcion cargo archivo:', err)
+            const detail = err?.message || err?.error_description || err?.statusCode
+            alert(`Error al subir el archivo${detail ? `: ${detail}` : ''}. Intenta de nuevo.`)
+        } finally {
+            setUploadingDescripcionCargo(false)
+            e.target.value = ''
+        }
+    }
+
     const handlePerfilArchivoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -243,6 +281,11 @@ export default function SolicitarPersonalPage() {
             setError('Selecciona quién solicita (de la lista) y completa el cargo solicitado.')
             return
         }
+        const tieneDescripcionCargo = descripcionCargoModo === 'texto' ? form.descripcion_cargo.trim().length > 0 : !!descripcionCargoArchivo
+        if (!tieneDescripcionCargo) {
+            setError('Agrega la descripción del cargo (escríbela o adjunta un archivo con las funciones del cargo).')
+            return
+        }
 
         setLoading(true)
         setError(null)
@@ -260,6 +303,9 @@ export default function SolicitarPersonalPage() {
                     reemplazo_de: esReemplazo ? (form.reemplazo_de || null) : null,
                     cantidad_personas: parseInt(form.cantidad_personas) || 1,
                     fecha_requerida: form.fecha_requerida || null,
+                    descripcion_cargo: descripcionCargoModo === 'texto' ? (form.descripcion_cargo || null) : null,
+                    descripcion_cargo_archivo_url: descripcionCargoModo === 'archivo' ? (descripcionCargoArchivo?.url || null) : null,
+                    descripcion_cargo_archivo_nombre: descripcionCargoModo === 'archivo' ? (descripcionCargoArchivo?.nombre || null) : null,
                     perfil: perfilModo === 'texto' ? (form.perfil || null) : null,
                     perfil_archivo_url: perfilModo === 'archivo' ? (perfilArchivo?.url || null) : null,
                     perfil_archivo_nombre: perfilModo === 'archivo' ? (perfilArchivo?.nombre || null) : null,
@@ -575,6 +621,79 @@ export default function SolicitarPersonalPage() {
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 space-y-6">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between ml-1">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Descripción del Cargo (Funciones) <span className="text-red-500">*</span></label>
+                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDescripcionCargoModo('texto')}
+                                            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${descripcionCargoModo === 'texto' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                        >
+                                            Escribir
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDescripcionCargoModo('archivo')}
+                                            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all ${descripcionCargoModo === 'archivo' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                                        >
+                                            Subir archivo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {descripcionCargoModo === 'texto' ? (
+                                    <textarea
+                                        value={form.descripcion_cargo}
+                                        onChange={(e) => set('descripcion_cargo', e.target.value)}
+                                        rows={3}
+                                        required
+                                        className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium resize-none"
+                                        placeholder="Funciones y responsabilidades principales del cargo..."
+                                    />
+                                ) : (
+                                    <div>
+                                        <input
+                                            type="file"
+                                            id="descripcionCargoArchivoInput"
+                                            className="hidden"
+                                            onChange={handleDescripcionCargoArchivoSelect}
+                                            disabled={uploadingDescripcionCargo}
+                                        />
+                                        {!descripcionCargoArchivo ? (
+                                            <button
+                                                type="button"
+                                                disabled={uploadingDescripcionCargo}
+                                                onClick={() => document.getElementById('descripcionCargoArchivoInput')?.click()}
+                                                className="w-full h-24 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-blue-300 transition-all flex flex-col items-center justify-center gap-2 text-slate-400"
+                                            >
+                                                {uploadingDescripcionCargo ? (
+                                                    <Loader2 size={20} className="animate-spin text-blue-600" />
+                                                ) : (
+                                                    <>
+                                                        <Upload size={20} />
+                                                        <span className="text-xs font-bold">Subir descripción del cargo (PDF, Word, imagen...)</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <div className="w-full px-5 py-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <FileText size={18} className="text-emerald-600 shrink-0" />
+                                                    <span className="text-sm font-medium text-slate-700 truncate">{descripcionCargoArchivo.nombre}</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDescripcionCargoArchivo(null)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between ml-1">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Perfil / Requisitos</label>

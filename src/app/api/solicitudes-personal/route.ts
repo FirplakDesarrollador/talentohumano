@@ -36,6 +36,9 @@ export async function POST(request: Request) {
             reemplazo_de,
             cantidad_personas,
             fecha_requerida,
+            descripcion_cargo,
+            descripcion_cargo_archivo_url,
+            descripcion_cargo_archivo_nombre,
             perfil,
             perfil_archivo_url,
             perfil_archivo_nombre,
@@ -45,6 +48,9 @@ export async function POST(request: Request) {
 
         if (!solicitante_nombre || !solicitante_correo || !cargo_solicitado || !motivo) {
             return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
+        }
+        if (!descripcion_cargo && !descripcion_cargo_archivo_url) {
+            return NextResponse.json({ error: 'Falta la descripción del cargo (texto o archivo)' }, { status: 400 });
         }
 
         // Algunos correos en empleados.correo_electronico traen espacios o
@@ -68,6 +74,9 @@ export async function POST(request: Request) {
                 reemplazo_de: reemplazo_de || null,
                 cantidad_personas: cantidad_personas || 1,
                 fecha_requerida: fecha_requerida || null,
+                descripcion_cargo: descripcion_cargo || null,
+                descripcion_cargo_archivo_url: descripcion_cargo_archivo_url || null,
+                descripcion_cargo_archivo_nombre: descripcion_cargo_archivo_nombre || null,
                 perfil: perfil || null,
                 perfil_archivo_url: perfil_archivo_url || null,
                 perfil_archivo_nombre: perfil_archivo_nombre || null,
@@ -98,6 +107,7 @@ export async function POST(request: Request) {
                 numero_personas_solicitada: cantidad_personas || 1,
                 solicita: solicitante_nombre,
                 solicitud_personal_id: solicitudId,
+                activo: true,
             });
         if (vacanteError) {
             console.error('Error creando vacante vinculada en seleccion_vacantes:', vacanteError);
@@ -129,6 +139,8 @@ export async function POST(request: Request) {
                     <p><strong>Motivo:</strong> ${motivo}${reemplazo_de ? ` (de ${reemplazo_de})` : ''}</p>
                     <p><strong>Cantidad:</strong> ${cantidad_personas || 1}</p>
                     <p><strong>Solicitado por:</strong> ${solicitante_nombre}</p>
+                    ${descripcion_cargo ? `<p><strong>Descripción del cargo:</strong> ${descripcion_cargo}</p>` : ''}
+                    ${descripcion_cargo_archivo_url ? `<p><strong>Descripción del cargo:</strong> <a href="${descripcion_cargo_archivo_url}">${descripcion_cargo_archivo_nombre || 'Ver archivo'}</a></p>` : ''}
                     ${perfil_archivo_url ? `<p><strong>Perfil de cargo:</strong> <a href="${perfil_archivo_url}">${perfil_archivo_nombre || 'Ver archivo'}</a></p>` : ''}
                     <p>Se creó una tarea de seguimiento en Planner:</p>
                     <p><a href="${taskUrl}">Ver tarea en Planner</a></p>
