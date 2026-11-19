@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button'
 import { CandidatosKanban } from '@/components/Contratacion/CandidatosKanban'
 import { EmpleadosLista } from '@/components/Contratacion/EmpleadosLista'
 import { ArchivoDigitalTab } from '@/components/Contratacion/ArchivoDigitalTab'
-import { SolicitudesPersonalTab } from '@/components/Contratacion/SolicitudesPersonalTab'
 import { AlertasContratoTab } from '@/components/Contratacion/AlertasContratoTab'
-import { ArrowLeft, ShieldAlert, Loader2, Link2, Check, Users, UserSquare2, HardDrive, ClipboardList, BellRing } from 'lucide-react'
+import { ArrowLeft, ShieldAlert, Loader2, Link2, Check, Users, UserSquare2, HardDrive, BellRing } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ContratacionPage() {
@@ -20,7 +19,7 @@ export default function ContratacionPage() {
     const [userEmail, setUserEmail] = useState<string>('')
     const [authLoading, setAuthLoading] = useState(true)
     const [copiedLink, setCopiedLink] = useState<'postulacion' | 'solicitar-personal' | null>(null)
-    const [activeTab, setActiveTab] = useState<'candidatos' | 'empleados' | 'archivo' | 'solicitudes' | 'alertas'>('candidatos')
+    const [activeTab, setActiveTab] = useState<'candidatos' | 'empleados' | 'archivo' | 'alertas'>('candidatos')
     const [archivoBusqueda, setArchivoBusqueda] = useState('')
     const [archivoCategoria, setArchivoCategoria] = useState<string | null>(null)
 
@@ -135,14 +134,6 @@ export default function ContratacionPage() {
                         Archivo Digital
                     </button>
                     <button
-                        onClick={() => setActiveTab('solicitudes')}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'solicitudes' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                    >
-                        <ClipboardList className="h-4 w-4" />
-                        Solicitudes de Personal
-                    </button>
-                    <button
                         onClick={() => setActiveTab('alertas')}
                         className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'alertas' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                             }`}
@@ -160,7 +151,6 @@ export default function ContratacionPage() {
                         initialCategoria={archivoCategoria}
                     />
                 )}
-                {activeTab === 'solicitudes' && <SolicitudesPersonalTab />}
                 {activeTab === 'alertas' && <AlertasContratoTab />}
             </main>
         </div>

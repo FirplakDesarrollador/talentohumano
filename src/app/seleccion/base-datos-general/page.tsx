@@ -16,6 +16,11 @@ import {
     ChevronRight,
     Link2,
     Check,
+    Building2,
+    MapPin,
+    Calendar,
+    Users,
+    User,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { VacanteModal, type Vacante } from '@/components/Seleccion/VacanteModal'
@@ -411,59 +416,56 @@ export default function BaseDatosGeneralPage() {
                             <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Sin resultados</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b">
-                                        <th className="px-5 py-3">Cargo</th>
-                                        <th className="px-5 py-3">Área</th>
-                                        <th className="px-5 py-3">Planta</th>
-                                        <th className="px-5 py-3">Fecha solicitud</th>
-                                        <th className="px-5 py-3 text-center">Días</th>
-                                        <th className="px-5 py-3">Estado</th>
-                                        <th className="px-5 py-3">Cumplimiento ANS</th>
-                                        <th className="px-5 py-3">Solicitante</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {vacantes.map(v => {
-                                        const cump = cumplimientoInfo(v)
-                                        return (
-                                            <tr
-                                                key={v.id}
-                                                onClick={() => setModalVacante(v)}
-                                                className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-                                            >
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-gray-800 text-sm">{v.cargo}</span>
-                                                        {v.numero_personas_solicitada > 1 && (
-                                                            <span className="text-[11px] text-slate-400 font-medium">{v.numero_personas_solicitada} personas</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-3.5 text-sm text-slate-600">{v.area || '—'}</td>
-                                                <td className="px-5 py-3.5 text-sm text-slate-600">{v.planta || '—'}</td>
-                                                <td className="px-5 py-3.5 text-sm text-slate-600">
+                        <div className="p-4 grid grid-cols-1 gap-4">
+                            {vacantes.map(v => {
+                                const cump = cumplimientoInfo(v)
+                                return (
+                                    <div
+                                        key={v.id}
+                                        onClick={() => setModalVacante(v)}
+                                        className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 hover:shadow-md hover:border-blue-100 transition-all cursor-pointer"
+                                    >
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <h3 className="font-black text-slate-800 text-lg">{v.cargo}</h3>
+                                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${ESTADO_BADGE[v.estado]}`}>
+                                                    {v.estado}
+                                                </span>
+                                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${cump.color}`}>
+                                                    {cump.label}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <Building2 size={14} className="text-blue-500 shrink-0" />
+                                                    {v.area || '—'}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <MapPin size={14} className="text-blue-500 shrink-0" />
+                                                    {v.planta || '—'}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <Calendar size={14} className="text-blue-500 shrink-0" />
                                                     {new Date(`${v.fecha_solicitud}T00:00:00`).toLocaleDateString('es-CO')}
-                                                </td>
-                                                <td className="px-5 py-3.5 text-sm text-slate-600 text-center">{cump.dias != null ? `${cump.dias}d` : '—'}</td>
-                                                <td className="px-5 py-3.5">
-                                                    <span className={`inline-flex px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${ESTADO_BADGE[v.estado]}`}>
-                                                        {v.estado}
-                                                    </span>
-                                                </td>
-                                                <td className="px-5 py-3.5">
-                                                    <span className={`inline-flex px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${cump.color}`}>
-                                                        {cump.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-5 py-3.5 text-sm text-slate-600">{v.solicita || '—'}</td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <Clock size={14} className="text-blue-500 shrink-0" />
+                                                    {cump.dias != null ? `${cump.dias} días` : '—'}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <Users size={14} className="text-blue-500 shrink-0" />
+                                                    {v.numero_personas_solicitada} persona{v.numero_personas_solicitada !== 1 ? 's' : ''}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <User size={14} className="text-blue-500 shrink-0" />
+                                                    {v.solicita || '—'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
                     )}
 
