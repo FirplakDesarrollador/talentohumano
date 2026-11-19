@@ -171,6 +171,12 @@ export function CandidatosKanban() {
                 ? 'Contrato generado y guardado en Archivo Digital'
                 : 'Contrato generado en Word (no se pudo convertir a PDF) y guardado en Archivo Digital')
             setPendingContrato(null)
+
+            // Respaldo: ya deberia existir desde que paso a APROBADO, pero es
+            // idempotente y asi se garantiza que la carpeta con los archivos de
+            // la postulacion exista en este punto aunque ese primer intento
+            // haya fallado en silencio.
+            await crearArchivoDigital(candidate)
         } catch (err: any) {
             console.error('Error creando contrato:', err)
             toast.error(err.message || 'No se pudo crear el contrato')
@@ -329,6 +335,13 @@ export function CandidatosKanban() {
                     saving={creandoContrato}
                     onClose={() => setPendingContrato(null)}
                     onConfirm={(datos) => crearContrato(pendingContrato, datos)}
+                    onEsPracticante={async () => {
+                        setPendingContrato(null)
+                        // Respaldo, igual que en crearContrato: garantiza que la carpeta
+                        // de Archivo Digital con los documentos de la postulacion exista.
+                        await crearArchivoDigital(pendingContrato)
+                        toast.success('Listo, Talento Humano gestiona el contrato de practicante directamente')
+                    }}
                 />
             )}
 
@@ -494,7 +507,7 @@ function VerificacionModal({ candidate, existingCargos, existingAreas, saving, o
     )
 }
 
-function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConfirm }: {
+function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConfirm, onEsPracticante }: {
     candidate: Candidato
     existingCargos: string[]
     saving: boolean
@@ -507,6 +520,7 @@ function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConf
         fecha_nacimiento: string
         lugar_nacimiento: string
     }) => void
+    onEsPracticante: () => void
 }) {
     const [step, setStep] = useState<1 | 2>(1)
     const [tipo, setTipo] = useState<'INDEFINIDO' | 'TERMINO_FIJO' | null>(null)
@@ -545,6 +559,13 @@ function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConf
                         >
                             <p className="font-bold text-sm text-slate-800">Indefinido</p>
                             <p className="text-xs text-slate-500">Sin fecha de finalización</p>
+                        </button>
+                        <button
+                            onClick={onEsPracticante}
+                            className="w-full text-left p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-300 transition-all"
+                        >
+                            <p className="font-bold text-sm text-slate-800">Es practicante</p>
+                            <p className="text-xs text-slate-500">El contrato lo gestiona Talento Humano directamente, omite este proceso</p>
                         </button>
 
                         <div className="mt-6 flex gap-3">
