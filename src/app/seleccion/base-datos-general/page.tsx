@@ -21,9 +21,26 @@ import {
     Calendar,
     Users,
     User,
+    ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { VacanteModal, type Vacante } from '@/components/Seleccion/VacanteModal'
+
+// Datos de la solicitud de personal (formulario publico / Planner) vinculada
+// a esta vacante, cuando existe. Se traen via embed de PostgREST a partir de
+// la FK seleccion_vacantes.solicitud_personal_id.
+type SolicitudVinculada = {
+    perfil: string | null
+    perfil_archivo_url: string | null
+    perfil_archivo_nombre: string | null
+    salario: string | null
+    horario: string | null
+    motivo: string | null
+    reemplazo_de: string | null
+    planner_task_url: string | null
+}
+
+type VacanteConSolicitud = Vacante & { solicitudes_personal: SolicitudVinculada | null }
 
 const PAGE_SIZE = 15
 
@@ -95,7 +112,7 @@ export default function BaseDatosGeneralPage() {
     const router = useRouter()
     const supabase = createClient()
 
-    const [vacantes, setVacantes] = useState<Vacante[]>([])
+    const [vacantes, setVacantes] = useState<VacanteConSolicitud[]>([])
     const [loading, setLoading] = useState(true)
     const [total, setTotal] = useState(0)
     const [page, setPage] = useState(0)
@@ -200,7 +217,7 @@ export default function BaseDatosGeneralPage() {
         setLoading(true)
         try {
             let query = (supabase.from('seleccion_vacantes' as any) as any)
-                .select('*', { count: 'exact' })
+                .select('*, solicitudes_personal(perfil, perfil_archivo_url, perfil_archivo_nombre, salario, horario, motivo, reemplazo_de, planner_task_url)', { count: 'exact' })
                 .order('fecha_solicitud', { ascending: false })
                 .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
 
@@ -462,6 +479,54 @@ export default function BaseDatosGeneralPage() {
                                                     {v.solicita || '—'}
                                                 </div>
                                             </div>
+
+                                            {v.solicitudes_personal && (
+                                                <div className="pt-3 border-t border-slate-50 space-y-1.5 text-xs">
+                                                    {v.solicitudes_personal.motivo && (
+                                                        <p>
+                                                            <span className="font-bold text-slate-600">Motivo:</span>{' '}
+                                                            <span className="text-slate-500">
+                                                                {v.solicitudes_personal.motivo}
+                                                                {v.solicitudes_personal.reemplazo_de ? ` (de ${v.solicitudes_personal.reemplazo_de})` : ''}
+                                                            </span>
+                                                        </p>
+                                                    )}
+                                                    {v.solicitudes_personal.perfil && (
+                                                        <p><span className="font-bold text-slate-600">Perfil:</span> <span className="text-slate-500">{v.solicitudes_personal.perfil}</span></p>
+                                                    )}
+                                                    {v.solicitudes_personal.perfil_archivo_url && (
+                                                        <p>
+                                                            <span className="font-bold text-slate-600">Perfil:</span>{' '}
+                                                            <a
+                                                                href={v.solicitudes_personal.perfil_archivo_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="text-blue-600 hover:text-blue-800 underline underline-offset-2 inline-flex items-center gap-1"
+                                                            >
+                                                                {v.solicitudes_personal.perfil_archivo_nombre || 'Ver archivo adjunto'} <ExternalLink size={11} />
+                                                            </a>
+                                                        </p>
+                                                    )}
+                                                    {v.solicitudes_personal.salario && (
+                                                        <p><span className="font-bold text-slate-600">Salario:</span> <span className="text-slate-500">{v.solicitudes_personal.salario}</span></p>
+                                                    )}
+                                                    {v.solicitudes_personal.horario && (
+                                                        <p><span className="font-bold text-slate-600">Horario:</span> <span className="text-slate-500">{v.solicitudes_personal.horario}</span></p>
+                                                    )}
+                                                    {v.solicitudes_personal.planner_task_url && (
+                                                        <a
+                                                            href={v.solicitudes_personal.planner_task_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-800"
+                                                        >
+                                                            Ver tarea en Planner <ExternalLink size={12} />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )

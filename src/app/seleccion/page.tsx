@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Database, GraduationCap, BarChart3, UserPlus2, Sparkles, ChevronRight, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Database, GraduationCap, UserPlus2, Sparkles, ChevronRight } from 'lucide-react'
 
 const APARTADOS = [
     {
@@ -9,13 +9,6 @@ const APARTADOS = [
         description: 'Histórico de vacantes y solicitudes de personal, con seguimiento de cumplimiento de ANS.',
         href: '/seleccion/base-datos-general',
         icon: Database,
-        activo: true,
-    },
-    {
-        title: 'Solicitudes de Personal',
-        description: 'Solicitudes de personal sincronizadas desde Planner, con su estado y seguimiento.',
-        href: '/seleccion/solicitudes-personal',
-        icon: ClipboardList,
         activo: true,
     },
     {
@@ -30,13 +23,6 @@ const APARTADOS = [
         description: 'Seguimiento de los cupos de practicantes y aprendices: perfiles, fechas y estado.',
         href: '/seleccion/practicantes',
         icon: GraduationCap,
-        activo: true,
-    },
-    {
-        title: 'Indicadores',
-        description: 'Métricas y tableros del proceso de Selección.',
-        href: '/seleccion/indicadores',
-        icon: BarChart3,
         activo: true,
     },
 ]

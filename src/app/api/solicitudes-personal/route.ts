@@ -84,8 +84,27 @@ export async function POST(request: Request) {
 
         const solicitudId = inserted.id;
 
-        // Planner + correo son "best effort": si fallan, la solicitud ya quedo
-        // guardada y visible para Talento Humano en la pestaña correspondiente.
+        // La Base de Datos General de Selección (seleccion_vacantes) es ahora la
+        // vista unica para Talento Humano: cada solicitud crea tambien su propia
+        // vacante vinculada (solicitud_personal_id), para no duplicar pantallas.
+        const { error: vacanteError } = await supabase
+            .from('seleccion_vacantes')
+            .insert({
+                estado: 'ACTIVA',
+                fecha_solicitud: new Date().toISOString().slice(0, 10),
+                cargo: cargo_solicitado,
+                planta: area_planta || null,
+                origen_solicitud: `${motivo}${reemplazo_de ? ` (de ${reemplazo_de})` : ''}`,
+                numero_personas_solicitada: cantidad_personas || 1,
+                solicita: solicitante_nombre,
+                solicitud_personal_id: solicitudId,
+            });
+        if (vacanteError) {
+            console.error('Error creando vacante vinculada en seleccion_vacantes:', vacanteError);
+        }
+
+        // Planner + correo son "best effort": si fallan, la solicitud y su vacante
+        // ya quedaron guardadas y visibles en la Base de Datos General de Selección.
         try {
             const token = await getMsToken();
             const titulo = `Proceso de contratación de cargo ${cargo_solicitado}`;
@@ -95,6 +114,11 @@ export async function POST(request: Request) {
                 .from('solicitudes_personal')
                 .update({ planner_task_id: taskId, planner_task_url: taskUrl })
                 .eq('id', solicitudId);
+
+            await supabase
+                .from('seleccion_vacantes')
+                .update({ planner_task_id: taskId, planner_task_url: taskUrl })
+                .eq('solicitud_personal_id', solicitudId);
 
             const destinatarios = Array.from(new Set([...NOTIFY_EMAILS, solicitanteCorreoLimpio]));
             const contenido = `
