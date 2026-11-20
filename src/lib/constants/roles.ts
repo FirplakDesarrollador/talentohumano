@@ -385,7 +385,7 @@ export function getPlantasPermitidas(email: string): string[] | null {
     if (JEFES_MUEBLES_CEFI.includes(email)) {
         plantas.add('Muebles');
         plantas.add('Cefi');
-        if (email === 'juliana.ramirez@firplak.com') plantas.add('Calidad');
+        if (email === 'juliana.ramirez@firplak.com') { plantas.add('Calidad'); plantas.add('Marmol sintetico'); }
     }
     if (JEFES_ALMACEN_CEDI.includes(email)) { plantas.add('Almacen'); plantas.add('CEDI'); }
     if (JEFES_INGENIERIA_MOLDES.includes(email)) { plantas.add('Ingenieria'); plantas.add('Moldes'); }
