@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { ADMIN_EMAILS } from '@/lib/constants/roles'
+import { pushArchivoDigitalAOneDrive } from '@/lib/archivoDigital/pushToOneDrive'
 
 const BUCKET = 'archivo-digital'
 
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
             const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, { upsert: false })
             if (uploadError) continue
 
-            const { error: insertError } = await admin.from('archivo_digital_documentos').insert({
+            const { data: inserted, error: insertError } = await admin.from('archivo_digital_documentos').insert({
                 categoria: 'ACTIVOS',
                 carpeta_origen: carpetaOrigen,
                 empleado_id: cedulaNum,
@@ -89,12 +90,21 @@ export async function POST(request: Request) {
                 storage_path: storagePath,
                 tamano_bytes: bytes.byteLength,
                 migrado_at: new Date().toISOString(),
-            })
+            }).select('id').single()
             if (insertError) {
                 await admin.storage.from(BUCKET).remove([storagePath])
                 continue
             }
             archivosCopiados++
+
+            await pushArchivoDigitalAOneDrive({
+                categoria: 'ACTIVOS',
+                carpetaOrigen,
+                subcarpeta: 'Documentos',
+                nombreArchivo,
+                bytes,
+                documentoId: inserted?.id,
+            })
         }
 
         return NextResponse.json({ success: true, archivosCopiados })

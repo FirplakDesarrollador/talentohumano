@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { ADMIN_EMAILS } from '@/lib/constants/roles'
+import { pushArchivoDigitalAOneDrive } from '@/lib/archivoDigital/pushToOneDrive'
 
 const BUCKET = 'archivo-digital'
 const SUBCARPETAS_VALIDAS = ['Contrato', 'Correspondencia', 'Documentos', 'Procesos disciplinarios']
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: uploadError.message }, { status: 500 })
         }
 
-        const { error: insertError } = await admin.from('archivo_digital_documentos').insert({
+        const { data: inserted, error: insertError } = await admin.from('archivo_digital_documentos').insert({
             categoria,
             carpeta_origen: carpetaOrigen,
             empleado_id: (existingDoc as any)?.empleado_id ?? null,
@@ -69,12 +70,24 @@ export async function POST(request: Request) {
             storage_path: storagePath,
             tamano_bytes: file.size,
             migrado_at: new Date().toISOString(),
-        })
+        }).select('id').single()
         if (insertError) {
             // El archivo ya quedo en el bucket; se intenta limpiar para no dejarlo huerfano.
             await admin.storage.from(BUCKET).remove([storagePath])
             return NextResponse.json({ error: insertError.message }, { status: 500 })
         }
+
+        // Mientras dure la prueba en paralelo con OneDrive: espeja este archivo alla.
+        // Best-effort, nunca bloquea la respuesta si falla.
+        await pushArchivoDigitalAOneDrive({
+            categoria,
+            carpetaOrigen,
+            subcarpeta,
+            nombreArchivo: file.name,
+            bytes,
+            contentType: file.type || undefined,
+            documentoId: inserted?.id,
+        })
 
         return NextResponse.json({ success: true })
     } catch (err: any) {

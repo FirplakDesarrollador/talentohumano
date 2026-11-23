@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generarContratoTerminoFijoDocx, convertirDocxAPdf, sumarMeses, formatearFechaLarga } from '@/lib/contratos/generarContratoTerminoFijo';
 import { generarContratoIndefinidoDocx } from '@/lib/contratos/generarContratoIndefinido';
+import { pushArchivoDigitalAOneDrive } from '@/lib/archivoDigital/pushToOneDrive';
 
 const SENDER_EMAIL = 'analista.desarrollador@firplak.com';
 const RENATA_EMAIL = 'renata.lainez@firplak.com';
@@ -183,14 +184,24 @@ export async function POST(request: Request) {
                             .upload(storagePath, archivoBuffer, { contentType, upsert: false });
 
                         if (!uploadError) {
-                            await supabase.from('archivo_digital_documentos').insert({
+                            const { data: inserted } = await supabase.from('archivo_digital_documentos').insert({
                                 categoria: 'ACTIVOS',
                                 carpeta_origen: empleadoNombre.toUpperCase(),
                                 empleado_id: (empleado as any).id,
                                 nombre_archivo: nombreArchivo,
                                 storage_path: storagePath,
                                 tamano_bytes: archivoBuffer.length,
-                            } as any);
+                            } as any).select('id').single();
+
+                            await pushArchivoDigitalAOneDrive({
+                                categoria: 'ACTIVOS',
+                                carpetaOrigen: empleadoNombre.toUpperCase(),
+                                subcarpeta: 'Contrato',
+                                nombreArchivo,
+                                bytes: archivoBuffer,
+                                contentType,
+                                documentoId: (inserted as any)?.id,
+                            });
                         } else {
                             console.error('Error guardando el contrato generado en Archivo Digital:', uploadError);
                         }
