@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ADMIN_EMAILS } from '@/lib/constants/roles'
 import { generarContratoTerminoFijoDocx, convertirDocxAPdf, formatearFechaLarga } from '@/lib/contratos/generarContratoTerminoFijo'
 import { generarContratoIndefinidoDocx } from '@/lib/contratos/generarContratoIndefinido'
+import { pushArchivoDigitalAOneDrive } from '@/lib/archivoDigital/pushToOneDrive'
 
 function sanitizeStorageKey(text: string): string {
     return text
@@ -100,14 +101,24 @@ export async function POST(request: Request) {
             .upload(storagePath, archivoBuffer, { contentType, upsert: false })
 
         if (!uploadError) {
-            await admin.from('archivo_digital_documentos').insert({
+            const { data: inserted } = await admin.from('archivo_digital_documentos').insert({
                 categoria: 'ACTIVOS',
                 carpeta_origen: empleadoNombre.toUpperCase(),
                 empleado_id: empleadoIdNum,
                 nombre_archivo: nombreArchivo,
                 storage_path: storagePath,
                 tamano_bytes: archivoBuffer.length,
-            } as any)
+            } as any).select('id').single()
+
+            await pushArchivoDigitalAOneDrive({
+                categoria: 'ACTIVOS',
+                carpetaOrigen: empleadoNombre.toUpperCase(),
+                subcarpeta: 'Contrato',
+                nombreArchivo,
+                bytes: archivoBuffer,
+                contentType,
+                documentoId: (inserted as any)?.id,
+            })
         } else {
             console.error('Error guardando el contrato generado en Archivo Digital:', uploadError)
         }

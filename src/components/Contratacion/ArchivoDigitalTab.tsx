@@ -14,6 +14,7 @@ import {
     ChevronRight,
     UploadCloud,
     Trash2,
+    Cloud,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SubirArchivoModal } from './SubirArchivoModal'
@@ -98,6 +99,7 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
     const [uploadCarpeta, setUploadCarpeta] = useState<string | null>(null)
     const [docPorEliminar, setDocPorEliminar] = useState<{ doc: Documento; carpeta: string } | null>(null)
     const [eliminando, setEliminando] = useState(false)
+    const [syncing, setSyncing] = useState(false)
 
     // Si el padre cambia el filtro (ej. "Ver en Archivo Digital" desde un
     // empleado especifico), sincroniza categoria/busqueda con lo nuevo.
@@ -229,6 +231,71 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialBusqueda, folders])
 
+    // Trae a la app los archivos que falten desde el OneDrive de Archivo Digital
+    // (ARCHIVO DIGITAL/1.ACTIVOS y 2.RETIRADOS). La Edge Function se autoencadena
+    // sola en el servidor (EdgeRuntime.waitUntil); aqui solo se dispara el primer
+    // arranque/reanudacion y se consulta el progreso cada 8s hasta que termine.
+    const handleSync = async () => {
+        setSyncing(true)
+        const startedAt = new Date().toISOString()
+        try {
+            const { data, error }: { data: any; error: any } = await supabase.functions.invoke('sync-archivo-digital', { body: {} })
+
+            if (error) {
+                let detail = error.message
+                try {
+                    const body = await error.context?.clone().json()
+                    detail = body?.error || detail
+                } catch {
+                    try {
+                        const text = await error.context?.clone().text()
+                        if (text) detail = text
+                    } catch { /* keep generic message */ }
+                }
+                throw new Error(detail)
+            }
+            if (data && data.success === false) {
+                throw new Error(data.error || 'Fallo interno')
+            }
+
+            let erroredMessage: string | null = null
+            await new Promise<void>((resolve) => {
+                const poll = setInterval(async () => {
+                    const { data: log } = await (supabase
+                        .from('archivo_digital_sync_log') as any)
+                        .select('status, error_message')
+                        .order('id', { ascending: false })
+                        .limit(1)
+                        .maybeSingle()
+
+                    if (!log || log.status !== 'running') {
+                        if (log?.status === 'error') erroredMessage = log.error_message || 'Error en la sincronización'
+                        clearInterval(poll)
+                        resolve()
+                    }
+                }, 8000)
+            })
+
+            if (erroredMessage) throw new Error(erroredMessage)
+
+            // El conteo interno de la Edge Function se reinicia en cada invocacion
+            // encadenada (no es acumulativo), asi que el total real de archivos
+            // nuevos se calcula aqui comparando contra el inicio de esta corrida.
+            const { count } = await supabase
+                .from('archivo_digital_documentos')
+                .select('*', { count: 'exact', head: true })
+                .gte('migrado_at', startedAt)
+
+            toast.success(`Sincronización completa: ${count ?? 0} archivo${count === 1 ? '' : 's'} nuevo${count === 1 ? '' : 's'} desde OneDrive`)
+            fetchFolders()
+        } catch (error: any) {
+            console.error('Error sincronizando Archivo Digital:', error)
+            toast.error(error.message || 'No se pudo sincronizar con OneDrive')
+        } finally {
+            setSyncing(false)
+        }
+    }
+
     const handleOpen = async (doc: Documento) => {
         setOpeningId(doc.id)
         try {
@@ -280,6 +347,15 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                     title="Refrescar"
                 >
                     <RefreshCcw size={18} className={loadingFolders ? 'animate-spin' : ''} />
+                </button>
+                <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="h-11 px-4 flex items-center gap-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm text-xs font-bold uppercase tracking-wide disabled:opacity-60"
+                    title="Trae los archivos nuevos desde el OneDrive de Archivo Digital"
+                >
+                    <Cloud size={16} className={syncing ? 'animate-pulse' : ''} />
+                    {syncing ? 'Sincronizando...' : 'Sincronizar'}
                 </button>
             </div>
 

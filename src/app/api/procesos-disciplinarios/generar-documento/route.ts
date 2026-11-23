@@ -8,6 +8,7 @@ import {
     generarRespuestaDescargosDocx,
     generarActaDescargosDocx,
 } from '@/lib/procesosDisciplinarios/generarDocumento'
+import { pushArchivoDigitalAOneDrive } from '@/lib/archivoDigital/pushToOneDrive'
 
 const BUCKET = 'archivo-digital'
 
@@ -171,14 +172,24 @@ export async function POST(request: Request) {
             .upload(storagePath, archivoBuffer, { contentType, upsert: false })
 
         if (!uploadError) {
-            await admin.from('archivo_digital_documentos').insert({
+            const { data: inserted } = await admin.from('archivo_digital_documentos').insert({
                 categoria: 'ACTIVOS',
                 carpeta_origen: empleadoNombre.toUpperCase(),
                 empleado_id: p.empleado_id,
                 nombre_archivo: nombreArchivo,
                 storage_path: storagePath,
                 tamano_bytes: archivoBuffer.length,
-            } as any)
+            } as any).select('id').single()
+
+            await pushArchivoDigitalAOneDrive({
+                categoria: 'ACTIVOS',
+                carpetaOrigen: empleadoNombre.toUpperCase(),
+                subcarpeta: 'Procesos Disciplinarios',
+                nombreArchivo,
+                bytes: archivoBuffer,
+                contentType,
+                documentoId: (inserted as any)?.id,
+            })
         } else {
             console.error('Error guardando el documento generado en Archivo Digital:', uploadError)
         }
