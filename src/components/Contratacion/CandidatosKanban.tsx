@@ -133,6 +133,26 @@ export function CandidatosKanban() {
         }
     }
 
+    // Saca al candidato de "Listos para Contratar": una vez se genera el
+    // contrato (o se marca como practicante), ya no pertenece a ninguna de
+    // las 4 columnas del kanban.
+    const marcarComoContratado = async (candidate: Candidato) => {
+        try {
+            const { data, error } = await (supabase.rpc as any)('update_candidate_status', {
+                p_candidato_id: candidate.id,
+                p_nuevo_estado: 'CONTRATADO',
+                p_cargo: null,
+                p_area: null,
+            })
+            if (error) throw error
+            if (data && !data.success) throw new Error(data.error)
+            await fetchCandidates()
+        } catch (err: any) {
+            console.error('Error marcando candidato como contratado:', err)
+            toast.warning('El contrato se generó, pero no se pudo quitar al candidato de "Listos para Contratar": ' + (err.message || ''))
+        }
+    }
+
     const crearContrato = async (candidate: Candidato, datos: {
         tipo: 'INDEFINIDO' | 'TERMINO_FIJO'
         cargo: string
@@ -177,6 +197,7 @@ export function CandidatosKanban() {
             // la postulacion exista en este punto aunque ese primer intento
             // haya fallado en silencio.
             await crearArchivoDigital(candidate)
+            await marcarComoContratado(candidate)
         } catch (err: any) {
             console.error('Error creando contrato:', err)
             toast.error(err.message || 'No se pudo crear el contrato')
@@ -340,6 +361,7 @@ export function CandidatosKanban() {
                         // Respaldo, igual que en crearContrato: garantiza que la carpeta
                         // de Archivo Digital con los documentos de la postulacion exista.
                         await crearArchivoDigital(pendingContrato)
+                        await marcarComoContratado(pendingContrato)
                         toast.success('Listo, Talento Humano gestiona el contrato de practicante directamente')
                     }}
                 />
