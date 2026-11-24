@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendTeamsMessage } from '@/lib/teams/sendTeamsMessage';
-
-function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amount);
-}
+import { notificarDecisionAumento } from '@/lib/aumentosSalariales/notificarDecision';
 
 export async function POST(request: Request) {
     try {
@@ -32,40 +28,18 @@ export async function POST(request: Request) {
         try {
             const { data: aumento, error: aumentoError } = await supabase
                 .from('aumentosSalariales')
-                .select('empleado_id, solicitante, salarioPropuesto, aprobador')
+                .select('id')
                 .eq('token', token)
                 .single();
             if (aumentoError || !aumento) throw aumentoError || new Error('Solicitud no encontrada');
 
-            const { data: empleado } = await supabase
-                .from('empleados')
-                .select('nombreCompleto')
-                .eq('id', (aumento as any).empleado_id)
-                .single();
-
-            const { data: solicitante } = await supabase
-                .from('usuarios')
-                .select('correo, nombre')
-                .eq('id', (aumento as any).solicitante)
-                .single();
-
-            const { data: aprobadorEmp } = await supabase
-                .from('empleados')
-                .select('nombreCompleto')
-                .eq('id', (aumento as any).aprobador)
-                .single();
-
-            const solicitanteCorreo = ((solicitante as any)?.correo || '').trim();
-            if (solicitanteCorreo) {
-                const empleadoNombre = (empleado as any)?.nombreCompleto || 'el empleado';
-                const aprobadorNombre = (aprobadorEmp as any)?.nombreCompleto || 'El aprobador';
-                const mensaje = decision === 'Aprobada'
-                    ? `<p><strong>${aprobadorNombre}</strong> aprobó la solicitud de aumento salarial para <strong>${empleadoNombre}</strong> (nuevo salario: ${formatCurrency((aumento as any).salarioPropuesto)}).</p>`
-                    : `<p><strong>${aprobadorNombre}</strong> rechazó la solicitud de aumento salarial para <strong>${empleadoNombre}</strong>.</p>`;
-                await sendTeamsMessage(solicitanteCorreo, mensaje);
-            }
+            // Notifica tanto a Renata (Teams + correo) como al solicitante (Teams),
+            // igual que el otro camino de decision (la pantalla interna de
+            // Aumentos Salariales). Este es el que realmente se usa casi siempre,
+            // ya que es el link que llega por correo/Teams al aprobador.
+            await notificarDecisionAumento((aumento as any).id, decision);
         } catch (notifError) {
-            console.error('Error notificando al solicitante sobre la decision del aumento:', notifError);
+            console.error('Error notificando la decision del aumento:', notifError);
         }
 
         return NextResponse.json({ success: true });
