@@ -49,4 +49,4 @@ Patrón: casi todo acceso restringido por planta se resuelve en `getPlantasPermi
 
 - Backlog de ~73 contratos vencidos por revisar en Alertas de Contrato antes de reactivar ese cron (ver sección Contratación).
 - 255 empleados con espacios sueltos en `nombreCompleto` (detectado al investigar el bug de carpetas duplicadas) — no se ha limpiado masivamente, solo se corrigió el código para que no vuelva a pasar.
-- Confirmar que el permiso de Graph para **escribir** en el OneDrive de Archivo Digital esté bien concedido (la sincronización OneDrive→App ya funciona con permisos de lectura; App→OneDrive es nuevo y no se ha confirmado con un archivo de prueba real).
+- ~~Confirmar permiso de Graph para escribir en el OneDrive de Archivo Digital~~ — confirmado el 2026-11-24 con un archivo de prueba real (subido y eliminado correctamente vía Graph, status 201/204).
