@@ -418,9 +418,10 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                     if (!grouped.has(key)) grouped.set(key, [])
                                                     grouped.get(key)!.push(doc)
                                                 })
-                                                return SUBCARPETAS_ORDEN.filter(sub => grouped.has(sub)).map(sub => {
+                                                return SUBCARPETAS_ORDEN.map(sub => {
                                                     const subKey = `${carpeta}::${sub}`
                                                     const isSubOpen = expandedSubcarpetas.has(subKey)
+                                                    const docsSub = grouped.get(sub) || []
                                                     return (
                                                     <div key={sub}>
                                                         <button
@@ -430,7 +431,7 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                         >
                                                             <Folder className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{sub}</span>
-                                                            <span className="text-[10px] text-slate-400 ml-auto">{grouped.get(sub)!.length}</span>
+                                                            <span className="text-[10px] text-slate-400 ml-auto">{docsSub.length}</span>
                                                             {isSubOpen ? (
                                                                 <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                                                             ) : (
@@ -439,7 +440,10 @@ export function ArchivoDigitalTab({ initialBusqueda, initialCategoria }: Archivo
                                                         </button>
                                                         {isSubOpen && (
                                                         <div className="divide-y divide-slate-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                            {grouped.get(sub)!.map(doc => (
+                                                            {docsSub.length === 0 && (
+                                                                <p className="px-6 py-4 text-xs text-slate-400 italic">Sin archivos en esta carpeta</p>
+                                                            )}
+                                                            {docsSub.map(doc => (
                                                                 <div
                                                                     key={doc.id}
                                                                     className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-blue-50/30 transition-colors text-left group"

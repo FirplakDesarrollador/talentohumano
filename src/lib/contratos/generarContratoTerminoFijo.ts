@@ -28,9 +28,38 @@ export interface EmpleadoParaContrato {
     lugar_nacimiento: string | null;
     cargo: string | null;
     salario: number | null;
+    /** Funciones del cargo pegadas a mano (una por linea). Si se da, tiene prioridad sobre funciones_cargo. */
+    funcionesTexto?: string | null;
 }
 
-export async function generarContratoTerminoFijoDocx(empleado: EmpleadoParaContrato, fechaInicio: Date): Promise<Buffer> {
+// Si quien crea el contrato pega las funciones a mano, esas se usan tal cual
+// (una por linea, numeradas). Si no, se busca en funciones_cargo por nombre
+// de cargo, y si tampoco hay nada ahi, se deja el aviso de siempre.
+export async function resolverListaFunciones(
+    supabase: any,
+    cargo: string | null,
+    funcionesTexto?: string | null
+): Promise<{ linea: string }[]> {
+    const lineasPegadas = (funcionesTexto || '').split('\n').map(l => l.trim()).filter(Boolean);
+    if (lineasPegadas.length > 0) {
+        return lineasPegadas.map((l, i) => ({ linea: `${i + 1}. ${l}${i < lineasPegadas.length - 1 ? '\n' : ''}` }));
+    }
+
+    const cargoTrim = (cargo || '').trim();
+    const { data: funciones } = await supabase
+        .from('funciones_cargo')
+        .select('funcion, orden')
+        .ilike('cargo', cargoTrim)
+        .order('orden', { ascending: true });
+
+    return funciones && funciones.length > 0
+        ? funciones.map((f: any, i: number) => ({
+            linea: `${i + 1}. ${f.funcion}${i < funciones.length - 1 ? '\n' : ''}`,
+        }))
+        : [{ linea: '(Funciones pendientes de definir para este cargo — completar manualmente antes de firmar)' }];
+}
+
+export async function generarContratoTerminoFijoDocx(empleado: EmpleadoParaContrato, fechaInicio: Date, fechaFinOverride?: Date): Promise<Buffer> {
     const templatePath = path.join(process.cwd(), 'templates', 'contratos', 'contrato_termino_fijo.docx');
     const templateContent = fs.readFileSync(templatePath, 'binary');
     const zip = new PizZip(templateContent);
@@ -40,20 +69,9 @@ export async function generarContratoTerminoFijoDocx(empleado: EmpleadoParaContr
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const cargoTrim = (empleado.cargo || '').trim();
-    const { data: funciones } = await supabase
-        .from('funciones_cargo')
-        .select('funcion, orden')
-        .ilike('cargo', cargoTrim)
-        .order('orden', { ascending: true });
+    const listaFunciones = await resolverListaFunciones(supabase, empleado.cargo, empleado.funcionesTexto);
 
-    const listaFunciones = funciones && funciones.length > 0
-        ? funciones.map((f: any, i: number) => ({
-            linea: `${i + 1}. ${f.funcion}${i < funciones.length - 1 ? '\n' : ''}`,
-        }))
-        : [{ linea: '(Funciones pendientes de definir para este cargo — completar manualmente antes de firmar)' }];
-
-    const fechaFin = sumarMeses(fechaInicio, 3);
+    const fechaFin = fechaFinOverride || sumarMeses(fechaInicio, 3);
     const fechaNacimiento = empleado.fecha_nacimiento ? new Date(`${empleado.fecha_nacimiento}T00:00:00`) : null;
     const fechaLugarNacimiento = fechaNacimiento
         ? `${formatearFechaLarga(fechaNacimiento)}${empleado.lugar_nacimiento ? ', ' + empleado.lugar_nacimiento : ''}`

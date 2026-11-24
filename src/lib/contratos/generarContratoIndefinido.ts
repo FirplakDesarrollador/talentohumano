@@ -3,7 +3,7 @@ import path from 'path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { createClient } from '@supabase/supabase-js';
-import { formatearFechaLarga, type EmpleadoParaContrato } from './generarContratoTerminoFijo';
+import { formatearFechaLarga, resolverListaFunciones, type EmpleadoParaContrato } from './generarContratoTerminoFijo';
 
 function formatearSalario(salario: number): string {
     return Math.round(salario).toLocaleString('es-CO');
@@ -19,18 +19,7 @@ export async function generarContratoIndefinidoDocx(empleado: EmpleadoParaContra
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const cargoTrim = (empleado.cargo || '').trim();
-    const { data: funciones } = await supabase
-        .from('funciones_cargo')
-        .select('funcion, orden')
-        .ilike('cargo', cargoTrim)
-        .order('orden', { ascending: true });
-
-    const listaFunciones = funciones && funciones.length > 0
-        ? funciones.map((f: any, i: number) => ({
-            linea: `${i + 1}. ${f.funcion}${i < funciones.length - 1 ? '\n' : ''}`,
-        }))
-        : [{ linea: '(Funciones pendientes de definir para este cargo — completar manualmente antes de firmar)' }];
+    const listaFunciones = await resolverListaFunciones(supabase, empleado.cargo, empleado.funcionesTexto);
 
     const fechaNacimiento = empleado.fecha_nacimiento ? new Date(`${empleado.fecha_nacimiento}T00:00:00`) : null;
     const fechaLugarNacimiento = fechaNacimiento

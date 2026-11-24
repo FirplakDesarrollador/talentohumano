@@ -21,7 +21,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
         }
 
-        const { empleadoId, tipo, cargo, salario, direccion, fecha_nacimiento, lugar_nacimiento } = await request.json()
+        const { empleadoId, tipo, cargo, salario, direccion, fecha_nacimiento, lugar_nacimiento, funcionesCargo, fechaInicioContrato, fechaFinContrato } = await request.json()
 
         const empleadoIdNum = Number(empleadoId)
         if (!Number.isFinite(empleadoIdNum) || empleadoIdNum <= 0) {
@@ -31,8 +31,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Tipo de contrato inválido' }, { status: 400 })
         }
         const salarioNum = Number(salario)
-        if (!cargo?.trim() || !Number.isFinite(salarioNum) || salarioNum <= 0 || !direccion?.trim() || !fecha_nacimiento || !lugar_nacimiento?.trim()) {
+        if (!cargo?.trim() || !Number.isFinite(salarioNum) || salarioNum <= 0 || !direccion?.trim() || !fecha_nacimiento || !lugar_nacimiento?.trim() || !fechaInicioContrato) {
             return NextResponse.json({ error: 'Faltan datos obligatorios del contrato' }, { status: 400 })
+        }
+        if (tipo === 'TERMINO_FIJO' && !fechaFinContrato) {
+            return NextResponse.json({ error: 'Falta la fecha de finalización del contrato' }, { status: 400 })
         }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -60,7 +63,8 @@ export async function POST(request: Request) {
                 fecha_nacimiento,
                 lugar_nacimiento: lugar_nacimiento.trim(),
                 tipo_contrato: tipo,
-                fecha_inicio_contrato_actual: new Date().toISOString().slice(0, 10),
+                fecha_inicio_contrato_actual: fechaInicioContrato,
+                fecha_fin_contrato_actual: tipo === 'TERMINO_FIJO' ? fechaFinContrato : null,
             })
             .eq('id', empleadoIdNum)
         if (updateError) throw updateError
@@ -73,13 +77,15 @@ export async function POST(request: Request) {
             lugar_nacimiento: lugar_nacimiento.trim(),
             cargo: cargo.trim(),
             salario: salarioNum,
+            funcionesTexto: funcionesCargo || null,
         }
 
-        const fechaInicio = new Date()
+        const fechaInicio = new Date(`${fechaInicioContrato}T00:00:00`)
+        const fechaFin = tipo === 'TERMINO_FIJO' ? new Date(`${fechaFinContrato}T00:00:00`) : undefined
         const nombreContrato = tipo === 'INDEFINIDO' ? 'a término indefinido' : 'a término fijo'
         const docxBuffer = tipo === 'INDEFINIDO'
             ? await generarContratoIndefinidoDocx(empleadoParaContrato, fechaInicio)
-            : await generarContratoTerminoFijoDocx(empleadoParaContrato, fechaInicio)
+            : await generarContratoTerminoFijoDocx(empleadoParaContrato, fechaInicio, fechaFin)
 
         let pdfBuffer: Buffer | null = null
         try {
