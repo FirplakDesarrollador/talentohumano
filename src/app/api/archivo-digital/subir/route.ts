@@ -11,6 +11,15 @@ function sanitizeFilename(name: string) {
     return name.replace(/[^a-zA-Z0-9.\-]+/g, '_')
 }
 
+// Para la KEY de storage (a diferencia de carpeta_origen, que se deja con
+// tildes para mostrar): sin acentos, el bucket rechaza esos caracteres en la
+// ruta ("InvalidKey").
+function sanitizeStorageKey(text: string): string {
+    return text
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^A-Za-z0-9._-]+/g, '_')
+}
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient()
@@ -51,7 +60,7 @@ export async function POST(request: Request) {
             .limit(1)
             .maybeSingle()
 
-        const storagePath = `${categoria.toLowerCase()}/${carpetaOrigen.replace(/\s+/g, '_')}/Documentos/${subcarpeta}/${Date.now()}_${sanitizeFilename(file.name)}`
+        const storagePath = `${categoria.toLowerCase()}/${sanitizeStorageKey(carpetaOrigen)}/Documentos/${subcarpeta}/${Date.now()}_${sanitizeFilename(file.name)}`
 
         const bytes = new Uint8Array(await file.arrayBuffer())
         const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, {

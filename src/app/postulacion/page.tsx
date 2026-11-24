@@ -43,6 +43,10 @@ export default function PostulacionPage() {
     const [phone, setPhone] = useState('')
     const [email, setEmail] = useState('')
 
+    const [direccion, setDireccion] = useState('')
+    const [fechaNacimiento, setFechaNacimiento] = useState('')
+    const [lugarNacimiento, setLugarNacimiento] = useState('')
+
     const [eps, setEps] = useState('')
     const [pension, setPension] = useState('')
     const [cesantias, setCesantias] = useState('')
@@ -59,7 +63,7 @@ export default function PostulacionPage() {
 
     const goToStep = (nextStep: number) => {
         if (nextStep === 2) {
-            if (!name || !doc || !phone || !email) {
+            if (!name || !doc || !phone || !email || !direccion || !fechaNacimiento || !lugarNacimiento) {
                 alert('Por favor completa todos los campos obligatorios del formulario.')
                 return
             }
@@ -134,6 +138,9 @@ export default function PostulacionPage() {
                 p_banco: banco,
                 p_cuenta_bancaria: cuenta,
                 p_documentos: documentosJson,
+                p_direccion: direccion,
+                p_fecha_nacimiento: fechaNacimiento,
+                p_lugar_nacimiento: lugarNacimiento,
             })
 
             if (error) throw error
@@ -229,6 +236,44 @@ export default function PostulacionPage() {
                                             className="w-full h-14 px-5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-sm font-medium"
                                             placeholder="300 123 4567"
                                         />
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-slate-100">
+                                    <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        <Building size={18} className="text-blue-600" />
+                                        Información Personal
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="col-span-full space-y-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección de Residencia</label>
+                                            <input
+                                                type="text"
+                                                value={direccion}
+                                                onChange={(e) => setDireccion(e.target.value)}
+                                                className="w-full h-12 px-5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-50 text-sm"
+                                                placeholder="Ej: Calle 10 # 5-20, Bogotá"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Fecha de Nacimiento</label>
+                                            <input
+                                                type="date"
+                                                value={fechaNacimiento}
+                                                onChange={(e) => setFechaNacimiento(e.target.value)}
+                                                className="w-full h-12 px-5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-50 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Lugar de Nacimiento</label>
+                                            <input
+                                                type="text"
+                                                value={lugarNacimiento}
+                                                onChange={(e) => setLugarNacimiento(e.target.value)}
+                                                className="w-full h-12 px-5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-50 text-sm"
+                                                placeholder="Ej: Bogotá, Cundinamarca"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 

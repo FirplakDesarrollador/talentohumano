@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Users, Sparkles, X, Check, CreditCard, FileText, Loader2, Phone, Mail, Landmark, RefreshCcw, ArrowRight, Ban, FilePlus2 } from 'lucide-react'
+import { Search, Users, Sparkles, X, Check, CreditCard, FileText, Loader2, Phone, Mail, Landmark, RefreshCcw, ArrowRight, Ban, FilePlus2, Briefcase, MapPin, HeartPulse, ShieldCheck, PiggyBank, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from 'sonner'
 
@@ -26,6 +26,9 @@ interface Candidato {
     cuenta_bancaria: string
     cargo?: string | null
     area?: string | null
+    direccion?: string | null
+    fecha_nacimiento?: string | null
+    lugar_nacimiento?: string | null
     documentos: Documento[] | null
 }
 
@@ -160,6 +163,9 @@ export function CandidatosKanban() {
         direccion: string
         fecha_nacimiento: string
         lugar_nacimiento: string
+        funcionesCargo: string
+        fechaInicioContrato: string
+        fechaFinContrato: string
     }) => {
         setCreandoContrato(true)
         try {
@@ -332,7 +338,14 @@ export function CandidatosKanban() {
             </div>
 
             {selectedCandidate && (
-                <CandidateDetailModal candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />
+                <CandidateDetailModal
+                    candidate={selectedCandidate}
+                    onClose={() => setSelectedCandidate(null)}
+                    onDeleted={() => {
+                        setSelectedCandidate(null)
+                        fetchCandidates()
+                    }}
+                />
             )}
 
             {pendingVerificacion && (
@@ -541,18 +554,33 @@ function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConf
         direccion: string
         fecha_nacimiento: string
         lugar_nacimiento: string
+        funcionesCargo: string
+        fechaInicioContrato: string
+        fechaFinContrato: string
     }) => void
     onEsPracticante: () => void
 }) {
+    const hoyStr = new Date().toISOString().slice(0, 10)
+    const sugerirFechaFin = (desde: string) => {
+        if (!desde) return ''
+        const d = new Date(`${desde}T00:00:00`)
+        d.setMonth(d.getMonth() + 3)
+        return d.toISOString().slice(0, 10)
+    }
+
     const [step, setStep] = useState<1 | 2>(1)
     const [tipo, setTipo] = useState<'INDEFINIDO' | 'TERMINO_FIJO' | null>(null)
     const [cargo, setCargo] = useState(candidate.cargo || '')
     const [salario, setSalario] = useState('')
-    const [direccion, setDireccion] = useState('')
-    const [fechaNacimiento, setFechaNacimiento] = useState('')
-    const [lugarNacimiento, setLugarNacimiento] = useState('')
+    const [direccion, setDireccion] = useState(candidate.direccion || '')
+    const [fechaNacimiento, setFechaNacimiento] = useState(candidate.fecha_nacimiento || '')
+    const [lugarNacimiento, setLugarNacimiento] = useState(candidate.lugar_nacimiento || '')
+    const [funcionesCargo, setFuncionesCargo] = useState('')
+    const [fechaInicioContrato, setFechaInicioContrato] = useState(hoyStr)
+    const [fechaFinContrato, setFechaFinContrato] = useState(sugerirFechaFin(hoyStr))
 
-    const canConfirm = cargo.trim() !== '' && Number(salario) > 0 && direccion.trim() !== '' && fechaNacimiento !== '' && lugarNacimiento.trim() !== '' && !saving
+    const canConfirm = cargo.trim() !== '' && Number(salario) > 0 && direccion.trim() !== '' && fechaNacimiento !== '' && lugarNacimiento.trim() !== ''
+        && fechaInicioContrato !== '' && (tipo !== 'TERMINO_FIJO' || fechaFinContrato !== '') && !saving
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
@@ -610,15 +638,11 @@ function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConf
                         <div>
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Cargo <span className="text-rose-500">*</span></label>
                             <input
-                                list="crear-contrato-cargos"
                                 value={cargo}
                                 onChange={(e) => setCargo(e.target.value)}
-                                placeholder="Seleccione o escriba el cargo"
+                                placeholder="Escriba el cargo"
                                 className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
                             />
-                            <datalist id="crear-contrato-cargos">
-                                {existingCargos.map(c => <option key={c} value={c} />)}
-                            </datalist>
                         </div>
 
                         <div>
@@ -662,13 +686,61 @@ function CrearContratoModal({ candidate, existingCargos, saving, onClose, onConf
                             </div>
                         </div>
 
+                        <div className={`grid gap-3 ${tipo === 'TERMINO_FIJO' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Fecha inicio contrato <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="date"
+                                    value={fechaInicioContrato}
+                                    onChange={(e) => {
+                                        setFechaInicioContrato(e.target.value)
+                                        if (tipo === 'TERMINO_FIJO') setFechaFinContrato(sugerirFechaFin(e.target.value))
+                                    }}
+                                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                                />
+                            </div>
+                            {tipo === 'TERMINO_FIJO' && (
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Fecha fin contrato <span className="text-rose-500">*</span></label>
+                                    <input
+                                        type="date"
+                                        min={fechaInicioContrato || undefined}
+                                        value={fechaFinContrato}
+                                        onChange={(e) => setFechaFinContrato(e.target.value)}
+                                        className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Funciones del cargo</label>
+                            <textarea
+                                value={funcionesCargo}
+                                onChange={(e) => setFuncionesCargo(e.target.value)}
+                                rows={4}
+                                placeholder="Pega aquí las funciones del cargo, una por línea (opcional)"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 resize-none"
+                            />
+                        </div>
+
                         <div className="mt-6 flex gap-3">
                             <button onClick={() => setStep(1)} disabled={saving} className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-40 transition-all">
                                 Atrás
                             </button>
                             <button
                                 disabled={!canConfirm}
-                                onClick={() => tipo && onConfirm({ tipo, cargo: cargo.trim(), salario, direccion, fecha_nacimiento: fechaNacimiento, lugar_nacimiento: lugarNacimiento })}
+                                onClick={() => tipo && onConfirm({
+                                    tipo,
+                                    cargo: cargo.trim(),
+                                    salario,
+                                    direccion,
+                                    fecha_nacimiento: fechaNacimiento,
+                                    lugar_nacimiento: lugarNacimiento,
+                                    funcionesCargo,
+                                    fechaInicioContrato,
+                                    fechaFinContrato: tipo === 'TERMINO_FIJO' ? fechaFinContrato : '',
+                                })}
                                 className="flex-1 h-11 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                             >
                                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generar contrato'}
@@ -690,7 +762,32 @@ function EmptyColumn() {
     )
 }
 
-function CandidateDetailModal({ candidate, onClose }: { candidate: Candidato; onClose: () => void }) {
+function CandidateDetailModal({ candidate, onClose, onDeleted }: { candidate: Candidato; onClose: () => void; onDeleted: () => void }) {
+    const [confirmarEliminar, setConfirmarEliminar] = useState(false)
+    const [eliminando, setEliminando] = useState(false)
+
+    const handleEliminar = async () => {
+        setEliminando(true)
+        try {
+            const res = await fetch('/api/contratacion/eliminar-postulado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ candidatoId: candidate.id }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'No se pudo eliminar el postulado')
+
+            toast.success('Postulado eliminado correctamente')
+            onDeleted()
+        } catch (err: any) {
+            console.error('Error eliminando postulado:', err)
+            toast.error(err.message || 'No se pudo eliminar el postulado')
+        } finally {
+            setEliminando(false)
+            setConfirmarEliminar(false)
+        }
+    }
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-5xl max-h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border border-white">
@@ -710,7 +807,15 @@ function CandidateDetailModal({ candidate, onClose }: { candidate: Candidato; on
                             <DetailItem icon={CreditCard} label="Documento" value={candidate.cedula} />
                             <DetailItem icon={Phone} label="Teléfono" value={candidate.telefono} />
                             <DetailItem icon={Mail} label="Correo" value={candidate.email} />
+                            <DetailItem icon={Briefcase} label="Cargo" value={candidate.cargo || 'N/A'} />
+                            <DetailItem icon={MapPin} label="Área / Planta" value={candidate.area || 'N/A'} />
+                            <DetailItem icon={HeartPulse} label="EPS" value={candidate.eps || 'N/A'} />
+                            <DetailItem icon={ShieldCheck} label="Pensión" value={candidate.pension || 'N/A'} />
+                            <DetailItem icon={PiggyBank} label="Cesantías" value={candidate.cesantias || 'N/A'} />
                             <DetailItem icon={Landmark} label="Cuenta Banco" value={`${candidate.banco || 'N/A'} - ${candidate.cuenta_bancaria || 'No Registra'}`} />
+                            {candidate.direccion && <DetailItem icon={MapPin} label="Dirección" value={candidate.direccion} />}
+                            {candidate.fecha_nacimiento && <DetailItem icon={Check} label="Fecha nacimiento" value={candidate.fecha_nacimiento} />}
+                            {candidate.lugar_nacimiento && <DetailItem icon={MapPin} label="Lugar nacimiento" value={candidate.lugar_nacimiento} />}
                         </div>
 
                         <div className="pt-8 border-t border-slate-200">
@@ -719,6 +824,14 @@ function CandidateDetailModal({ candidate, onClose }: { candidate: Candidato; on
                                 <Check size={14} /> Consentimiento Firmado Digitalmente
                             </div>
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setConfirmarEliminar(true)}
+                            className="mt-6 w-full h-11 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-all text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                        >
+                            <Trash2 size={16} /> Eliminar postulado
+                        </button>
                     </div>
                 </div>
 
@@ -766,6 +879,17 @@ function CandidateDetailModal({ candidate, onClose }: { candidate: Candidato; on
                     </div>
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={confirmarEliminar}
+                variant="danger"
+                title="¿Eliminar este postulado?"
+                description={`Se eliminará a "${candidate.nombre_completo}" y todos sus documentos de forma permanente. Esta acción no se puede deshacer.`}
+                confirmLabel={eliminando ? 'Eliminando...' : 'Eliminar'}
+                cancelLabel="Cancelar"
+                onConfirm={handleEliminar}
+                onCancel={() => { if (!eliminando) setConfirmarEliminar(false) }}
+            />
         </div>
     )
 }

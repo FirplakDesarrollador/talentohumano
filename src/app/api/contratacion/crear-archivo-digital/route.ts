@@ -24,6 +24,15 @@ function sanitizeFilename(name: string) {
     return name.replace(/[^a-zA-Z0-9.\-]+/g, '_')
 }
 
+// Para la KEY de storage (a diferencia de carpeta_origen, que se deja con
+// tildes para mostrar): sin acentos, el bucket rechaza esos caracteres en la
+// ruta ("InvalidKey").
+function sanitizeStorageKey(text: string): string {
+    return text
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^A-Za-z0-9._-]+/g, '_')
+}
+
 function extensionDe(url: string): string {
     const match = url.split('?')[0].match(/\.([a-zA-Z0-9]+)$/)
     return match ? `.${match[1]}` : ''
@@ -59,6 +68,7 @@ export async function POST(request: Request) {
         }
 
         const carpetaOrigen = nombreCompleto.trim().toUpperCase()
+        const nombreCarpetaStorage = sanitizeStorageKey(carpetaOrigen)
 
         const { data: existentes } = await admin
             .from('archivo_digital_documentos')
@@ -77,10 +87,13 @@ export async function POST(request: Request) {
             if (!fileRes.ok) continue
             const bytes = new Uint8Array(await fileRes.arrayBuffer())
 
-            const storagePath = `activos/${carpetaOrigen.replace(/\s+/g, '_')}/Documentos/Documentos/${Date.now()}_${sanitizeFilename(nombreArchivo)}`
+            const storagePath = `activos/${nombreCarpetaStorage}/Documentos/Documentos/${Date.now()}_${sanitizeFilename(nombreArchivo)}`
 
             const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, { upsert: false })
-            if (uploadError) continue
+            if (uploadError) {
+                console.error('Error subiendo documento de postulacion a Archivo Digital:', doc.tipo, uploadError)
+                continue
+            }
 
             const { data: inserted, error: insertError } = await admin.from('archivo_digital_documentos').insert({
                 categoria: 'ACTIVOS',
@@ -92,6 +105,7 @@ export async function POST(request: Request) {
                 migrado_at: new Date().toISOString(),
             }).select('id').single()
             if (insertError) {
+                console.error('Error guardando fila de documento de postulacion en Archivo Digital:', doc.tipo, insertError)
                 await admin.storage.from(BUCKET).remove([storagePath])
                 continue
             }
