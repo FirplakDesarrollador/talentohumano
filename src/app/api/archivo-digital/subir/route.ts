@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '@/lib/constants/roles'
 import { pushArchivoDigitalAOneDrive } from '@/lib/archivoDigital/pushToOneDrive'
 
 const BUCKET = 'archivo-digital'
-const SUBCARPETAS_VALIDAS = ['Contrato', 'Correspondencia', 'Documentos', 'Procesos disciplinarios']
+const SUBCARPETAS_VALIDAS = ['Contrato', 'Correspondencia', 'Documentos', 'Procesos disciplinarios', 'Soporte Afiliación']
 
 function sanitizeFilename(name: string) {
     return name.replace(/[^a-zA-Z0-9.\-]+/g, '_')
