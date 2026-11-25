@@ -60,7 +60,7 @@ export async function POST(request: Request) {
             .limit(1)
             .maybeSingle()
 
-        const storagePath = `${categoria.toLowerCase()}/${sanitizeStorageKey(carpetaOrigen)}/Documentos/${subcarpeta}/${Date.now()}_${sanitizeFilename(file.name)}`
+        const storagePath = `${categoria.toLowerCase()}/${sanitizeStorageKey(carpetaOrigen)}/Documentos/${sanitizeStorageKey(subcarpeta)}/${Date.now()}_${sanitizeFilename(file.name)}`
 
         const bytes = new Uint8Array(await file.arrayBuffer())
         const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
