@@ -59,7 +59,7 @@ function normalize(s: string) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-const SUBCARPETAS_ORDEN = ['Contrato', 'Correspondencia', 'Procesos disciplinarios', 'Documentos'] as const
+const SUBCARPETAS_ORDEN = ['Contrato', 'Correspondencia', 'Procesos disciplinarios', 'Soporte Afiliación', 'Documentos'] as const
 
 // El storage_path conserva la ruta original de OneDrive al migrar (ej.
 // "activos/NOMBRE/Documentos/Contrato/archivo.pdf"), asi que la subcarpeta
@@ -72,6 +72,7 @@ function classifySubcarpeta(storagePath: string): (typeof SUBCARPETAS_ORDEN)[num
     if (path.includes('disciplin')) return 'Procesos disciplinarios'
     if (path.includes('correspond')) return 'Correspondencia'
     if (path.includes('contrato')) return 'Contrato'
+    if (path.includes('afiliac')) return 'Soporte Afiliación'
     return 'Documentos'
 }
 

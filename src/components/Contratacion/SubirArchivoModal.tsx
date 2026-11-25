@@ -5,7 +5,7 @@ import { X, UploadCloud, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
-const SUBCARPETAS = ['Contrato', 'Correspondencia', 'Documentos', 'Procesos disciplinarios'] as const
+const SUBCARPETAS = ['Contrato', 'Correspondencia', 'Documentos', 'Procesos disciplinarios', 'Soporte Afiliación'] as const
 
 interface SubirArchivoModalProps {
     isOpen: boolean
