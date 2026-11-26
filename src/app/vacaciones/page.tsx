@@ -368,7 +368,7 @@ export default function VacacionesPage() {
         setSuccess(null)
 
         try {
-            const { error: insertError } = await (supabase as any)
+            const { data: inserted, error: insertError } = await (supabase as any)
                 .from('Vacaciones')
                 .insert({
                     Cedula: empleado.cedula,
@@ -390,8 +390,21 @@ export default function VacacionesPage() {
                     Empresa: empleado.empresa || '',
                     Cargo: empleado.cargo || '',
                 })
+                .select('id')
+                .single()
 
             if (insertError) throw insertError
+
+            // Le avisa al jefe inmediato (con link para aprobar/rechazar sin login) y
+            // a Renata. Best-effort: si falla la notificacion, la solicitud ya quedo
+            // guardada igual.
+            if (inserted?.id) {
+                fetch('/api/vacaciones/notificar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vacacionId: inserted.id }),
+                }).catch(err => console.error('Error notificando la nueva solicitud de vacaciones:', err))
+            }
 
             setSuccess('Tu solicitud de vacaciones ha sido enviada con éxito.')
             setTimeout(() => {

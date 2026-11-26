@@ -53,6 +53,12 @@ export const VacacionesDetalle: React.FC<VacacionesDetalleProps> = ({ solicitud,
             // trigger en la base de datos (registrar_ausentismo_vacaciones), no este
             // componente — así queda cubierto sin importar por dónde se apruebe la
             // solicitud (esta pantalla, un flujo externo, etc.), no solo este botón.
+            fetch('/api/vacaciones/notificar-decision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vacacionId: solicitud.id, decision: newStatus }),
+            }).catch(err => console.error('Error notificando la decision de vacaciones:', err))
+
             setSuccess(`Solicitud ${newStatus.toLowerCase()} correctamente.`)
             setTimeout(() => {
                 onUpdate()
